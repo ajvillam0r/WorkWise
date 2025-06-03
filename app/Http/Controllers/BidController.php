@@ -119,6 +119,23 @@ class BidController extends Controller
 
             // Update job status to in_progress
             $bid->job->update(['status' => 'in_progress']);
+
+            // Create project
+            $project = \App\Models\Project::create([
+                'job_id' => $bid->job_id,
+                'client_id' => $bid->job->employer_id,
+                'freelancer_id' => $bid->freelancer_id,
+                'accepted_bid_id' => $bid->id,
+                'agreed_amount' => $bid->bid_amount,
+                'agreed_duration_days' => $bid->estimated_days,
+                'status' => 'active',
+                'deadline' => now()->addDays($bid->estimated_days),
+            ]);
+
+            $bid->update($validated);
+
+            return redirect()->route('projects.show', $project)
+                ->with('success', 'Bid accepted! Project created. Please proceed with payment to start the work.');
         }
 
         $bid->update($validated);

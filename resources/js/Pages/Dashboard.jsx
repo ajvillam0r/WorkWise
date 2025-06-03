@@ -4,6 +4,11 @@ import { Head, Link, usePage } from '@inertiajs/react';
 export default function Dashboard() {
     const { auth } = usePage().props;
     const user = auth.user;
+
+    if (!user) {
+        return <div>Loading...</div>; // Or some other placeholder
+    }
+
     const isFreelancer = user.user_type === 'freelancer';
     const isClient = user.user_type === 'client';
 

@@ -23,7 +23,7 @@ class User extends Authenticatable
         'last_name',
         'email',
         'password',
-        'country',
+        'barangay',
         'user_type',
         'profile_completed',
         'profile_status',
@@ -115,5 +115,94 @@ class User extends Authenticatable
     public function bids(): HasMany
     {
         return $this->hasMany(Bid::class, 'freelancer_id');
+    }
+
+    // Project relationships
+    public function clientProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'client_id');
+    }
+
+    public function freelancerProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'freelancer_id');
+    }
+
+    // Review relationships
+    public function givenReviews(): HasMany
+    {
+        return $this->hasMany(Review::class, 'reviewer_id');
+    }
+
+    public function receivedReviews(): HasMany
+    {
+        return $this->hasMany(Review::class, 'reviewee_id');
+    }
+
+    // Message relationships
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function receivedMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
+    }
+
+    // Transaction relationships
+    public function paymentsMade(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'payer_id');
+    }
+
+    public function paymentsReceived(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'payee_id');
+    }
+
+    // Report relationships
+    public function reportsSubmitted(): HasMany
+    {
+        return $this->hasMany(Report::class, 'reporter_id');
+    }
+
+    public function reportsReceived(): HasMany
+    {
+        return $this->hasMany(Report::class, 'reported_user_id');
+    }
+
+    /**
+     * Get average rating for this user
+     */
+    public function getAverageRatingAttribute(): float
+    {
+        return $this->receivedReviews()->avg('rating') ?? 0.0;
+    }
+
+    /**
+     * Get total earnings for freelancer
+     */
+    public function getTotalEarningsAttribute(): float
+    {
+        return $this->paymentsReceived()
+            ->where('type', 'release')
+            ->where('status', 'completed')
+            ->sum('net_amount');
+    }
+
+    /**
+     * Get completion rate for freelancer
+     */
+    public function getCompletionRateAttribute(): float
+    {
+        $totalProjects = $this->freelancerProjects()->count();
+        if ($totalProjects === 0) return 0.0;
+
+        $completedProjects = $this->freelancerProjects()
+            ->where('status', 'completed')
+            ->count();
+
+        return ($completedProjects / $totalProjects) * 100;
     }
 }

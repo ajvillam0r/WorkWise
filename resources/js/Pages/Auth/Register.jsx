@@ -9,13 +9,46 @@ export default function Register({ selectedUserType }) {
         email: '',
         password: '',
         password_confirmation: '',
-        country: '',
+        barangay: '',
         user_type: selectedUserType || 'freelancer',
         terms_agreed: false,
         marketing_emails: false,
     });
 
     const [showPassword, setShowPassword] = useState(false);
+
+    // List of barangays in Lapu-Lapu City, Philippines
+    const barangays = [
+        'Agus',
+        'Babag',
+        'Bankal',
+        'Basak',
+        'Buaya',
+        'Calawisan',
+        'Canjulao',
+        'Caubian',
+        'Caw-oy',
+        'Gun-ob',
+        'Ibo',
+        'Looc',
+        'Mactan',
+        'Maribago',
+        'Marigondon',
+        'Pajac',
+        'Pajican',
+        'Pajo',
+        'Pangan-an',
+        'Pilipog',
+        'Poblacion',
+        'Punta Engaño',
+        'Sabang',
+        'Santa Rosa',
+        'Subabasbas',
+        'Talima',
+        'Tingo',
+        'Tungasan',
+        'Yapak'
+    ];
 
     const submit = (e) => {
         e.preventDefault();
@@ -148,42 +181,42 @@ export default function Register({ selectedUserType }) {
                             <InputError message={errors.password} className="mt-1" />
                         </div>
 
-                        {/* Country */}
+                        {/* City (Pre-filled) */}
                         <div>
-                            <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                                Country
+                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                                City
+                            </label>
+                            <input
+                                id="city"
+                                name="city"
+                                type="text"
+                                value="Lapu-Lapu City"
+                                disabled
+                                className="w-full px-3 py-3 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                            />
+                        </div>
+
+                        {/* Barangay */}
+                        <div>
+                            <label htmlFor="barangay" className="block text-sm font-medium text-gray-700 mb-1">
+                                Barangay (in Lapu-Lapu City)
                             </label>
                             <select
-                                id="country"
-                                name="country"
-                                value={data.country}
-                                onChange={(e) => setData('country', e.target.value)}
+                                id="barangay"
+                                name="barangay"
+                                value={data.barangay}
+                                onChange={(e) => setData('barangay', e.target.value)}
                                 className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                                 required
                             >
-                                <option value="">Philippines</option>
-                                <option value="US">United States</option>
-                                <option value="CA">Canada</option>
-                                <option value="GB">United Kingdom</option>
-                                <option value="AU">Australia</option>
-                                <option value="DE">Germany</option>
-                                <option value="FR">France</option>
-                                <option value="IN">India</option>
-                                <option value="PH">Philippines</option>
-                                <option value="PK">Pakistan</option>
-                                <option value="BD">Bangladesh</option>
-                                <option value="NG">Nigeria</option>
-                                <option value="KE">Kenya</option>
-                                <option value="ZA">South Africa</option>
-                                <option value="BR">Brazil</option>
-                                <option value="MX">Mexico</option>
-                                <option value="AR">Argentina</option>
-                                <option value="UA">Ukraine</option>
-                                <option value="PL">Poland</option>
-                                <option value="RO">Romania</option>
-                                <option value="other">Other</option>
+                                <option value="">Select your barangay</option>
+                                {barangays.map((barangay) => (
+                                    <option key={barangay} value={barangay}>
+                                        {barangay}
+                                    </option>
+                                ))}
                             </select>
-                            <InputError message={errors.country} className="mt-1" />
+                            <InputError message={errors.barangay} className="mt-1" />
                         </div>
 
                         {/* Checkboxes */}

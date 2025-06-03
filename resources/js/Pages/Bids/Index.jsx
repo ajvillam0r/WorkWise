@@ -1,7 +1,11 @@
-import { Head, Link } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { formatDistanceToNow } from 'date-fns';
 
-export default function BidsIndex({ auth, bids }) {
+export default function BidsIndex({ bids }) {
+    const { auth } = usePage().props;
+    const [filter, setFilter] = useState('all');
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString();
     };

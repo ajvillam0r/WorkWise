@@ -2,26 +2,26 @@ import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
-export default function JobCreate() {
+export default function JobEdit({ job }) {
     const [skillInput, setSkillInput] = useState('');
     
-    const { data, setData, post, processing, errors, reset } = useForm({
-        title: '',
-        description: '',
-        required_skills: [],
-        budget_type: 'fixed',
-        budget_min: '',
-        budget_max: '',
-        experience_level: 'intermediate',
-        estimated_duration_days: '',
-        deadline: '',
-        location: 'Lapu-Lapu City',
-        is_remote: false,
+    const { data, setData, put, processing, errors, reset } = useForm({
+        title: job.title || '',
+        description: job.description || '',
+        required_skills: job.required_skills || [],
+        budget_type: job.budget_type || 'fixed',
+        budget_min: job.budget_min || '',
+        budget_max: job.budget_max || '',
+        experience_level: job.experience_level || 'intermediate',
+        estimated_duration_days: job.estimated_duration_days || '',
+        deadline: job.deadline ? job.deadline.split('T')[0] : '',
+        location: job.location || 'Lapu-Lapu City',
+        is_remote: job.is_remote || false,
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('jobs.store'));
+        put(route('jobs.update', job.id));
     };
 
     const addSkill = () => {
@@ -54,33 +54,31 @@ export default function JobCreate() {
             header={
                 <div>
                     <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                        Post a New Job
+                        Edit Job: {job.title}
                     </h2>
                     <p className="text-sm text-gray-600 mt-1">
-                        Find the perfect freelancer for your project
+                        Update your job posting details
                     </p>
                 </div>
             }
         >
-            <Head title="Post a Job" />
+            <Head title={`Edit Job: ${job.title}`} />
 
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
-                    {/* Progress Steps */}
-                    <div className="mb-8">
-                        <div className="flex items-center justify-center space-x-4">
-                            <div className="flex items-center">
-                                <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-medium">
-                                    1
-                                </div>
-                                <span className="ml-2 text-sm font-medium text-blue-600">Job Details</span>
+                    {/* Warning Notice */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <span className="text-yellow-400 text-xl">⚠️</span>
                             </div>
-                            <div className="w-16 h-0.5 bg-gray-300"></div>
-                            <div className="flex items-center">
-                                <div className="flex items-center justify-center w-8 h-8 bg-gray-300 text-gray-600 rounded-full text-sm font-medium">
-                                    2
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-yellow-800">
+                                    Important: Editing Active Job
+                                </h3>
+                                <div className="mt-2 text-sm text-yellow-700">
+                                    <p>Changes to this job will be visible to all freelancers. Existing proposals will remain unchanged.</p>
                                 </div>
-                                <span className="ml-2 text-sm font-medium text-gray-500">Review & Post</span>
                             </div>
                         </div>
                     </div>
@@ -358,12 +356,20 @@ export default function JobCreate() {
 
                                 {/* Submit Buttons */}
                                 <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-                                    <Link
-                                        href={route('jobs.index')}
-                                        className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                    >
-                                        Cancel
-                                    </Link>
+                                    <div className="flex space-x-3">
+                                        <Link
+                                            href={`/jobs/${job.id}`}
+                                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        >
+                                            Cancel
+                                        </Link>
+                                        <Link
+                                            href="/jobs"
+                                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        >
+                                            Back to Jobs
+                                        </Link>
+                                    </div>
                                     <button
                                         type="submit"
                                         disabled={processing}
@@ -372,10 +378,10 @@ export default function JobCreate() {
                                         {processing ? (
                                             <div className="flex items-center">
                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                Posting Job...
+                                                Updating Job...
                                             </div>
                                         ) : (
-                                            'Post Job'
+                                            'Update Job'
                                         )}
                                     </button>
                                 </div>
@@ -383,25 +389,23 @@ export default function JobCreate() {
                         </div>
                     </div>
 
-                    {/* Tips Sidebar */}
+                    {/* Job Stats */}
                     <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-blue-900 mb-4">💡 Tips for a Great Job Post</h3>
-                        <div className="space-y-3 text-sm text-blue-800">
-                            <div className="flex items-start">
-                                <span className="text-blue-500 mr-2">•</span>
-                                <span>Be specific about your requirements and deliverables</span>
+                        <h3 className="text-lg font-semibold text-blue-900 mb-4">📊 Job Statistics</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
+                            <div>
+                                <div className="font-medium">Total Proposals</div>
+                                <div className="text-2xl font-bold text-blue-600">{job.bids_count || 0}</div>
                             </div>
-                            <div className="flex items-start">
-                                <span className="text-blue-500 mr-2">•</span>
-                                <span>Set a realistic budget based on project complexity</span>
+                            <div>
+                                <div className="font-medium">Views</div>
+                                <div className="text-2xl font-bold text-green-600">{job.views_count || 0}</div>
                             </div>
-                            <div className="flex items-start">
-                                <span className="text-blue-500 mr-2">•</span>
-                                <span>Include examples or references if possible</span>
-                            </div>
-                            <div className="flex items-start">
-                                <span className="text-blue-500 mr-2">•</span>
-                                <span>Respond promptly to freelancer questions</span>
+                            <div>
+                                <div className="font-medium">Days Active</div>
+                                <div className="text-2xl font-bold text-purple-600">
+                                    {Math.ceil((new Date() - new Date(job.created_at)) / (1000 * 60 * 60 * 24))}
+                                </div>
                             </div>
                         </div>
                     </div>

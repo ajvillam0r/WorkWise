@@ -1,187 +1,379 @@
-import { Head, Link, router } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
-export default function JobsIndex({ auth, jobs, filters }) {
+export default function JobsIndex({ jobs, filters = {} }) {
+    const { auth } = usePage().props;
     const [search, setSearch] = useState(filters.search || '');
-    const [minBudget, setMinBudget] = useState(filters.min_budget || '');
-    const [maxBudget, setMaxBudget] = useState(filters.max_budget || '');
+    const [selectedCategory, setSelectedCategory] = useState(filters.category || 'all');
+    const [budgetRange, setBudgetRange] = useState(filters.budget_range || 'all');
+    const [experienceLevel, setExperienceLevel] = useState(filters.experience_level || 'all');
 
-    const handleSearch = (e) => {
-        e.preventDefault();
+    const isClient = auth.user.user_type === 'client';
+
+    const handleSearch = () => {
         router.get('/jobs', {
             search,
-            min_budget: minBudget,
-            max_budget: maxBudget,
+            category: selectedCategory !== 'all' ? selectedCategory : '',
+            budget_range: budgetRange !== 'all' ? budgetRange : '',
+            experience_level: experienceLevel !== 'all' ? experienceLevel : '',
+        }, {
+            preserveState: true,
+            preserveScroll: true,
         });
     };
 
     const clearFilters = () => {
         setSearch('');
-        setMinBudget('');
-        setMaxBudget('');
+        setSelectedCategory('all');
+        setBudgetRange('all');
+        setExperienceLevel('all');
         router.get('/jobs');
+    };
+
+    const getBudgetDisplay = (job) => {
+        if (job.budget_type === 'fixed') {
+            return `$${job.budget_min} - $${job.budget_max}`;
+        }
+        return `$${job.budget_min} - $${job.budget_max}/hr`;
+    };
+
+    const getExperienceBadge = (level) => {
+        const badges = {
+            beginner: 'bg-green-100 text-green-800',
+            intermediate: 'bg-blue-100 text-blue-800',
+            expert: 'bg-purple-100 text-purple-800'
+        };
+        return badges[level] || 'bg-gray-100 text-gray-800';
+    };
+
+    const getStatusBadge = (status) => {
+        const badges = {
+            open: 'bg-green-100 text-green-800',
+            in_progress: 'bg-blue-100 text-blue-800',
+            completed: 'bg-gray-100 text-gray-800',
+            cancelled: 'bg-red-100 text-red-800'
+        };
+        return badges[status] || 'bg-gray-100 text-gray-800';
     };
 
     return (
         <AuthenticatedLayout
-            user={auth.user}
             header={
                 <div className="flex justify-between items-center">
-                    <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                        Browse Jobs
-                    </h2>
-                    {auth.user?.user_type === 'employer' && (
+                    <div>
+                        <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                            {isClient ? 'My Posted Jobs' : 'Browse Jobs'}
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                            {isClient 
+                                ? 'Manage your job postings and review proposals'
+                                : 'Find your next freelance opportunity'
+                            }
+                        </p>
+                    </div>
+                    {isClient && (
                         <Link
                             href={route('jobs.create')}
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
                         >
-                            Post a Job
+                            + Post New Job
                         </Link>
                     )}
                 </div>
             }
         >
-            <Head title="Browse Jobs" />
+            <Head title={isClient ? 'My Jobs' : 'Browse Jobs'} />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {/* Search and Filters */}
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                        <div className="p-6">
-                            <form onSubmit={handleSearch} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {!isClient && (
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                            <div className="p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                                     <div className="md:col-span-2">
                                         <input
                                             type="text"
-                                            placeholder="Search jobs..."
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Search jobs by title, skills, or description..."
+                                            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                                         />
                                     </div>
                                     <div>
-                                        <input
-                                            type="number"
-                                            placeholder="Min Budget"
-                                            value={minBudget}
-                                            onChange={(e) => setMinBudget(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
+                                        <select
+                                            value={budgetRange}
+                                            onChange={(e) => setBudgetRange(e.target.value)}
+                                            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                            <option value="all">All Budgets</option>
+                                            <option value="0-500">$0 - $500</option>
+                                            <option value="500-1000">$500 - $1,000</option>
+                                            <option value="1000-5000">$1,000 - $5,000</option>
+                                            <option value="5000+">$5,000+</option>
+                                        </select>
                                     </div>
                                     <div>
-                                        <input
-                                            type="number"
-                                            placeholder="Max Budget"
-                                            value={maxBudget}
-                                            onChange={(e) => setMaxBudget(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
+                                        <select
+                                            value={experienceLevel}
+                                            onChange={(e) => setExperienceLevel(e.target.value)}
+                                            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                            <option value="all">All Levels</option>
+                                            <option value="beginner">Beginner</option>
+                                            <option value="intermediate">Intermediate</option>
+                                            <option value="expert">Expert</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div className="flex space-x-2">
+                                <div className="flex items-center space-x-3">
                                     <button
-                                        type="submit"
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                                        onClick={handleSearch}
+                                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                     >
-                                        Search
+                                        🔍 Search Jobs
                                     </button>
                                     <button
-                                        type="button"
                                         onClick={clearFilters}
-                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                                        className="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                     >
-                                        Clear
+                                        Clear Filters
                                     </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    {/* Jobs Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {jobs.data.map((job) => (
-                            <div key={job.id} className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                                <div className="p-6">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-                                            {job.title}
-                                        </h3>
-                                        <span className={`px-2 py-1 text-xs rounded-full ${
-                                            job.budget_type === 'fixed' 
-                                                ? 'bg-green-100 text-green-800' 
-                                                : 'bg-blue-100 text-blue-800'
-                                        }`}>
-                                            {job.budget_type}
-                                        </span>
-                                    </div>
-                                    
-                                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                                        {job.description}
-                                    </p>
-                                    
-                                    <div className="mb-4">
-                                        <div className="flex flex-wrap gap-1">
-                                            {job.required_skills.slice(0, 3).map((skill, index) => (
-                                                <span
-                                                    key={index}
-                                                    className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                                                >
-                                                    {skill}
-                                                </span>
-                                            ))}
-                                            {job.required_skills.length > 3 && (
-                                                <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                                                    +{job.required_skills.length - 3} more
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div className="text-sm text-gray-500">
-                                            <p>Budget: {job.budget_display}</p>
-                                            <p>Posted by: {job.employer.name}</p>
-                                        </div>
-                                        <div className="text-sm text-gray-500">
-                                            {job.bids_count} bids
-                                        </div>
-                                    </div>
-                                    
                                     <Link
-                                        href={route('jobs.show', job.id)}
-                                        className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-center block"
+                                        href="/recommendations"
+                                        className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                     >
-                                        View Details
+                                        🤖 AI Recommendations
                                     </Link>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Pagination */}
-                    {jobs.links && (
-                        <div className="mt-6 flex justify-center">
-                            <div className="flex space-x-1">
-                                {jobs.links.map((link, index) => (
-                                    <Link
-                                        key={index}
-                                        href={link.url}
-                                        className={`px-3 py-2 text-sm rounded ${
-                                            link.active
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-white text-gray-700 hover:bg-gray-50'
-                                        } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
                             </div>
                         </div>
                     )}
 
-                    {jobs.data.length === 0 && (
-                        <div className="text-center py-12">
-                            <p className="text-gray-500 text-lg">No jobs found matching your criteria.</p>
+                    {/* Jobs List */}
+                    {jobs.data && jobs.data.length === 0 ? (
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-12 text-center">
+                                <div className="text-6xl mb-4">💼</div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                    {isClient ? 'No jobs posted yet' : 'No jobs found'}
+                                </h3>
+                                <p className="text-gray-600 mb-6">
+                                    {isClient 
+                                        ? "Start by posting your first job to find talented freelancers."
+                                        : "Try adjusting your search criteria or check back later for new opportunities."
+                                    }
+                                </p>
+                                {isClient && (
+                                    <Link
+                                        href={route('jobs.create')}
+                                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                    >
+                                        Post Your First Job
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {jobs.data && jobs.data.map((job) => (
+                                <div key={job.id} className="bg-white overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow">
+                                    <div className="p-6">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center space-x-3 mb-3">
+                                                    <h3 className="text-lg font-semibold text-gray-900">
+                                                        <Link 
+                                                            href={`/jobs/${job.id}`}
+                                                            className="hover:text-blue-600 transition-colors"
+                                                        >
+                                                            {job.title}
+                                                        </Link>
+                                                    </h3>
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(job.status)}`}>
+                                                        {job.status === 'open' ? 'Open' : job.status.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+
+                                                <p className="text-gray-700 mb-4 line-clamp-3">
+                                                    {job.description}
+                                                </p>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                                                    <div>
+                                                        <div className="text-sm text-gray-500">Budget</div>
+                                                        <div className="font-semibold text-green-600">
+                                                            {getBudgetDisplay(job)}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm text-gray-500">Duration</div>
+                                                        <div className="font-semibold">
+                                                            {job.estimated_duration_days} days
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm text-gray-500">Experience</div>
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getExperienceBadge(job.experience_level)}`}>
+                                                            {job.experience_level}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm text-gray-500">Location</div>
+                                                        <div className="font-semibold">
+                                                            {job.is_remote ? '🌐 Remote' : `📍 ${job.location || 'Lapu-Lapu City'}`}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mb-4">
+                                                    <div className="text-sm text-gray-500 mb-2">Required Skills</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {job.required_skills && job.required_skills.map((skill, index) => (
+                                                            <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                                {skill}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                                        <span>
+                                                            Posted by: 
+                                                            <span className="font-medium ml-1">
+                                                                {job.employer ? `${job.employer.first_name} ${job.employer.last_name}` : 'Client'}
+                                                            </span>
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>{formatDistanceToNow(new Date(job.created_at))} ago</span>
+                                                        {job.bids_count !== undefined && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span>{job.bids_count} proposal{job.bids_count !== 1 ? 's' : ''}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        {isClient ? (
+                                                            <>
+                                                                <Link
+                                                                    href={`/jobs/${job.id}/edit`}
+                                                                    className="text-sm text-blue-600 hover:text-blue-800"
+                                                                >
+                                                                    Edit
+                                                                </Link>
+                                                                <Link
+                                                                    href={`/jobs/${job.id}`}
+                                                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                                >
+                                                                    View Proposals ({job.bids_count || 0})
+                                                                </Link>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Link
+                                                                    href={`/jobs/${job.id}`}
+                                                                    className="text-sm text-blue-600 hover:text-blue-800"
+                                                                >
+                                                                    View Details
+                                                                </Link>
+                                                                {job.status === 'open' && (
+                                                                    <Link
+                                                                        href={`/jobs/${job.id}`}
+                                                                        className="inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                                    >
+                                                                        Submit Proposal
+                                                                    </Link>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Pagination */}
+                            {jobs.links && jobs.links.length > 3 && (
+                                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow-sm">
+                                    <div className="flex-1 flex justify-between sm:hidden">
+                                        {jobs.prev_page_url && (
+                                            <Link
+                                                href={jobs.prev_page_url}
+                                                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                            >
+                                                Previous
+                                            </Link>
+                                        )}
+                                        {jobs.next_page_url && (
+                                            <Link
+                                                href={jobs.next_page_url}
+                                                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                            >
+                                                Next
+                                            </Link>
+                                        )}
+                                    </div>
+                                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-700">
+                                                Showing <span className="font-medium">{jobs.from}</span> to{' '}
+                                                <span className="font-medium">{jobs.to}</span> of{' '}
+                                                <span className="font-medium">{jobs.total}</span> results
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                                {jobs.links.map((link, index) => (
+                                                    <Link
+                                                        key={index}
+                                                        href={link.url || '#'}
+                                                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                                            link.active
+                                                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                                        } ${index === 0 ? 'rounded-l-md' : ''} ${
+                                                            index === jobs.links.length - 1 ? 'rounded-r-md' : ''
+                                                        }`}
+                                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                                    />
+                                                ))}
+                                            </nav>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Quick Stats for Freelancers */}
+                    {!isClient && jobs.data && jobs.data.length > 0 && (
+                        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <h3 className="text-lg font-semibold text-blue-900 mb-4">📊 Market Insights</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
+                                <div>
+                                    <div className="font-medium">Total Jobs Available</div>
+                                    <div className="text-2xl font-bold text-blue-600">{jobs.total || jobs.data.length}</div>
+                                </div>
+                                <div>
+                                    <div className="font-medium">Average Budget</div>
+                                    <div className="text-2xl font-bold text-green-600">
+                                        ${Math.round(jobs.data.reduce((sum, job) => sum + ((job.budget_min + job.budget_max) / 2), 0) / jobs.data.length) || 0}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="font-medium">Remote Opportunities</div>
+                                    <div className="text-2xl font-bold text-purple-600">
+                                        {Math.round((jobs.data.filter(job => job.is_remote).length / jobs.data.length) * 100) || 0}%
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

@@ -44,7 +44,7 @@ class RegisteredUserController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', Rules\Password::defaults()],
-            'country' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
             'user_type' => 'required|in:freelancer,client',
             'terms_agreed' => 'required|accepted',
             'marketing_emails' => 'boolean',
@@ -55,7 +55,7 @@ class RegisteredUserController extends Controller
             'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'country' => $request->country,
+            'barangay' => $request->barangay,
             'user_type' => $request->user_type,
         ]);
 

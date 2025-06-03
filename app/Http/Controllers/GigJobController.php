@@ -66,6 +66,11 @@ class GigJobController extends Controller
      */
     public function create(): Response
     {
+        // Only clients can create jobs
+        if (!auth()->user()->isClient()) {
+            abort(403, 'Only clients can post jobs.');
+        }
+
         return Inertia::render('Jobs/Create');
     }
 
@@ -74,27 +79,33 @@ class GigJobController extends Controller
      */
     public function store(Request $request)
     {
+        // Only clients can create jobs
+        if (!auth()->user()->isClient()) {
+            abort(403, 'Only clients can post jobs.');
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'required|string|min:100',
             'required_skills' => 'required|array|min:1',
-            'required_skills.*' => 'string',
+            'required_skills.*' => 'string|max:50',
             'budget_type' => 'required|in:fixed,hourly',
-            'budget_min' => 'required|numeric|min:0',
-            'budget_max' => 'nullable|numeric|min:0|gte:budget_min',
+            'budget_min' => 'required|numeric|min:5',
+            'budget_max' => 'required|numeric|min:5|gte:budget_min',
             'experience_level' => 'required|in:beginner,intermediate,expert',
-            'estimated_duration_days' => 'nullable|integer|min:1',
+            'estimated_duration_days' => 'required|integer|min:1',
             'deadline' => 'nullable|date|after:today',
             'location' => 'nullable|string|max:255',
             'is_remote' => 'boolean',
         ]);
 
         $validated['employer_id'] = auth()->id();
+        $validated['status'] = 'open';
 
         $job = GigJob::create($validated);
 
         return redirect()->route('jobs.show', $job)
-            ->with('success', 'Job posted successfully!');
+            ->with('success', 'Job posted successfully! Your job is now live and freelancers can start submitting proposals.');
     }
 
     /**

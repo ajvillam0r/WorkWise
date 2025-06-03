@@ -1,103 +1,201 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
+"use client";
 import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
+    const isFreelancer = user.user_type === 'freelancer';
+    const isClient = user.user_type === 'client';
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
-                        <div className="flex">
-                            <div className="flex shrink-0 items-center">
-                                <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
-                                </Link>
-                            </div>
+        <div className="min-h-screen bg-white">
+            <nav className="border-b border-gray-200 bg-white">
+                <div className="mx-auto" style={{ paddingLeft: '0.45in', paddingRight: '0.45in' }}>
+                    <div className="flex h-16 justify-between items-center">
+                        {/* Logo - Left */}
+                        <div className="flex-shrink-0">
+                            <Link href="/" className="flex items-center">
+                                <span className="text-2xl font-bold text-blue-600">WorkWise</span>
+                            </Link>
+                        </div>
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
+                        {/* Navigation - Center */}
+                        <div className="flex-1 flex justify-center">
+                            <div className="hidden md:flex space-x-6">
+                                {/* Dashboard - Always visible */}
+                                <Link
                                     href={route('dashboard')}
-                                    active={route().current('dashboard')}
+                                    className={`text-sm font-medium transition-colors ${
+                                        route.current('dashboard')
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                                 >
                                     Dashboard
-                                </NavLink>
-                                <NavLink
+                                </Link>
+
+                                {/* Jobs/Work - Role-specific labels */}
+                                <Link
                                     href={route('jobs.index')}
-                                    active={route().current('jobs.*')}
+                                    className={`text-sm font-medium transition-colors ${
+                                        route.current('jobs.*')
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                                 >
-                                    Browse Jobs
-                                </NavLink>
-                                <NavLink
-                                    href={route('bids.index')}
-                                    active={route().current('bids.*')}
+                                    {isFreelancer ? 'Find Work' : 'My Jobs'}
+                                </Link>
+
+                                {/* Freelancer-only navigation */}
+                                {isFreelancer && (
+                                    <>
+                                        <Link
+                                            href={route('bids.index')}
+                                            className={`text-sm font-medium transition-colors ${
+                                                route.current('bids.*')
+                                                    ? 'text-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            My Proposals
+                                        </Link>
+                                        <Link
+                                            href={route('ai.recommendations')}
+                                            className={`text-sm font-medium transition-colors ${
+                                                route.current('ai.*')
+                                                    ? 'text-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            🤖 AI Match
+                                        </Link>
+                                    </>
+                                )}
+
+                                {/* Client-only navigation */}
+                                {isClient && (
+                                    <>
+                                        <Link
+                                            href={route('jobs.create')}
+                                            className={`text-sm font-medium transition-colors ${
+                                                route.current('jobs.create')
+                                                    ? 'text-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            Post a Job
+                                        </Link>
+                                        <Link
+                                            href={route('reports.index')}
+                                            className={`text-sm font-medium transition-colors ${
+                                                route.current('reports.*')
+                                                    ? 'text-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            📊 Reports
+                                        </Link>
+                                    </>
+                                )}
+
+                                {/* Common navigation */}
+                                <Link
+                                    href={route('projects.index')}
+                                    className={`text-sm font-medium transition-colors ${
+                                        route.current('projects.*')
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                                 >
-                                    {user.user_type === 'freelancer' ? 'My Bids' : 'Manage Bids'}
-                                </NavLink>
+                                    Projects
+                                </Link>
+                                <Link
+                                    href={route('messages.index')}
+                                    className={`text-sm font-medium transition-colors ${
+                                        route.current('messages.*')
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    💬 Messages
+                                </Link>
                             </div>
                         </div>
 
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div className="relative ms-3">
+                        {/* User Menu - Right */}
+                        <div className="flex items-center space-x-4">
+                            {/* Notifications */}
+                            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM10.5 3.5a6 6 0 0 1 6 6v2l1.5 3h-15l1.5-3v-2a6 6 0 0 1 6-6z" />
+                                </svg>
+                            </button>
+
+                            {/* Messages */}
+                            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                            </button>
+
+                            {/* User Dropdown */}
+                            <div className="relative">
                                 <Dropdown>
                                     <Dropdown.Trigger>
-                                        <span className="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {user.name}
-
-                                                <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
+                                        <button className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                                                {user.first_name ? user.first_name.charAt(0).toUpperCase() : user.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="hidden md:block">{user.first_name || user.name}</span>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content>
-                                        <Dropdown.Link
-                                            href={route('profile.edit')}
-                                        >
-                                            Profile
+                                        <div className="px-4 py-2 border-b border-gray-100">
+                                            <div className="text-sm font-medium text-gray-900">{user.first_name ? `${user.first_name} ${user.last_name}` : user.name}</div>
+                                            <div className="text-xs text-gray-500 capitalize">{user.user_type}</div>
+                                        </div>
+                                        <Dropdown.Link href={route('profile.edit')}>
+                                            Profile Settings
                                         </Dropdown.Link>
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
+                                        <Dropdown.Link href="/payment/history">
+                                            💳 Payment History
                                         </Dropdown.Link>
+                                        <Dropdown.Link href="/reports">
+                                            🛡️ My Reports
+                                        </Dropdown.Link>
+                                        <Dropdown.Link href="#">
+                                            Help & Support
+                                        </Dropdown.Link>
+                                        <div className="border-t border-gray-100">
+                                            <Dropdown.Link
+                                                href={route('logout')}
+                                                method="post"
+                                                as="button"
+                                            >
+                                                Log Out
+                                            </Dropdown.Link>
+                                        </div>
                                     </Dropdown.Content>
                                 </Dropdown>
                             </div>
                         </div>
 
-                        <div className="-me-2 flex items-center sm:hidden">
+                        <div className="md:hidden">
                             <button
                                 onClick={() =>
                                     setShowingNavigationDropdown(
                                         (previousState) => !previousState,
                                     )
                                 }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
+                                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                             >
                                 <svg
                                     className="h-6 w-6"
@@ -133,68 +231,149 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </div>
 
-                <div
-                    className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
-                    }
-                >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
+                {/* Mobile Navigation */}
+                <div className={`${showingNavigationDropdown ? 'block' : 'hidden'} md:hidden border-t border-gray-200`}>
+                    <div className="px-4 py-2 space-y-1">
+                        {/* Dashboard - Always visible */}
+                        <Link
                             href={route('dashboard')}
-                            active={route().current('dashboard')}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                route.current('dashboard')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
                         >
                             Dashboard
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
+                        </Link>
+
+                        {/* Jobs/Work - Role-specific */}
+                        <Link
                             href={route('jobs.index')}
-                            active={route().current('jobs.*')}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                route.current('jobs.*')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
                         >
-                            Browse Jobs
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href={route('bids.index')}
-                            active={route().current('bids.*')}
+                            {isFreelancer ? 'Find Work' : 'My Jobs'}
+                        </Link>
+
+                        {/* Freelancer-only mobile navigation */}
+                        {isFreelancer && (
+                            <>
+                                <Link
+                                    href={route('bids.index')}
+                                    className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                        route.current('bids.*')
+                                            ? 'text-blue-600 bg-blue-50'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    My Proposals
+                                </Link>
+                                <Link
+                                    href={route('ai.recommendations')}
+                                    className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                        route.current('ai.*')
+                                            ? 'text-blue-600 bg-blue-50'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    🤖 AI Match
+                                </Link>
+                            </>
+                        )}
+
+                        {/* Client-only mobile navigation */}
+                        {isClient && (
+                            <>
+                                <Link
+                                    href={route('jobs.create')}
+                                    className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                        route.current('jobs.create')
+                                            ? 'text-blue-600 bg-blue-50'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Post a Job
+                                </Link>
+                                <Link
+                                    href={route('reports.index')}
+                                    className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                        route.current('reports.*')
+                                            ? 'text-blue-600 bg-blue-50'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    📊 Reports
+                                </Link>
+                            </>
+                        )}
+
+                        {/* Common mobile navigation */}
+                        <Link
+                            href={route('projects.index')}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                route.current('projects.*')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
                         >
-                            {user.user_type === 'freelancer' ? 'My Bids' : 'Manage Bids'}
-                        </ResponsiveNavLink>
+                            Projects
+                        </Link>
+                        <Link
+                            href={route('messages.index')}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                route.current('messages.*')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            💬 Messages
+                        </Link>
+                        <Link
+                            href={route('payment.history')}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                route.current('payment.*')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            💳 Payment History
+                        </Link>
                     </div>
 
-                    <div className="border-t border-gray-200 pb-1 pt-4">
-                        <div className="px-4">
-                            <div className="text-base font-medium text-gray-800">
-                                {user.name}
+                    <div className="border-t border-gray-200 px-4 py-3">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+                                {user.first_name ? user.first_name.charAt(0).toUpperCase() : user.name.charAt(0).toUpperCase()}
                             </div>
-                            <div className="text-sm font-medium text-gray-500">
-                                {user.email}
+                            <div>
+                                <div className="text-sm font-medium text-gray-900">{user.first_name ? `${user.first_name} ${user.last_name}` : user.name}</div>
+                                <div className="text-xs text-gray-500 capitalize">{user.user_type}</div>
                             </div>
                         </div>
-
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                method="post"
+                            <Link
+                                href={route('profile.edit')}
+                                className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                            >
+                                Profile Settings
+                            </Link>
+                            <Link
                                 href={route('logout')}
+                                method="post"
                                 as="button"
+                                className="block w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
                             >
                                 Log Out
-                            </ResponsiveNavLink>
+                            </Link>
                         </div>
                     </div>
                 </div>
             </nav>
 
-            {header && (
-                <header className="bg-white shadow">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
-                    </div>
-                </header>
-            )}
-
-            <main>{children}</main>
+            <main className="flex-1">{children}</main>
         </div>
     );
 }

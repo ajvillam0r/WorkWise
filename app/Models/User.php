@@ -40,6 +40,10 @@ class User extends Authenticatable
         'work_type_needed',
         'budget_range',
         'project_intent',
+        'stripe_customer_id',
+        'stripe_account_id',
+        'stripe_account_details',
+        'stripe_onboarded_at',
     ];
 
     /**
@@ -66,6 +70,8 @@ class User extends Authenticatable
             'languages' => 'array',
             'hourly_rate' => 'decimal:2',
             'profile_completed' => 'boolean',
+            'stripe_account_details' => 'array',
+            'stripe_onboarded_at' => 'datetime',
         ];
     }
 

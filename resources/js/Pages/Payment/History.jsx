@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
-export default function PaymentHistory({ transactions, summary }) {
+export default function PaymentHistory({ transactions = [], summary = { total_earned: 0, total_spent: 0, pending_escrow: 0, transaction_count: 0 } }) {
     const [filter, setFilter] = useState('all');
 
     const getTransactionIcon = (type, isIncoming) => {
@@ -66,7 +66,7 @@ export default function PaymentHistory({ transactions, summary }) {
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500">Total Earned</div>
                                         <div className="text-2xl font-bold text-green-600">
-                                            ${summary.total_earned.toLocaleString()}
+                                            ₱{summary.total_earned.toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
@@ -82,7 +82,7 @@ export default function PaymentHistory({ transactions, summary }) {
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500">Total Spent</div>
                                         <div className="text-2xl font-bold text-blue-600">
-                                            ${summary.total_spent.toLocaleString()}
+                                            ₱{summary.total_spent.toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
@@ -98,7 +98,7 @@ export default function PaymentHistory({ transactions, summary }) {
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500">In Escrow</div>
                                         <div className="text-2xl font-bold text-yellow-600">
-                                            ${summary.pending_escrow.toLocaleString()}
+                                            ₱{summary.pending_escrow.toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
@@ -244,16 +244,16 @@ export default function PaymentHistory({ transactions, summary }) {
                                                 </div>
                                                 <div className="text-right">
                                                     <div className={`text-lg font-semibold ${getTransactionColor(transaction.type, transaction.is_incoming)}`}>
-                                                        {transaction.is_incoming ? '+' : '-'}${transaction.amount.toLocaleString()}
+                                                        {transaction.is_incoming ? '+' : '-'}₱{transaction.amount.toLocaleString()}
                                                     </div>
                                                     {transaction.platform_fee > 0 && (
                                                         <div className="text-xs text-gray-500">
-                                                            Fee: ${transaction.platform_fee.toFixed(2)}
+                                                            Fee: ₱{Number(transaction.platform_fee).toFixed(2)}
                                                         </div>
                                                     )}
                                                     {transaction.net_amount !== transaction.amount && (
                                                         <div className="text-xs text-gray-600">
-                                                            Net: ${transaction.net_amount.toLocaleString()}
+                                                            Net: ₱{Number(transaction.net_amount).toLocaleString()}
                                                         </div>
                                                     )}
                                                 </div>

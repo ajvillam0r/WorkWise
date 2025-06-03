@@ -210,7 +210,7 @@ export default function JobCreate() {
                                                     {data.budget_type === 'fixed' ? 'Minimum Budget' : 'Minimum Rate/Hour'}
                                                 </label>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
                                                     <input
                                                         type="number"
                                                         value={data.budget_min}
@@ -228,7 +228,7 @@ export default function JobCreate() {
                                                     {data.budget_type === 'fixed' ? 'Maximum Budget' : 'Maximum Rate/Hour'}
                                                 </label>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
                                                     <input
                                                         type="number"
                                                         value={data.budget_max}

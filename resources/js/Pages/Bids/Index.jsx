@@ -72,7 +72,7 @@ export default function BidsIndex({ bids }) {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                             <div>
                                                 <span className="text-sm text-gray-500">Bid Amount:</span>
-                                                <p className="font-medium">${bid.bid_amount}</p>
+                                                <p className="font-medium">₱{bid.bid_amount}</p>
                                             </div>
                                             <div>
                                                 <span className="text-sm text-gray-500">Estimated Days:</span>
@@ -170,16 +170,24 @@ export default function BidsIndex({ bids }) {
                         <div className="mt-6 flex justify-center">
                             <div className="flex space-x-1">
                                 {bids.links.map((link, index) => (
-                                    <Link
-                                        key={index}
-                                        href={link.url}
-                                        className={`px-3 py-2 text-sm rounded ${
-                                            link.active
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-white text-gray-700 hover:bg-gray-50'
-                                        } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
+                                    link.url ? (
+                                        <Link
+                                            key={index}
+                                            href={link.url}
+                                            className={`px-3 py-2 text-sm rounded ${
+                                                link.active
+                                                    ? 'bg-blue-500 text-white'
+                                                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                        />
+                                    ) : (
+                                        <span
+                                            key={index}
+                                            className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-400 cursor-not-allowed"
+                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                        />
+                                    )
                                 ))}
                             </div>
                         </div>

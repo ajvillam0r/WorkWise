@@ -10,6 +10,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\FreelancerOnboardingController;
 use App\Http\Controllers\ClientOnboardingController;
+use App\Http\Controllers\WebhookController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -130,8 +131,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/payment/confirm', [PaymentController::class, 'confirmPayment'])->name('payment.confirm');
     Route::post('/projects/{project}/payment/release', [PaymentController::class, 'releasePayment'])->name('payment.release');
     Route::post('/projects/{project}/payment/refund', [PaymentController::class, 'refundPayment'])->name('payment.refund');
-    // Route::get('/payment/history', [PaymentController::class, 'history'])->name('payment.history');
+    Route::get('/payment/history', [PaymentController::class, 'history'])->name('payment.history');
     Route::get('/transactions/{transaction}', [PaymentController::class, 'transaction'])->name('transactions.show');
+
+    // Stripe webhook
+    Route::post('stripe/webhook', [WebhookController::class, 'handleStripeWebhook'])->name('stripe.webhook');
 
     // Future feature routes (when controllers are implemented)
     // Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');

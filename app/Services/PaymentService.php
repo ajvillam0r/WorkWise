@@ -19,7 +19,7 @@ class PaymentService
     }
 
     /**
-     * Create payment intent for escrow
+     * Create a payment intent for escrow
      */
     public function createEscrowPayment(Project $project): array
     {
@@ -29,19 +29,18 @@ class PaymentService
 
             $paymentIntent = $this->stripe->paymentIntents->create([
                 'amount' => $amount,
-                'currency' => 'php',
-                'payment_method_types' => ['card'],
-                'capture_method' => 'manual', // For escrow - capture later
+                'currency' => config('services.stripe.currency'),
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                ],
                 'metadata' => [
                     'project_id' => $project->id,
-                    'client_id' => $project->client_id,
-                    'freelancer_id' => $project->freelancer_id,
-                    'type' => 'escrow'
+                    'type' => 'escrow',
+                    'platform_fee' => $platformFee,
                 ],
-                'description' => "Escrow payment for project: {$project->job->title}"
             ]);
 
-            // Create transaction record
+            // Create pending transaction
             Transaction::create([
                 'project_id' => $project->id,
                 'payer_id' => $project->client_id,
@@ -53,59 +52,52 @@ class PaymentService
                 'status' => 'pending',
                 'stripe_payment_intent_id' => $paymentIntent->id,
                 'description' => "Escrow payment for project: {$project->job->title}",
-                'metadata' => [
-                    'payment_intent' => $paymentIntent->toArray()
-                ]
             ]);
 
             return [
                 'success' => true,
                 'client_secret' => $paymentIntent->client_secret,
-                'payment_intent_id' => $paymentIntent->id
             ];
 
         } catch (ApiErrorException $e) {
-            Log::error('Stripe payment creation failed', [
+            Log::error('Payment intent creation failed', [
                 'project_id' => $project->id,
                 'error' => $e->getMessage()
             ]);
 
-            return [
-                'success' => false,
-                'error' => $e->getMessage()
-            ];
-        } catch (\Exception $e) {
-            Log::error('Payment Service Error', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
     /**
-     * Confirm escrow payment
+     * Confirm and process payment
      */
-    public function confirmEscrowPayment(string $paymentIntentId): array
+    public function confirmPayment(string $paymentIntentId): array
     {
         try {
             $paymentIntent = $this->stripe->paymentIntents->retrieve($paymentIntentId);
             
-            if ($paymentIntent->status === 'requires_capture') {
-                // Payment is authorized but not captured (perfect for escrow)
-                $transaction = Transaction::where('stripe_payment_intent_id', $paymentIntentId)->first();
-                
-                if ($transaction) {
-                    $transaction->update([
-                        'status' => 'completed',
-                        'processed_at' => now()
-                    ]);
-                }
-
-                return ['success' => true, 'status' => 'escrowed'];
+            if ($paymentIntent->status !== 'succeeded') {
+                return ['success' => false, 'error' => 'Payment not successful'];
             }
 
-            return ['success' => false, 'error' => 'Payment not in correct state for escrow'];
+            // Update transaction status
+            $transaction = Transaction::where('stripe_payment_intent_id', $paymentIntentId)->first();
+            
+            if (!$transaction) {
+                return ['success' => false, 'error' => 'Transaction not found'];
+            }
+
+            $transaction->update([
+                'status' => 'completed',
+                'stripe_charge_id' => $paymentIntent->charges->data[0]->id ?? null,
+                'processed_at' => now(),
+            ]);
+
+            return ['success' => true];
 
         } catch (ApiErrorException $e) {
-            Log::error('Stripe payment confirmation failed', [
+            Log::error('Payment confirmation failed', [
                 'payment_intent_id' => $paymentIntentId,
                 'error' => $e->getMessage()
             ]);
@@ -115,7 +107,7 @@ class PaymentService
     }
 
     /**
-     * Release payment to freelancer
+     * Release payment from escrow to freelancer
      */
     public function releasePayment(Project $project): array
     {
@@ -129,30 +121,35 @@ class PaymentService
                 return ['success' => false, 'error' => 'No escrow payment found'];
             }
 
-            // Capture the payment
-            $paymentIntent = $this->stripe->paymentIntents->capture(
-                $escrowTransaction->stripe_payment_intent_id
-            );
+            // Create transfer to freelancer's connected account
+            $transfer = $this->stripe->transfers->create([
+                'amount' => $this->convertToStripeAmount($escrowTransaction->net_amount),
+                'currency' => config('services.stripe.currency'),
+                'destination' => $project->freelancer->stripe_account_id,
+                'transfer_group' => "project_{$project->id}",
+                'metadata' => [
+                    'project_id' => $project->id,
+                    'transaction_id' => $escrowTransaction->id,
+                ],
+            ]);
 
             // Create release transaction
             Transaction::create([
                 'project_id' => $project->id,
                 'payer_id' => $project->client_id,
                 'payee_id' => $project->freelancer_id,
-                'amount' => $escrowTransaction->net_amount,
-                'platform_fee' => 0,
+                'amount' => $escrowTransaction->amount,
+                'platform_fee' => $escrowTransaction->platform_fee,
                 'net_amount' => $escrowTransaction->net_amount,
                 'type' => 'release',
                 'status' => 'completed',
-                'stripe_charge_id' => $paymentIntent->charges->data[0]->id ?? null,
-                'description' => "Payment release for completed project: {$project->job->title}",
-                'processed_at' => now()
+                'stripe_payment_intent_id' => $escrowTransaction->stripe_payment_intent_id,
+                'description' => "Payment release for project: {$project->job->title}",
+                'metadata' => ['transfer_id' => $transfer->id],
+                'processed_at' => now(),
             ]);
 
-            // Mark project payment as released
-            $project->update(['payment_released' => true]);
-
-            return ['success' => true, 'amount' => $escrowTransaction->net_amount];
+            return ['success' => true];
 
         } catch (ApiErrorException $e) {
             Log::error('Payment release failed', [
@@ -165,9 +162,9 @@ class PaymentService
     }
 
     /**
-     * Refund payment to client
+     * Process refund
      */
-    public function refundPayment(Project $project, string $reason = ''): array
+    public function refundPayment(Project $project, string $reason = 'requested_by_customer'): array
     {
         try {
             $escrowTransaction = $project->transactions()
@@ -182,7 +179,7 @@ class PaymentService
             // Create refund
             $refund = $this->stripe->refunds->create([
                 'payment_intent' => $escrowTransaction->stripe_payment_intent_id,
-                'reason' => 'requested_by_customer',
+                'reason' => $reason,
                 'metadata' => [
                     'project_id' => $project->id,
                     'reason' => $reason
@@ -195,7 +192,7 @@ class PaymentService
                 'payer_id' => $project->freelancer_id,
                 'payee_id' => $project->client_id,
                 'amount' => $escrowTransaction->amount,
-                'platform_fee' => -$escrowTransaction->platform_fee, // Refund platform fee too
+                'platform_fee' => -$escrowTransaction->platform_fee,
                 'net_amount' => $escrowTransaction->amount,
                 'type' => 'refund',
                 'status' => 'completed',
@@ -234,9 +231,9 @@ class PaymentService
             return [
                 'id' => $transaction->id,
                 'project_title' => $transaction->project->job->title ?? 'N/A',
-                'amount' => $transaction->amount,
-                'net_amount' => $transaction->net_amount,
-                'platform_fee' => $transaction->platform_fee,
+                'amount' => (float) $transaction->amount,
+                'net_amount' => (float) $transaction->net_amount,
+                'platform_fee' => (float) $transaction->platform_fee,
                 'type' => $transaction->type,
                 'status' => $transaction->status,
                 'description' => $transaction->description,
@@ -248,6 +245,27 @@ class PaymentService
                 'processed_at' => $transaction->processed_at?->format('M d, Y H:i')
             ];
         })->toArray();
+    }
+
+    /**
+     * Get demo test cards for presentation
+     */
+    public function getTestCards(): array
+    {
+        return [
+            [
+                'number' => '4242424242424242',
+                'description' => 'Succeeds and immediately processes the payment',
+            ],
+            [
+                'number' => '4000002500003155',
+                'description' => 'Requires authentication',
+            ],
+            [
+                'number' => '4000000000009995',
+                'description' => 'Declined payment',
+            ],
+        ];
     }
 
     /**
@@ -264,29 +282,5 @@ class PaymentService
     private function convertToStripeAmount(float $amount): int
     {
         return (int) round($amount * 100);
-    }
-
-    /**
-     * Get demo test cards for presentation
-     */
-    public function getTestCards(): array
-    {
-        return [
-            [
-                'number' => '4242424242424242',
-                'brand' => 'Visa',
-                'description' => 'Successful payment'
-            ],
-            [
-                'number' => '5555555555554444',
-                'brand' => 'Mastercard', 
-                'description' => 'Successful payment'
-            ],
-            [
-                'number' => '4000000000000002',
-                'brand' => 'Visa',
-                'description' => 'Declined payment (for testing)'
-            ]
-        ];
     }
 }

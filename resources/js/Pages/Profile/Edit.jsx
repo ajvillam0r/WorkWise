@@ -13,7 +13,7 @@ export default function Edit({ mustVerifyEmail, status }) {
     const isFreelancer = user.user_type === 'freelancer';
     const isClient = user.user_type === 'client';
 
-    const { data, setData, post, processing, errors, recentlySuccessful } = useForm({
+    const { data, setData, patch, processing, errors, recentlySuccessful } = useForm({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
@@ -39,8 +39,24 @@ export default function Edit({ mustVerifyEmail, status }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('profile.update'), {
-            forceFormData: true,
+        
+        const formData = new FormData();
+        Object.keys(data).forEach(key => {
+            if (key === 'skills' || key === 'languages') {
+                formData.append(key, JSON.stringify(data[key]));
+            } else if (key === 'profile_photo' && data[key]) {
+                formData.append(key, data[key]);
+            } else {
+                formData.append(key, data[key] || '');
+            }
+        });
+
+        patch(route('profile.update'), formData, {
+            preserveScroll: true,
+            preserveState: true,
+            onError: (errors) => {
+                console.error(errors);
+            },
         });
     };
 
@@ -400,7 +416,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 Hourly Rate (USD) *
                                                             </label>
                                                             <div className="relative">
-                                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
                                                                 <input
                                                                     type="number"
                                                                     id="hourly_rate"

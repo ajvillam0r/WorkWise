@@ -29,7 +29,7 @@ class PaymentService
 
             $paymentIntent = $this->stripe->paymentIntents->create([
                 'amount' => $amount,
-                'currency' => 'usd',
+                'currency' => 'php',
                 'payment_method_types' => ['card'],
                 'capture_method' => 'manual', // For escrow - capture later
                 'metadata' => [
@@ -74,6 +74,9 @@ class PaymentService
                 'success' => false,
                 'error' => $e->getMessage()
             ];
+        } catch (\Exception $e) {
+            Log::error('Payment Service Error', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 

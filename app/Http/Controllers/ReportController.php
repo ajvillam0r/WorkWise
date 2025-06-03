@@ -17,7 +17,7 @@ class ReportController extends Controller
     public function index(): Response
     {
         $reports = Report::where('reporter_id', auth()->id())
-            ->with(['reportedUser', 'project.job'])
+            ->with(['reportedUser:id,first_name,last_name', 'project.job:id,title'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 

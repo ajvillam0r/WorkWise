@@ -29,9 +29,9 @@ export default function JobShow({ job, canBid }) {
 
     const getBudgetDisplay = () => {
         if (job.budget_type === 'fixed') {
-            return `$${job.budget_min} - $${job.budget_max}`;
+            return `₱${job.budget_min} - ₱${job.budget_max}`;
         }
-        return `$${job.budget_min} - $${job.budget_max}/hr`;
+        return `₱${job.budget_min} - ₱${job.budget_max}/hr`;
     };
 
     const getExperienceBadge = (level) => {
@@ -171,7 +171,7 @@ export default function JobShow({ job, canBid }) {
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="text-lg font-semibold text-green-600">
-                                                                ${bid.bid_amount}
+                                                                ₱{bid.bid_amount}
                                                             </div>
                                                             <div className="text-sm text-gray-600">
                                                                 {bid.estimated_days} days

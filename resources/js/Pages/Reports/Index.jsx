@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function ReportsIndex({ reports }) {
+export default function ReportsIndex({ reports = { data: [] } }) {
     const getStatusBadge = (status) => {
         const badges = {
             pending: 'bg-yellow-100 text-yellow-800',
@@ -56,7 +56,7 @@ export default function ReportsIndex({ reports }) {
                         My Reports
                     </h2>
                     <div className="text-sm text-gray-600">
-                        {reports.data.length} report{reports.data.length !== 1 ? 's' : ''}
+                        {reports?.data?.length || 0} report{(reports?.data?.length || 0) !== 1 ? 's' : ''}
                     </div>
                 </div>
             }
@@ -82,7 +82,7 @@ export default function ReportsIndex({ reports }) {
                         </div>
                     </div>
 
-                    {reports.data.length === 0 ? (
+                    {!reports?.data?.length ? (
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-12 text-center">
                                 <div className="text-6xl mb-4">🛡️</div>
@@ -195,7 +195,7 @@ export default function ReportsIndex({ reports }) {
                             ))}
 
                             {/* Pagination */}
-                            {reports.links && reports.links.length > 3 && (
+                            {reports?.links && reports.links.length > 3 && (
                                 <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow-sm">
                                     <div className="flex-1 flex justify-between sm:hidden">
                                         {reports.prev_page_url && (

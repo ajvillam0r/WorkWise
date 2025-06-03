@@ -96,7 +96,7 @@ export default function Dashboard() {
                                             {isFreelancer ? 'Completed Projects' : 'Total Spent'}
                                         </div>
                                         <div className="text-2xl font-bold text-gray-900">
-                                            {isFreelancer ? '0' : '$0'}
+                                            {isFreelancer ? '0' : '₱0'}
                                         </div>
                                     </div>
                                 </div>

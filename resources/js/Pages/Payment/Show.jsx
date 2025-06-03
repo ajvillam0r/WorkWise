@@ -222,23 +222,23 @@ export default function PaymentShow({ project, testCards, stripeKey }) {
                                 <div className="space-y-4">
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Project Value</span>
-                                        <span className="font-semibold">${project.agreed_amount.toLocaleString()}</span>
+                                        <span className="font-semibold">₱{project.agreed_amount.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Platform Fee (5%)</span>
-                                        <span className="font-semibold">${(project.agreed_amount * 0.05).toFixed(2)}</span>
+                                        <span className="font-semibold">₱{(project.agreed_amount * 0.05).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Freelancer Receives</span>
                                         <span className="font-semibold text-green-600">
-                                            ${(project.agreed_amount * 0.95).toFixed(2)}
+                                            ₱{(project.agreed_amount * 0.95).toFixed(2)}
                                         </span>
                                     </div>
                                     <hr className="border-gray-200" />
                                     <div className="flex justify-between text-lg">
                                         <span className="font-semibold">Total Payment</span>
                                         <span className="font-bold text-blue-600">
-                                            ${project.agreed_amount.toLocaleString()}
+                                            ₱{project.agreed_amount.toLocaleString()}
                                         </span>
                                     </div>
                                 </div>

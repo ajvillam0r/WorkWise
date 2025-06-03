@@ -23,7 +23,8 @@ class MessageController extends Controller
             $query->where('sender_id', $userId)
                   ->orWhere('receiver_id', $userId);
         })
-        ->with(['sender', 'receiver'])
+        ->with(['sender:id,first_name,last_name,user_type,professional_title', 
+                'receiver:id,first_name,last_name,user_type,professional_title'])
         ->orderBy('created_at', 'desc')
         ->get()
         ->groupBy(function($message) use ($userId) {
@@ -44,13 +45,18 @@ class MessageController extends Controller
 
             return [
                 'user' => $otherUser,
-                'latest_message' => $latestMessage,
+                'latest_message' => [
+                    'message' => $latestMessage->message,
+                    'type' => $latestMessage->type,
+                    'attachment_name' => $latestMessage->attachment_name,
+                ],
                 'unread_count' => $unreadCount,
                 'last_activity' => $latestMessage->created_at
             ];
         })
         ->sortByDesc('last_activity')
-        ->values();
+        ->values()
+        ->all();
 
         return Inertia::render('Messages/Index', [
             'conversations' => $conversations

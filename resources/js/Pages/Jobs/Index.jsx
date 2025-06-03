@@ -34,9 +34,9 @@ export default function JobsIndex({ jobs, filters = {} }) {
 
     const getBudgetDisplay = (job) => {
         if (job.budget_type === 'fixed') {
-            return `$${job.budget_min} - $${job.budget_max}`;
+            return `₱${job.budget_min} - ₱${job.budget_max}`;
         }
-        return `$${job.budget_min} - $${job.budget_max}/hr`;
+        return `₱${job.budget_min} - ₱${job.budget_max}/hr`;
     };
 
     const getExperienceBadge = (level) => {
@@ -110,10 +110,10 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                         >
                                             <option value="all">All Budgets</option>
-                                            <option value="0-500">$0 - $500</option>
-                                            <option value="500-1000">$500 - $1,000</option>
-                                            <option value="1000-5000">$1,000 - $5,000</option>
-                                            <option value="5000+">$5,000+</option>
+                                            <option value="0-25000">₱0 - ₱25,000</option>
+                                            <option value="25000-50000">₱25,000 - ₱50,000</option>
+                                            <option value="50000-250000">₱50,000 - ₱250,000</option>
+                                            <option value="250000+">₱250,000+</option>
                                         </select>
                                     </div>
                                     <div>

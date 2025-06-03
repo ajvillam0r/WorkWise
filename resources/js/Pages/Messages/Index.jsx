@@ -3,7 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function MessagesIndex({ conversations }) {
+export default function MessagesIndex({ conversations = [] }) {
     const { auth } = usePage().props;
     const [unreadCount, setUnreadCount] = useState(0);
 

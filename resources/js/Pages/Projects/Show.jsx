@@ -255,7 +255,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                         <div>
                                             <dt className="text-sm font-medium text-gray-500">Project Value</dt>
                                             <dd className="text-lg font-semibold text-green-600">
-                                                ${project.agreed_amount.toLocaleString()}
+                                                ₱{project.agreed_amount.toLocaleString()}
                                             </dd>
                                         </div>
                                         <div>

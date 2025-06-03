@@ -103,7 +103,7 @@ export default function ProjectsIndex({ projects }) {
                                                     <div className="bg-gray-50 p-3 rounded-lg">
                                                         <div className="text-sm text-gray-600">Project Value</div>
                                                         <div className="text-lg font-semibold text-green-600">
-                                                            ${project.agreed_amount.toLocaleString()}
+                                                            ₱{project.agreed_amount.toLocaleString()}
                                                         </div>
                                                     </div>
                                                     <div className="bg-gray-50 p-3 rounded-lg">

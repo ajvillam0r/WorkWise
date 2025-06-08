@@ -92,11 +92,14 @@ export default function Dashboard() {
                                         </div>
                                     </div>
                                     <div className="ml-4">
-                                        <div className="text-sm font-medium text-gray-500">
-                                            {isFreelancer ? 'Completed Projects' : 'Total Spent'}
-                                        </div>
+                                        <div className="text-sm font-medium text-gray-500">Escrow Balance</div>
                                         <div className="text-2xl font-bold text-gray-900">
-                                            {isFreelancer ? '0' : '₱0'}
+                                            ₱{user.escrow_balance ? parseFloat(user.escrow_balance).toFixed(2) : '0.00'}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            <Link href={route('deposits.index')} className="text-green-600 hover:text-green-700">
+                                                View wallet →
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>

@@ -413,7 +413,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                         {/* Hourly Rate */}
                                                         <div>
                                                             <label htmlFor="hourly_rate" className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Hourly Rate (USD) *
+                                                                Hourly Rate (PHP) *
                                                             </label>
                                                             <div className="relative">
                                                                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
@@ -598,11 +598,11 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             >
                                                                 <option value="">Select budget range</option>
-                                                                <option value="$500 - $1,000">$500 - $1,000</option>
-                                                                <option value="$1,000 - $5,000">$1,000 - $5,000</option>
-                                                                <option value="$5,000 - $10,000">$5,000 - $10,000</option>
-                                                                <option value="$10,000 - $25,000">$10,000 - $25,000</option>
-                                                                <option value="$25,000+">$25,000+</option>
+                                                                <option value="$500 - $1,000">₱500 - ₱1,000</option>
+                                                                <option value="$1,000 - $5,000">₱1,000 - ₱5,000</option>
+                                                                <option value="$5,000 - $10,000">₱5,000 - ₱10,000</option>
+                                                                <option value="$10,000 - $25,000">₱10,000 - ₱25,000</option>
+                                                                <option value="$25,000+">₱25,000+</option>
                                                             </select>
                                                             {errors.budget_range && <p className="mt-2 text-sm text-red-600">{errors.budget_range}</p>}
                                                         </div>

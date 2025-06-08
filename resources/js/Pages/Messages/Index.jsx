@@ -76,7 +76,7 @@ export default function MessagesIndex({ conversations = [] }) {
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         {conversations.length === 0 ? (
                             <div className="p-12 text-center">
-                                <div className="text-6xl mb-4">💬</div>
+                                <div className="text-6xl mb-4"></div>
                                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                                     No conversations yet
                                 </h3>

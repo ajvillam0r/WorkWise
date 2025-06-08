@@ -36,10 +36,18 @@ export default function Conversation({ user, messages, currentUser }) {
             formData.append('attachment', data.attachment);
         }
 
+        // Get CSRF token safely
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            return;
+        }
+
         fetch('/messages', {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': csrfToken
             },
             body: formData
         })
@@ -191,7 +199,7 @@ export default function Conversation({ user, messages, currentUser }) {
                             {messageList.length === 0 ? (
                                 <div className="flex items-center justify-center h-full">
                                     <div className="text-center">
-                                        <div className="text-4xl mb-2">💬</div>
+                                        <div className="text-4xl mb-2"></div>
                                         <p className="text-gray-600">No messages yet. Start the conversation!</p>
                                     </div>
                                 </div>

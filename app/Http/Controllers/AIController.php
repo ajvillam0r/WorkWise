@@ -116,16 +116,16 @@ class AIController extends Controller
     {
         return [
             'average_rates' => [
-                'Web Development' => ['min' => '$15/hr', 'max' => '$45/hr', 'avg' => '$28/hr'],
-                'Mobile Development' => ['min' => '$20/hr', 'max' => '$50/hr', 'avg' => '$32/hr'],
-                'Graphic Design' => ['min' => '$10/hr', 'max' => '$30/hr', 'avg' => '$18/hr'],
-                'Content Writing' => ['min' => '$8/hr', 'max' => '$25/hr', 'avg' => '$15/hr'],
-                'Digital Marketing' => ['min' => '$12/hr', 'max' => '$35/hr', 'avg' => '$22/hr']
+                'Web Development' => ['min' => '₱15/hr', 'max' => '₱45/hr', 'avg' => '₱28/hr'],
+                'Mobile Development' => ['min' => '₱20/hr', 'max' => '₱50/hr', 'avg' => '₱32/hr'],
+                'Graphic Design' => ['min' => '₱10/hr', 'max' => '₱30/hr', 'avg' => '₱18/hr'],
+                'Content Writing' => ['min' => '₱8/hr', 'max' => '₱25/hr', 'avg' => '₱15/hr'],
+                'Digital Marketing' => ['min' => '₱12/hr', 'max' => '₱35/hr', 'avg' => '₱22/hr']
             ],
             'budget_recommendations' => [
-                'Small projects (1-2 weeks)' => '$500 - $2,000',
-                'Medium projects (1-2 months)' => '$2,000 - $8,000',
-                'Large projects (3+ months)' => '$8,000 - $25,000'
+                'Small projects (1-2 weeks)' => '₱500 - ₱2,000',
+                'Medium projects (1-2 months)' => '₱2,000 - ₱8,000',
+                'Large projects (3+ months)' => '₱8,000 - ₱25,000'
             ],
             'cost_factors' => [
                 'Experience level of freelancer',

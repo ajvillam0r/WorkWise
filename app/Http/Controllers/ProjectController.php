@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\Review;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,36 +40,28 @@ class ProjectController extends Controller
      */
     public function show(Project $project): Response
     {
-        // Ensure user is involved in this project
-        if ($project->client_id !== auth()->id() && $project->freelancer_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
+        $user = auth()->user();
+
+        // Check if user is authorized to view this project
+        if ($project->client_id !== $user->id && $project->freelancer_id !== $user->id) {
+            abort(403);
         }
 
         $project->load([
             'job',
             'client',
             'freelancer',
-            'acceptedBid',
             'transactions',
-            'messages.sender',
-            'reviews.reviewer'
+            'messages' => function ($query) {
+                $query->orderBy('created_at', 'desc')->limit(10);
+            }
         ]);
-
-        // Check if payment exists
-        $hasPayment = $project->transactions()
-            ->where('type', 'escrow')
-            ->where('status', 'completed')
-            ->exists();
-
-        // Check if user can leave review
-        $canReview = $project->isCompleted() &&
-                    !$project->reviews()->where('reviewer_id', auth()->id())->exists();
 
         return Inertia::render('Projects/Show', [
             'project' => $project,
-            'hasPayment' => $hasPayment,
-            'canReview' => $canReview,
-            'isClient' => auth()->id() === $project->client_id
+            'isClient' => $user->isClient(),
+            'hasPayment' => $project->transactions()->where('type', 'escrow')->where('status', 'completed')->exists(),
+            'canReview' => $project->isCompleted() && !$project->reviews()->where('reviewer_id', $user->id)->exists()
         ]);
     }
 
@@ -77,22 +70,54 @@ class ProjectController extends Controller
      */
     public function complete(Request $request, Project $project)
     {
-        // Only freelancer can mark as completed
+        // Ensure user is the freelancer
         if ($project->freelancer_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
+            return response()->json([
+                'error' => 'Only the freelancer can mark a project as complete.'
+            ], 403);
         }
 
-        $request->validate([
-            'completion_notes' => 'nullable|string|max:1000'
-        ]);
+        // Validate request
+        try {
+            $validated = $request->validate([
+                'completion_notes' => 'required|string|max:1000'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'errors' => $e->errors()
+            ], 422);
+        }
 
-        $project->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-            'completion_notes' => $request->completion_notes
-        ]);
+        try {
+            // Check if project is already completed
+            if ($project->isCompleted()) {
+                return response()->json([
+                    'error' => 'Project is already marked as complete.'
+                ], 400);
+            }
 
-        return back()->with('success', 'Project marked as completed! Waiting for client approval.');
+            // Update project
+            $project->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'completion_notes' => $validated['completion_notes']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Project marked as complete. Waiting for client approval.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to complete project', [
+                'project_id' => $project->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to complete project. Please try again.'
+            ], 500);
+        }
     }
 
     /**
@@ -102,15 +127,27 @@ class ProjectController extends Controller
     {
         // Only client can approve
         if ($project->client_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
+            return back()->with('error', 'Only the client can approve project completion.');
         }
 
         if (!$project->isCompleted()) {
             return back()->withErrors(['project' => 'Project must be completed first.']);
         }
 
-        // Project is already completed, this just confirms client satisfaction
-        return back()->with('success', 'Project approved! You can now release payment and leave a review.');
+        try {
+            $project->update([
+                'client_approved' => true,
+                'approved_at' => now()
+            ]);
+
+            return back()->with('success', 'Project approved! You can now release the payment.');
+        } catch (\Exception $e) {
+            \Log::error('Failed to approve project', [
+                'project_id' => $project->id,
+                'error' => $e->getMessage()
+            ]);
+            return back()->with('error', 'Failed to approve project. Please try again.');
+        }
     }
 
     /**

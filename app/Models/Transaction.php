@@ -26,16 +26,13 @@ class Transaction extends Model
         'processed_at',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'amount' => 'decimal:2',
-            'platform_fee' => 'decimal:2',
-            'net_amount' => 'decimal:2',
-            'metadata' => 'array',
-            'processed_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'platform_fee' => 'decimal:2',
+        'net_amount' => 'decimal:2',
+        'metadata' => 'array',
+        'processed_at' => 'datetime',
+    ];
 
     public function project(): BelongsTo
     {

@@ -30,7 +30,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Link
                                     href={route('dashboard')}
                                     className={`text-sm font-medium transition-colors ${
-                                        route.current('dashboard')
+                                        window.route.current('dashboard')
                                             ? 'text-blue-600'
                                             : 'text-gray-600 hover:text-gray-900'
                                     }`}
@@ -42,7 +42,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Link
                                     href={route('jobs.index')}
                                     className={`text-sm font-medium transition-colors ${
-                                        route.current('jobs.*')
+                                        window.route.current('jobs.*')
                                             ? 'text-blue-600'
                                             : 'text-gray-600 hover:text-gray-900'
                                     }`}
@@ -56,7 +56,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         <Link
                                             href={route('bids.index')}
                                             className={`text-sm font-medium transition-colors ${
-                                                route.current('bids.*')
+                                                window.route.current('bids.*')
                                                     ? 'text-blue-600'
                                                     : 'text-gray-600 hover:text-gray-900'
                                             }`}
@@ -66,47 +66,35 @@ export default function AuthenticatedLayout({ header, children }) {
                                         <Link
                                             href={route('ai.recommendations')}
                                             className={`text-sm font-medium transition-colors ${
-                                                route.current('ai.*')
+                                                window.route.current('ai.*')
                                                     ? 'text-blue-600'
                                                     : 'text-gray-600 hover:text-gray-900'
                                             }`}
                                         >
-                                            🤖 AI Match
+                                            AI Match
                                         </Link>
                                     </>
                                 )}
 
                                 {/* Client-only navigation */}
                                 {isClient && (
-                                    <>
-                                        <Link
-                                            href={route('jobs.create')}
-                                            className={`text-sm font-medium transition-colors ${
-                                                route.current('jobs.create')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
-                                        >
-                                            Post a Job
-                                        </Link>
-                                        <Link
-                                            href={route('reports.index')}
-                                            className={`text-sm font-medium transition-colors ${
-                                                route.current('reports.*')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
-                                        >
-                                            📊 Reports
-                                        </Link>
-                                    </>
+                                    <Link
+                                        href={route('jobs.create')}
+                                        className={`text-sm font-medium rounded-md transition-colors ${
+                                            window.route.current('jobs.create')
+                                                ? 'text-blue-600'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        Post a Job
+                                    </Link>
                                 )}
 
                                 {/* Common navigation */}
                                 <Link
                                     href={route('projects.index')}
                                     className={`text-sm font-medium transition-colors ${
-                                        route.current('projects.*')
+                                        window.route.current('projects.*')
                                             ? 'text-blue-600'
                                             : 'text-gray-600 hover:text-gray-900'
                                     }`}
@@ -116,12 +104,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Link
                                     href={route('messages.index')}
                                     className={`text-sm font-medium transition-colors ${
-                                        route.current('messages.*')
+                                        window.route.current('messages.*')
                                             ? 'text-blue-600'
                                             : 'text-gray-600 hover:text-gray-900'
                                     }`}
                                 >
-                                    💬 Messages
+                                     Messages
+                                </Link>
+                                <Link
+                                    href={isClient ? route('client.wallet') : route('freelancer.wallet')}
+                                    className={`text-sm font-medium transition-colors ${
+                                        window.route.current('deposits.*') || window.route.current('payment.*') ||
+                                        window.route.current('client.wallet') || window.route.current('freelancer.wallet')
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    💰 {isClient ? 'Wallet' : 'Earnings'}
                                 </Link>
                             </div>
                         </div>
@@ -165,8 +164,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                         <Dropdown.Link href={route('profile.edit')}>
                                             Profile Settings
                                         </Dropdown.Link>
-                                        <Dropdown.Link href="/payment/history">
-                                            💳 Payment History
+                                        <Dropdown.Link href={isClient ? route('client.wallet') : route('freelancer.wallet')}>
+                                            💰 {isClient ? 'Wallet' : 'Earnings'}
                                         </Dropdown.Link>
                                         <Dropdown.Link href="/reports">
                                             🛡️ My Reports
@@ -238,7 +237,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         <Link
                             href={route('dashboard')}
                             className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                route.current('dashboard')
+                                window.route.current('dashboard')
                                     ? 'text-blue-600 bg-blue-50'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
@@ -250,7 +249,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         <Link
                             href={route('jobs.index')}
                             className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                route.current('jobs.*')
+                                window.route.current('jobs.*')
                                     ? 'text-blue-600 bg-blue-50'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
@@ -264,7 +263,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Link
                                     href={route('bids.index')}
                                     className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                        route.current('bids.*')
+                                        window.route.current('bids.*')
                                             ? 'text-blue-600 bg-blue-50'
                                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                     }`}
@@ -274,47 +273,48 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Link
                                     href={route('ai.recommendations')}
                                     className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                        route.current('ai.*')
+                                        window.route.current('ai.*')
                                             ? 'text-blue-600 bg-blue-50'
                                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                     }`}
                                 >
-                                    🤖 AI Match
+                                    AI Match
                                 </Link>
                             </>
                         )}
 
                         {/* Client-only mobile navigation */}
                         {isClient && (
-                            <>
-                                <Link
-                                    href={route('jobs.create')}
-                                    className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                        route.current('jobs.create')
-                                            ? 'text-blue-600 bg-blue-50'
-                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    Post a Job
-                                </Link>
-                                <Link
-                                    href={route('reports.index')}
-                                    className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                        route.current('reports.*')
-                                            ? 'text-blue-600 bg-blue-50'
-                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    📊 Reports
-                                </Link>
-                            </>
+                            <Link
+                                href={route('jobs.create')}
+                                className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                    window.route.current('jobs.create')
+                                        ? 'text-blue-600 bg-blue-50'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                            >
+                                Post a Job
+                            </Link>
                         )}
+
+                        {/* Wallet - Role-specific */}
+                        <Link
+                            href={isClient ? route('client.wallet') : route('freelancer.wallet')}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                window.route.current('deposits.*') || window.route.current('payment.*') ||
+                                window.route.current('client.wallet') || window.route.current('freelancer.wallet')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            💰 {isClient ? 'Wallet' : 'Earnings'}
+                        </Link>
 
                         {/* Common mobile navigation */}
                         <Link
                             href={route('projects.index')}
                             className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                route.current('projects.*')
+                                window.route.current('projects.*')
                                     ? 'text-blue-600 bg-blue-50'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
@@ -324,22 +324,12 @@ export default function AuthenticatedLayout({ header, children }) {
                         <Link
                             href={route('messages.index')}
                             className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                route.current('messages.*')
+                                window.route.current('messages.*')
                                     ? 'text-blue-600 bg-blue-50'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
                         >
-                            💬 Messages
-                        </Link>
-                        <Link
-                            href={route('payment.history')}
-                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                route.current('payment.*')
-                                    ? 'text-blue-600 bg-blue-50'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                            }`}
-                        >
-                            💳 Payment History
+                            Messages
                         </Link>
                     </div>
 

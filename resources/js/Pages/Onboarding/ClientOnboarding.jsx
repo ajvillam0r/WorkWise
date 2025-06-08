@@ -34,12 +34,12 @@ export default function ClientOnboarding({ user }) {
     ];
 
     const budgetRanges = [
-        'Less than $500',
-        '$500 - $1,000',
-        '$1,000 - $5,000',
-        '$5,000 - $10,000',
-        '$10,000 - $25,000',
-        '$25,000+',
+        'Less than ₱500',
+        '₱500 - ₱1,000',
+        '₱1,000 - ₱5,000',
+        '₱5,000 - ₱10,000',
+        '₱10,000 - ₱25,000',
+        '₱25,000+',
         'Ongoing/Hourly work'
     ];
 

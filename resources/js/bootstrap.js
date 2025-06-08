@@ -16,7 +16,9 @@ window.route = function(name, params = {}) {
         'profile.update': '/profile',
         'bids.index': '/bids',
         'bids.store': '/bids',
+        'bids.update': (id) => `/bids/${id}`,
         'projects.index': '/projects',
+        'projects.show': (id) => `/projects/${id}`,
         'messages.index': '/messages',
         'messages.conversation': (user) => `/messages/${user}`,
         'ai.recommendations': '/recommendations',
@@ -25,9 +27,14 @@ window.route = function(name, params = {}) {
         'payment.history': '/payment/history',
         'reports.index': '/reports',
         'reports.create': '/reports/create',
+        'deposits.index': '/deposits',
+        'client.wallet': '/client/wallet',
+        'freelancer.wallet': '/freelancer/wallet',
         'login': '/login',
         'logout': '/logout',
-        'register': '/register'
+        'register': '/register',
+        'role.selection': '/join',
+        'role.store': '/join'
     };
 
     if (typeof routes[name] === 'function') {
@@ -57,7 +64,8 @@ window.route.current = function(pattern) {
             'ai': ['/recommendations', '/ai/job-suggestions', '/ai/insights'],
             'payment': '/payment',
             'reports': '/reports',
-            'profile': '/profile'
+            'profile': '/profile',
+            'deposits': '/deposits'
         };
 
         const paths = routeMap[basePattern];
@@ -78,7 +86,8 @@ window.route.current = function(pattern) {
         'messages.index': '/messages',
         'ai.recommendations': '/recommendations',
         'payment.history': '/payment/history',
-        'reports.index': '/reports'
+        'reports.index': '/reports',
+        'deposits.index': '/deposits'
     };
 
     return currentPath === routeMap[pattern];

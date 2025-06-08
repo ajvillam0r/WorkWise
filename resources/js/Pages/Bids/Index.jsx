@@ -171,13 +171,13 @@ export default function BidsIndex({ bids }) {
                             <div className="flex space-x-1">
                                 {bids.links.map((link, index) => (
                                     link.url ? (
-                                        <Link
-                                            key={index}
-                                            href={link.url}
-                                            className={`px-3 py-2 text-sm rounded ${
-                                                link.active
-                                                    ? 'bg-blue-500 text-white'
-                                                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                                    <Link
+                                        key={index}
+                                        href={link.url}
+                                        className={`px-3 py-2 text-sm rounded ${
+                                            link.active
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-white text-gray-700 hover:bg-gray-50'
                                             }`}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
@@ -185,8 +185,8 @@ export default function BidsIndex({ bids }) {
                                         <span
                                             key={index}
                                             className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-400 cursor-not-allowed"
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
                                     )
                                 ))}
                             </div>

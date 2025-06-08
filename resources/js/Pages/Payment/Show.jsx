@@ -2,40 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-const stripePromise = loadStripe(window.stripeKey);
+// stripePromise will be initialized in the component
 
-function PaymentForm({ project, onSuccess }) {
+function PaymentForm({ project, clientSecret, onSuccess }) {
     const stripe = useStripe();
     const elements = useElements();
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState(null);
-    const [clientSecret, setClientSecret] = useState(null);
 
     const { post } = useForm();
-
-    useEffect(() => {
-        // Create payment intent when component mounts
-        fetch(`/projects/${project.id}/payment/intent`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                setClientSecret(data.client_secret);
-            } else {
-                setError(data.error);
-            }
-        })
-        .catch(err => {
-            setError('Failed to initialize payment');
-        });
-    }, [project.id]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -47,44 +24,32 @@ function PaymentForm({ project, onSuccess }) {
         setProcessing(true);
         setError(null);
 
-        const card = elements.getElement(CardElement);
-
-        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-            payment_method: {
-                card: card,
-                billing_details: {
-                    name: `${project.client.first_name} ${project.client.last_name}`,
-                    email: project.client.email,
+        try {
+            const result = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: `${window.location.origin}/payment/confirm?project_id=${project.id}`,
                 },
-            }
-        });
-
-        if (stripeError) {
-            setError(stripeError.message);
-            setProcessing(false);
-        } else {
-            // Payment succeeded
-            post('/payment/confirm', {
-                payment_intent_id: paymentIntent.id,
-                project_id: project.id
+                redirect: 'if_required',
             });
-        }
-    };
 
-    const cardElementOptions = {
-        style: {
-            base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                    color: '#aab7c4',
-                },
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-            },
-            invalid: {
-                color: '#9e2146',
-            },
-        },
+            if (result.error) {
+                throw result.error;
+            }
+
+            if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                // Payment succeeded
+                post('/payment/confirm', {
+                    payment_intent_id: result.paymentIntent.id,
+                    project_id: project.id
+                });
+            }
+        } catch (err) {
+            console.error('Payment error:', err);
+            setError(err.message || 'An error occurred while processing your payment.');
+        } finally {
+            setProcessing(false);
+        }
     };
 
     return (
@@ -105,14 +70,10 @@ function PaymentForm({ project, onSuccess }) {
                 </div>
             </div>
 
-            <div className="bg-white border border-gray-300 rounded-md p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Card Information
-                </label>
-                <div className="p-3 border border-gray-300 rounded-md">
-                    <CardElement options={cardElementOptions} />
-                </div>
-            </div>
+            <PaymentElement options={{
+                layout: 'tabs',
+                paymentMethodOrder: ['card'],
+            }} />
 
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -152,9 +113,56 @@ function PaymentForm({ project, onSuccess }) {
 
 export default function PaymentShow({ project, testCards, stripeKey }) {
     const [showTestCards, setShowTestCards] = useState(false);
+    const [clientSecret, setClientSecret] = useState(null);
+    const [isLoadingIntent, setIsLoadingIntent] = useState(true);
+    const [intentError, setIntentError] = useState(null);
+    const [stripePromise, setStripePromise] = useState(null);
 
-    // Make stripe key available globally
-    window.stripeKey = stripeKey;
+    // Initialize Stripe
+    useEffect(() => {
+        if (stripeKey) {
+            setStripePromise(loadStripe(stripeKey));
+        }
+    }, [stripeKey]);
+
+    useEffect(() => {
+        // Create payment intent when component mounts
+        const createPaymentIntent = async () => {
+            try {
+                setIsLoadingIntent(true);
+                setIntentError(null);
+
+                // Get CSRF token safely
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+                if (!csrfToken) {
+                    throw new Error('CSRF token not found. Please refresh the page and try again.');
+                }
+
+                const response = await fetch(`/projects/${project.id}/payment/intent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.client_secret) {
+                    setClientSecret(data.client_secret);
+                } else {
+                    setIntentError(data.error || 'Failed to initialize payment');
+                }
+            } catch (err) {
+                setIntentError('Failed to initialize payment');
+            } finally {
+                setIsLoadingIntent(false);
+            }
+        };
+
+        createPaymentIntent();
+    }, [project.id]);
 
     return (
         <AuthenticatedLayout
@@ -178,10 +186,33 @@ export default function PaymentShow({ project, testCards, stripeKey }) {
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-6">
                                 <h3 className="text-lg font-semibold mb-6">Complete Payment</h3>
-                                
-                                <Elements stripe={stripePromise}>
-                                    <PaymentForm project={project} />
-                                </Elements>
+
+                                {isLoadingIntent ? (
+                                    <div className="text-center py-8">
+                                        <div className="text-gray-600">Initializing payment...</div>
+                                    </div>
+                                ) : stripePromise && clientSecret && clientSecret.startsWith('pi_') ? (
+                                    <Elements
+                                        key={clientSecret} // Force re-render when clientSecret changes
+                                        stripe={stripePromise}
+                                        options={{
+                                            clientSecret,
+                                            appearance: {
+                                                theme: 'stripe',
+                                            },
+                                        }}
+                                    >
+                                        <PaymentForm project={project} clientSecret={clientSecret} />
+                                    </Elements>
+                                ) : intentError ? (
+                                    <div className="text-center py-8">
+                                        <div className="text-red-600">{intentError}</div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <div className="text-gray-600">Unable to load payment form</div>
+                                    </div>
+                                )}
 
                                 {/* Test Cards for Demo */}
                                 <div className="mt-6 pt-6 border-t border-gray-200">

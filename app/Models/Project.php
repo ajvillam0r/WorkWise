@@ -12,37 +12,34 @@ class Project extends Model
     use HasFactory;
 
     protected $fillable = [
-        'job_id',
         'client_id',
         'freelancer_id',
-        'accepted_bid_id',
-        'agreed_amount',
-        'agreed_duration_days',
+        'job_id',
+        'bid_id',
         'status',
         'started_at',
-        'deadline',
         'completed_at',
         'completion_notes',
-        'milestones',
+        'client_approved',
+        'approved_at',
         'payment_released',
+        'payment_released_at',
+        'agreed_amount',
+        'platform_fee',
+        'net_amount',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'agreed_amount' => 'decimal:2',
-            'started_at' => 'datetime',
-            'deadline' => 'datetime',
-            'completed_at' => 'datetime',
-            'milestones' => 'array',
-            'payment_released' => 'boolean',
-        ];
-    }
-
-    public function job(): BelongsTo
-    {
-        return $this->belongsTo(GigJob::class, 'job_id');
-    }
+    protected $casts = [
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'payment_released_at' => 'datetime',
+        'payment_released' => 'boolean',
+        'client_approved' => 'boolean',
+        'agreed_amount' => 'decimal:2',
+        'platform_fee' => 'decimal:2',
+        'net_amount' => 'decimal:2',
+    ];
 
     public function client(): BelongsTo
     {
@@ -54,9 +51,14 @@ class Project extends Model
         return $this->belongsTo(User::class, 'freelancer_id');
     }
 
-    public function acceptedBid(): BelongsTo
+    public function job(): BelongsTo
     {
-        return $this->belongsTo(Bid::class, 'accepted_bid_id');
+        return $this->belongsTo(GigJob::class, 'job_id');
+    }
+
+    public function bid(): BelongsTo
+    {
+        return $this->belongsTo(Bid::class, 'bid_id');
     }
 
     public function transactions(): HasMany
@@ -74,14 +76,14 @@ class Project extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed' && $this->completed_at !== null;
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';
-    }
-
-    public function isCompleted(): bool
-    {
-        return $this->status === 'completed';
     }
 
     public function isDisputed(): bool

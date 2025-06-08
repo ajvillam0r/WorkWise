@@ -7,6 +7,8 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
     const { auth } = usePage().props;
     const [showReviewForm, setShowReviewForm] = useState(false);
     const [showRevisionForm, setShowRevisionForm] = useState(false);
+    const [showCompletionForm, setShowCompletionForm] = useState(false);
+    const [completionError, setCompletionError] = useState(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         rating: 5,
@@ -22,6 +24,10 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
         revision_notes: ''
     });
 
+    const { data: completionData, setData: setCompletionData, post: postCompletion, processing: completionProcessing, reset: resetCompletion } = useForm({
+        completion_notes: ''
+    });
+
     const getStatusBadge = (status) => {
         const badges = {
             active: 'bg-blue-100 text-blue-800',
@@ -33,13 +39,13 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
     };
 
     const handleComplete = () => {
-        if (confirm('Are you sure you want to mark this project as completed?')) {
-            post(`/projects/${project.id}/complete`);
-        }
+        setShowCompletionForm(true);
+        setCompletionError(null);
+        resetCompletion();
     };
 
     const handleApprove = () => {
-        if (confirm('Are you sure you want to approve this completed project?')) {
+        if (confirm('Are you sure you want to approve this project as completed? This will allow you to release the payment.')) {
             post(`/projects/${project.id}/approve`);
         }
     };
@@ -66,6 +72,33 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
             onSuccess: () => {
                 setShowRevisionForm(false);
                 setRevisionData('revision_notes', '');
+            }
+        });
+    };
+
+    const submitCompletion = (e) => {
+        e.preventDefault();
+        setCompletionError(null);
+        
+        postCompletion('/projects/' + project.id + '/complete', {
+            data: {
+                completion_notes: completionData.completion_notes
+            },
+            preserveScroll: true,
+            onSuccess: () => {
+                setShowCompletionForm(false);
+                resetCompletion();
+                window.location.reload(); // Refresh the page to show updated status
+            },
+            onError: (errors) => {
+                console.error('Completion error:', errors);
+                if (errors.completion_notes) {
+                    setCompletionError(errors.completion_notes);
+                } else if (errors.error) {
+                    setCompletionError(errors.error);
+                } else {
+                    setCompletionError('Failed to complete project. Please try again.');
+                }
             }
         });
     };
@@ -155,6 +188,64 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                                 💬 Send Message
                                             </Link>
                                         </div>
+
+                                        {/* Completion Form Modal */}
+                                        {showCompletionForm && (
+                                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+                                                <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                                                    <h3 className="text-lg font-semibold mb-4">Complete Project</h3>
+                                                    {completionError && (
+                                                        <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
+                                                            {completionError}
+                                                        </div>
+                                                    )}
+                                                    <form onSubmit={submitCompletion}>
+                                                        <div className="mb-4">
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                Completion Notes *
+                                                            </label>
+                                                            <textarea
+                                                                value={completionData.completion_notes}
+                                                                onChange={e => setCompletionData('completion_notes', e.target.value)}
+                                                                rows={4}
+                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="Describe what you've completed and any final notes for the client..."
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="flex justify-end space-x-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setShowCompletionForm(false);
+                                                                    setCompletionError(null);
+                                                                    resetCompletion();
+                                                                }}
+                                                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                                disabled={completionProcessing}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                type="submit"
+                                                                disabled={completionProcessing}
+                                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                                            >
+                                                                {completionProcessing ? (
+                                                                    <>
+                                                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                        </svg>
+                                                                        Processing...
+                                                                    </>
+                                                                ) : 'Complete Project'}
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -184,7 +275,16 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                         </div>
 
                                         <div className="flex flex-wrap gap-3">
-                                            {isClient && hasPayment && !project.payment_released && (
+                                            {isClient && !project.client_approved && (
+                                                <button
+                                                    onClick={handleApprove}
+                                                    className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                >
+                                                    ✓ Approve Completion
+                                                </button>
+                                            )}
+
+                                            {isClient && project.client_approved && hasPayment && !project.payment_released && (
                                                 <button
                                                     onClick={handleReleasePayment}
                                                     className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -208,6 +308,29 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                             >
                                                 💳 View Payments
                                             </Link>
+                                        </div>
+
+                                        {/* Status Timeline */}
+                                        <div className="mt-6 border-t border-gray-200 pt-4">
+                                            <h4 className="text-sm font-medium text-gray-500 mb-2">Project Timeline</h4>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center text-sm">
+                                                    <div className="w-24 flex-shrink-0 text-gray-500">Completed:</div>
+                                                    <div className="text-gray-900">{formatDistanceToNow(new Date(project.completed_at))} ago</div>
+                                                </div>
+                                                {project.client_approved && (
+                                                    <div className="flex items-center text-sm">
+                                                        <div className="w-24 flex-shrink-0 text-gray-500">Approved:</div>
+                                                        <div className="text-gray-900">{formatDistanceToNow(new Date(project.approved_at))} ago</div>
+                                                    </div>
+                                                )}
+                                                {project.payment_released && (
+                                                    <div className="flex items-center text-sm">
+                                                        <div className="w-24 flex-shrink-0 text-gray-500">Paid:</div>
+                                                        <div className="text-gray-900">{formatDistanceToNow(new Date(project.payment_released_at))} ago</div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

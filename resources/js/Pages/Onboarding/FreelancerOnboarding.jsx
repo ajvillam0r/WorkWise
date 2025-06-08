@@ -123,7 +123,7 @@ export default function FreelancerOnboarding({ user }) {
                                         </div>
 
                                         <div>
-                                            <InputLabel htmlFor="hourly_rate" value="Hourly Rate (USD)" />
+                                            <InputLabel htmlFor="hourly_rate" value="Hourly Rate (PHP)" />
                                             <TextInput
                                                 id="hourly_rate"
                                                 type="number"

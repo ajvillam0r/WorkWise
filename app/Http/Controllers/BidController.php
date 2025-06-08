@@ -7,6 +7,7 @@ use App\Models\GigJob;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\DB;
 
 class BidController extends Controller
 {
@@ -102,45 +103,120 @@ class BidController extends Controller
      */
     public function update(Request $request, Bid $bid)
     {
-        $validated = $request->validate([
-            'status' => 'required|in:accepted,rejected',
-        ]);
-
-        // Only job employer can update bid status
-        if ($bid->job->employer_id !== auth()->id()) {
-            abort(403);
-        }
-
-        // If accepting a bid, reject all other bids for this job
-        if ($validated['status'] === 'accepted') {
-            Bid::where('job_id', $bid->job_id)
-                ->where('id', '!=', $bid->id)
-                ->update(['status' => 'rejected']);
-
-            // Update job status to in_progress
-            $bid->job->update(['status' => 'in_progress']);
-
-            // Create project
-            $project = \App\Models\Project::create([
-                'job_id' => $bid->job_id,
-                'client_id' => $bid->job->employer_id,
-                'freelancer_id' => $bid->freelancer_id,
-                'accepted_bid_id' => $bid->id,
-                'agreed_amount' => $bid->bid_amount,
-                'agreed_duration_days' => $bid->estimated_days,
-                'status' => 'active',
-                'deadline' => now()->addDays($bid->estimated_days),
+        try {
+            \Log::info('Bid update request received', [
+                'bid_id' => $bid->id,
+                'request_data' => $request->all(),
+                'user_id' => auth()->id(),
+                'job_employer_id' => $bid->job->employer_id
             ]);
 
-            $bid->update($validated);
+            $validated = $request->validate([
+                'status' => 'required|in:accepted,rejected',
+            ]);
 
-            return redirect()->route('projects.show', $project)
-                ->with('success', 'Bid accepted! Project created. Please proceed with payment to start the work.');
+            // Only job employer can update bid status
+            if ($bid->job->employer_id !== auth()->id()) {
+                \Log::warning('Unauthorized bid update attempt', [
+                    'user_id' => auth()->id(),
+                    'bid_id' => $bid->id,
+                    'job_employer_id' => $bid->job->employer_id
+                ]);
+                return back()->with('error', 'Unauthorized action.');
+            }
+
+            \Log::info('Bid status update', [
+                'bid_id' => $bid->id,
+                'old_status' => $bid->status,
+                'new_status' => $validated['status']
+            ]);
+
+            \DB::beginTransaction();
+            try {
+                // If accepting a bid, reject all other bids for this job
+                if ($validated['status'] === 'accepted') {
+                    Bid::where('job_id', $bid->job_id)
+                        ->where('id', '!=', $bid->id)
+                        ->update(['status' => 'rejected']);
+
+                    // Update job status to in_progress
+                    $bid->job->update(['status' => 'in_progress']);
+
+                    // Calculate platform fee and net amount
+                    $platformFee = $bid->bid_amount * 0.05; // 5% platform fee
+                    $netAmount = $bid->bid_amount - $platformFee;
+
+                    // Create project
+                    $project = \App\Models\Project::create([
+                        'job_id' => $bid->job_id,
+                        'client_id' => $bid->job->employer_id,
+                        'freelancer_id' => $bid->freelancer_id,
+                        'bid_id' => $bid->id,
+                        'agreed_amount' => $bid->bid_amount,
+                        'platform_fee' => $platformFee,
+                        'net_amount' => $netAmount,
+                        'status' => 'active',
+                        'started_at' => now(),
+                    ]);
+
+                    $bid->update($validated);
+
+                    \DB::commit();
+
+                    \Log::info('Project created successfully', [
+                        'project_id' => $project->id,
+                        'bid_id' => $bid->id
+                    ]);
+
+                    if ($request->wantsJson()) {
+                        return response()->json([
+                            'success' => true,
+                            'redirect' => route('projects.show', $project)
+                        ]);
+                    }
+
+                    return redirect()->route('projects.show', $project)
+                        ->with('success', 'Bid accepted! Project created. Please proceed with payment to start the work.');
+                }
+
+                $bid->update($validated);
+                \DB::commit();
+
+                \Log::info('Bid updated successfully', [
+                    'bid_id' => $bid->id,
+                    'status' => $validated['status']
+                ]);
+
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => true]);
+                }
+
+                return back()->with('success', 'Bid status updated successfully!');
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                \Log::error('Database transaction failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
+                if ($request->wantsJson()) {
+                    return response()->json(['error' => 'Failed to update bid status. Please try again.'], 500);
+                }
+                
+                return back()->with('error', 'Failed to update bid status. Please try again.');
+            }
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in bid update', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'An unexpected error occurred. Please try again.'], 500);
+            }
+            
+            return back()->with('error', 'An unexpected error occurred. Please try again.');
         }
-
-        $bid->update($validated);
-
-        return back()->with('success', 'Bid status updated successfully!');
     }
 
     /**

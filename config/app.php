@@ -123,4 +123,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Currency Configuration
+    |--------------------------------------------------------------------------
+    |
+    | This value determines the default currency used throughout the application.
+    | The currency code should be a valid ISO 4217 currency code.
+    |
+    */
+
+    'currency' => env('APP_CURRENCY', 'PHP'),
+    'currency_symbol' => env('APP_CURRENCY_SYMBOL', '₱'),
+
 ];

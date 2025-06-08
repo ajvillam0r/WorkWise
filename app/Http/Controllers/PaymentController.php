@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\Transaction;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -35,29 +36,24 @@ class PaymentController extends Controller
     /**
      * Create payment intent for escrow
      */
-    public function createPaymentIntent(Request $request, Project $project)
+    public function createPaymentIntent(Request $request, Project $project): JsonResponse
     {
-        // Ensure user is the client for this project
+        // Ensure user is the client
         if ($project->client_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
-        }
-
-        // Check if payment already exists
-        $existingTransaction = $project->transactions()
-            ->where('type', 'escrow')
-            ->where('status', 'completed')
-            ->first();
-
-        if ($existingTransaction) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Payment already completed for this project'
-            ]);
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $result = $this->paymentService->createEscrowPayment($project);
 
-        return response()->json($result);
+        if (!$result['success']) {
+            return response()->json(['error' => $result['error']], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'client_secret' => $result['client_secret'],
+            'payment_intent_id' => $result['payment_intent_id']
+        ]);
     }
 
     /**
@@ -82,48 +78,47 @@ class PaymentController extends Controller
     /**
      * Release payment to freelancer
      */
-    public function releasePayment(Request $request, Project $project)
+    public function releasePayment(Request $request, Project $project): JsonResponse
     {
-        // Ensure user is the client for this project
+        // Ensure user is the client
         if ($project->client_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         // Ensure project is completed
         if (!$project->isCompleted()) {
-            return back()->withErrors(['payment' => 'Project must be completed before releasing payment']);
+            return response()->json(['error' => 'Project must be completed before releasing payment'], 400);
         }
 
         $result = $this->paymentService->releasePayment($project);
 
-        if ($result['success']) {
-            return back()->with('success', "Payment of $" . number_format($result['amount'], 2) . " released to freelancer!");
+        if (!$result['success']) {
+            return response()->json(['error' => $result['error']], 400);
         }
 
-        return back()->withErrors(['payment' => $result['error']]);
+        return response()->json(['success' => true]);
     }
 
     /**
      * Refund payment to client
      */
-    public function refundPayment(Request $request, Project $project)
+    public function refundPayment(Request $request, Project $project): JsonResponse
     {
-        $request->validate([
-            'reason' => 'required|string|max:500'
-        ]);
-
-        // Ensure user is authorized (client or admin)
-        if ($project->client_id !== auth()->id() && !auth()->user()->isAdmin()) {
-            abort(403, 'Unauthorized');
+        // Ensure user is the client
+        if ($project->client_id !== auth()->id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $result = $this->paymentService->refundPayment($project, $request->reason);
+        $result = $this->paymentService->refundPayment(
+            $project,
+            $request->input('reason', 'requested_by_customer')
+        );
 
-        if ($result['success']) {
-            return back()->with('success', 'Payment refunded successfully!');
+        if (!$result['success']) {
+            return response()->json(['error' => $result['error']], 400);
         }
 
-        return back()->withErrors(['payment' => $result['error']]);
+        return response()->json(['success' => true]);
     }
 
     /**

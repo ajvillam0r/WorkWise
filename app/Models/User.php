@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -44,6 +45,7 @@ class User extends Authenticatable
         'stripe_account_id',
         'stripe_account_details',
         'stripe_onboarded_at',
+        'escrow_balance',
     ];
 
     /**
@@ -72,6 +74,7 @@ class User extends Authenticatable
             'profile_completed' => 'boolean',
             'stripe_account_details' => 'array',
             'stripe_onboarded_at' => 'datetime',
+            'escrow_balance' => 'decimal:2',
         ];
     }
 
@@ -92,19 +95,19 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is a freelancer
-     */
-    public function isFreelancer(): bool
-    {
-        return $this->user_type === 'freelancer';
-    }
-
-    /**
      * Check if user is a client
      */
     public function isClient(): bool
     {
         return $this->user_type === 'client';
+    }
+
+    /**
+     * Check if user is a freelancer
+     */
+    public function isFreelancer(): bool
+    {
+        return $this->user_type === 'freelancer';
     }
 
     /**
@@ -210,5 +213,13 @@ class User extends Authenticatable
             ->count();
 
         return ($completedProjects / $totalProjects) * 100;
+    }
+
+    /**
+     * Get the user's deposits
+     */
+    public function deposits(): HasMany
+    {
+        return $this->hasMany(Deposit::class);
     }
 }

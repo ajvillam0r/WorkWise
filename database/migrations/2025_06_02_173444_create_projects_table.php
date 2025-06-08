@@ -16,16 +16,18 @@ return new class extends Migration
             $table->foreignId('job_id')->constrained('gig_jobs')->onDelete('cascade');
             $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('freelancer_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('accepted_bid_id')->constrained('bids')->onDelete('cascade');
+            $table->foreignId('bid_id')->constrained('bids')->onDelete('cascade');
             $table->decimal('agreed_amount', 10, 2);
-            $table->integer('agreed_duration_days');
+            $table->decimal('platform_fee', 10, 2)->default(0);
+            $table->decimal('net_amount', 10, 2);
             $table->enum('status', ['active', 'completed', 'cancelled', 'disputed']);
             $table->timestamp('started_at')->useCurrent();
-            $table->timestamp('deadline')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->text('completion_notes')->nullable();
-            $table->json('milestones')->nullable(); // Track project milestones
+            $table->boolean('client_approved')->default(false);
+            $table->timestamp('approved_at')->nullable();
             $table->boolean('payment_released')->default(false);
+            $table->timestamp('payment_released_at')->nullable();
             $table->timestamps();
 
             $table->index(['client_id']);

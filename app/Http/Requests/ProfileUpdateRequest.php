@@ -42,6 +42,7 @@ class ProfileUpdateRequest extends FormRequest
             $rules = array_merge($rules, [
                 'professional_title' => ['required', 'string', 'max:255'],
                 'hourly_rate' => ['required', 'numeric', 'min:5', 'max:500'],
+                'experience_level' => ['required', 'in:beginner,intermediate,expert'],
                 'skills' => ['required', 'array', 'min:1', 'max:15'],
                 'skills.*' => ['string', 'max:50'],
                 'languages' => ['nullable', 'array', 'max:10'],

@@ -1,7 +1,90 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import SuccessModal from '@/Components/SuccessModal';
 import { formatDistanceToNow } from 'date-fns';
+
+// Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor = 'green', isLoading = false }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                {/* Background overlay */}
+                <div
+                    className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                    onClick={onClose}
+                ></div>
+
+                {/* Modal panel */}
+                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div className="sm:flex sm:items-start">
+                            <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${confirmColor === 'green' ? 'bg-green-100' : confirmColor === 'blue' ? 'bg-blue-100' : 'bg-red-100'} sm:mx-0 sm:h-10 sm:w-10`}>
+                                {confirmColor === 'green' ? (
+                                    <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                ) : confirmColor === 'blue' ? (
+                                    <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                    </svg>
+                                ) : (
+                                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                )}
+                            </div>
+                            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                    {title}
+                                </h3>
+                                <div className="mt-2">
+                                    <p className="text-sm text-gray-500">
+                                        {message}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={isLoading}
+                            className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                                confirmColor === 'green'
+                                    ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                                    : confirmColor === 'blue'
+                                    ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                                    : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                            }`}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Processing...
+                                </span>
+                            ) : confirmText}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function ProjectShow({ project, hasPayment, canReview, isClient }) {
     const { auth } = usePage().props;
@@ -9,6 +92,38 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [showCompletionForm, setShowCompletionForm] = useState(false);
     const [completionError, setCompletionError] = useState(null);
+
+    // Helper function to safely parse required_skills
+    const parseSkills = (skills) => {
+        if (!skills) return [];
+
+        // If it's already an array, return it
+        if (Array.isArray(skills)) return skills;
+
+        // If it's a string, try to parse it as JSON
+        if (typeof skills === 'string') {
+            try {
+                const parsed = JSON.parse(skills);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        return [];
+    };
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        action: null,
+        title: '',
+        message: '',
+        confirmText: '',
+        confirmColor: 'blue'
+    });
+    const [successModal, setSuccessModal] = useState({
+        isOpen: false,
+        message: ''
+    });
 
     const { data, setData, post, processing, errors, reset } = useForm({
         rating: 5,
@@ -45,14 +160,56 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
     };
 
     const handleApprove = () => {
-        if (confirm('Are you sure you want to approve this project as completed? This will allow you to release the payment.')) {
-            post(`/projects/${project.id}/approve`);
-        }
+        setConfirmModal({
+            isOpen: true,
+            action: 'approve',
+            title: 'Approve Project Completion',
+            message: 'Are you sure you want to approve this project as completed? This will automatically release the payment to the freelancer.',
+            confirmText: 'Approve & Release Payment',
+            confirmColor: 'blue'
+        });
     };
 
     const handleReleasePayment = () => {
-        if (confirm('Are you sure you want to release the payment? This action cannot be undone.')) {
-            post(`/projects/${project.id}/payment/release`);
+        setConfirmModal({
+            isOpen: true,
+            action: 'release',
+            title: 'Release Payment',
+            message: 'Are you sure you want to release the payment? This action cannot be undone and the funds will be transferred to the freelancer immediately.',
+            confirmText: 'Release Payment',
+            confirmColor: 'green'
+        });
+    };
+
+    const handleConfirmAction = () => {
+        if (confirmModal.action === 'approve') {
+            post(`/projects/${project.id}/approve`, {
+                onSuccess: () => {
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                    setSuccessModal({
+                        isOpen: true,
+                        message: 'Project approved successfully! Payment has been automatically released to the freelancer.'
+                    });
+                },
+                onError: () => setConfirmModal({ ...confirmModal, isOpen: false })
+            });
+        } else if (confirmModal.action === 'release') {
+            post(`/projects/${project.id}/payment/release`, {
+                onSuccess: () => {
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                    setSuccessModal({
+                        isOpen: true,
+                        message: 'Payment released successfully! Funds have been transferred to the freelancer.'
+                    });
+                },
+                onError: () => setConfirmModal({ ...confirmModal, isOpen: false })
+            });
+        }
+    };
+
+    const handleCloseModal = () => {
+        if (!processing) {
+            setConfirmModal({ ...confirmModal, isOpen: false });
         }
     };
 
@@ -79,7 +236,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
     const submitCompletion = (e) => {
         e.preventDefault();
         setCompletionError(null);
-        
+
         postCompletion('/projects/' + project.id + '/complete', {
             data: {
                 completion_notes: completionData.completion_notes
@@ -88,7 +245,14 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
             onSuccess: () => {
                 setShowCompletionForm(false);
                 resetCompletion();
-                window.location.reload(); // Refresh the page to show updated status
+                setSuccessModal({
+                    isOpen: true,
+                    message: 'Project marked as complete! The client will be notified to review and approve your work.'
+                });
+                // Refresh the page after modal closes to show updated status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1200);
             },
             onError: (errors) => {
                 console.error('Completion error:', errors);
@@ -141,7 +305,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                             <dt className="text-sm font-medium text-gray-500">Required Skills</dt>
                                             <dd className="mt-1">
                                                 <div className="flex flex-wrap gap-2">
-                                                    {project.job.required_skills.map((skill, index) => (
+                                                    {parseSkills(project.job.required_skills).map((skill, index) => (
                                                         <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                             {skill}
                                                         </span>
@@ -571,6 +735,26 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={handleCloseModal}
+                onConfirm={handleConfirmAction}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmText={confirmModal.confirmText}
+                confirmColor={confirmModal.confirmColor}
+                isLoading={processing}
+            />
+
+            {/* Success Modal */}
+            <SuccessModal
+                isOpen={successModal.isOpen}
+                onClose={() => setSuccessModal({ isOpen: false, message: '' })}
+                message={successModal.message}
+                duration={1000}
+            />
         </AuthenticatedLayout>
     );
 }

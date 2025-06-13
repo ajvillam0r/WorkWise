@@ -1,13 +1,123 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import SuccessModal from '@/Components/SuccessModal';
 import { formatDistanceToNow } from 'date-fns';
+
+// Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor = 'green', isLoading = false }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                {/* Background overlay */}
+                <div
+                    className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                    onClick={onClose}
+                ></div>
+
+                {/* Modal panel */}
+                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div className="sm:flex sm:items-start">
+                            <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${confirmColor === 'green' ? 'bg-green-100' : 'bg-red-100'} sm:mx-0 sm:h-10 sm:w-10`}>
+                                {confirmColor === 'green' ? (
+                                    <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                ) : (
+                                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                )}
+                            </div>
+                            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                    {title}
+                                </h3>
+                                <div className="mt-2">
+                                    <p className="text-sm text-gray-500">
+                                        {message}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={isLoading}
+                            className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                                confirmColor === 'green'
+                                    ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                                    : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                            }`}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Processing...
+                                </span>
+                            ) : confirmText}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function JobShow({ job, canBid }) {
     const { auth } = usePage().props;
     const [showBidForm, setShowBidForm] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState(null);
+
+    // Helper function to safely parse required_skills
+    const parseSkills = (skills) => {
+        if (!skills) return [];
+
+        // If it's already an array, return it
+        if (Array.isArray(skills)) return skills;
+
+        // If it's a string, try to parse it as JSON
+        if (typeof skills === 'string') {
+            try {
+                const parsed = JSON.parse(skills);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        return [];
+    };
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        bidId: null,
+        status: null,
+        title: '',
+        message: '',
+        confirmText: '',
+        confirmColor: 'green'
+    });
+    const [successModal, setSuccessModal] = useState({
+        isOpen: false,
+        message: ''
+    });
     
     const { data, setData, post, errors, reset } = useForm({
         job_id: job.id,
@@ -27,41 +137,79 @@ export default function JobShow({ job, canBid }) {
     };
 
     const handleBidAction = (bidId, status) => {
-        if (confirm(`Are you sure you want to ${status} this bid?${status === 'accepted' ? ' This will create a new project.' : ''}`)) {
-            setProcessing(true);
-            setError(null);
-            
-            console.log('Sending bid update request:', {
-                bidId,
-                status,
-                route: route('bids.update', bidId)
-            });
+        const isAccepting = status === 'accepted';
+        setConfirmModal({
+            isOpen: true,
+            bidId,
+            status,
+            title: isAccepting ? 'Accept Proposal' : 'Decline Proposal',
+            message: isAccepting
+                ? 'Are you sure you want to accept this proposal? This will create a new project and deduct the bid amount from your escrow balance.'
+                : 'Are you sure you want to decline this proposal? This action cannot be undone.',
+            confirmText: isAccepting ? 'Accept Proposal' : 'Decline Proposal',
+            confirmColor: isAccepting ? 'green' : 'red'
+        });
+    };
 
-            router.patch(
-                route('bids.update', bidId), 
-                { status },
-                { 
-                    preserveScroll: true,
-                    onSuccess: (page) => {
-                        console.log('Bid update success:', page);
-                        setProcessing(false);
-                        setError(null);
-                        
-                        // Check if we have a redirect
-                        if (page.props?.redirect) {
-                            router.visit(page.props.redirect);
-                        }
-                    },
-                    onError: (errors) => {
-                        console.error('Bid update failed:', errors);
-                        setProcessing(false);
-                        setError(errors.error || 'Failed to update bid status. Please try again.');
-                    },
-                    onFinish: () => {
-                        setProcessing(false);
+    const handleConfirmBidAction = () => {
+        setProcessing(true);
+        setError(null);
+
+        console.log('Sending bid update request:', {
+            bidId: confirmModal.bidId,
+            status: confirmModal.status,
+            route: route('bids.update', confirmModal.bidId)
+        });
+
+        router.patch(
+            route('bids.update', confirmModal.bidId),
+            { status: confirmModal.status },
+            {
+                preserveScroll: false,
+                onSuccess: (page) => {
+                    setProcessing(false);
+                    setError(null);
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+
+                    // Check if there's an error in the flash messages
+                    if (page.props?.flash?.error) {
+                        setError(page.props.flash.error);
+                        return;
                     }
+
+                    // Show success modal only if we have a success message
+                    if (page.props?.flash?.success) {
+                        const isAccepting = confirmModal.status === 'accepted';
+                        const successMessage = isAccepting
+                            ? 'Proposal accepted successfully! Redirecting to contract signing...'
+                            : 'Proposal declined successfully.';
+
+                        setSuccessModal({
+                            isOpen: true,
+                            message: successMessage
+                        });
+
+                        // For accepted bids, redirect to contract signing
+                        if (isAccepting && page.props?.flash?.redirect) {
+                            setTimeout(() => {
+                                router.visit(page.props.flash.redirect);
+                            }, 1500);
+                        }
+                    }
+                },
+                onError: (errors) => {
+                    console.error('Bid update failed:', errors);
+                    setProcessing(false);
+                    setError(errors.error || errors.message || 'Failed to update bid status. Please try again.');
+                    setConfirmModal({ ...confirmModal, isOpen: false });
                 }
-            );
+            }
+        );
+    };
+
+    const handleCloseModal = () => {
+        if (!processing) {
+            setConfirmModal({ ...confirmModal, isOpen: false });
         }
     };
 
@@ -179,7 +327,7 @@ export default function JobShow({ job, canBid }) {
                                 <div className="p-6">
                                     <h3 className="text-lg font-semibold mb-4">Required Skills</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {job.required_skills && job.required_skills.map((skill, index) => (
+                                        {parseSkills(job.required_skills).map((skill, index) => (
                                             <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                                 {skill}
                                             </span>
@@ -485,7 +633,7 @@ export default function JobShow({ job, canBid }) {
                                     <Link href="/jobs" className="block text-sm text-blue-800 hover:text-blue-900">
                                         → Browse more {job.required_skills && job.required_skills[0]} jobs
                                     </Link>
-                                    <Link href="/recommendations" className="block text-sm text-blue-800 hover:text-blue-900">
+                                    <Link href={route('ai.recommendations')} className="block text-sm text-blue-800 hover:text-blue-900">
                                         → Get AI-powered job recommendations
                                     </Link>
                                     <Link href="/projects" className="block text-sm text-blue-800 hover:text-blue-900">
@@ -497,6 +645,26 @@ export default function JobShow({ job, canBid }) {
                     </div>
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={handleCloseModal}
+                onConfirm={handleConfirmBidAction}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmText={confirmModal.confirmText}
+                confirmColor={confirmModal.confirmColor}
+                isLoading={processing}
+            />
+
+            {/* Success Modal */}
+            <SuccessModal
+                isOpen={successModal.isOpen}
+                onClose={() => setSuccessModal({ isOpen: false, message: '' })}
+                message={successModal.message}
+                duration={1000}
+            />
         </AuthenticatedLayout>
     );
 }

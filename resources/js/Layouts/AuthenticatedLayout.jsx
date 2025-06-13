@@ -102,6 +102,16 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Projects
                                 </Link>
                                 <Link
+                                    href={route('contracts.index')}
+                                    className={`text-sm font-medium transition-colors ${
+                                        window.route.current('contracts.*')
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    Contracts
+                                </Link>
+                                <Link
                                     href={route('messages.index')}
                                     className={`text-sm font-medium transition-colors ${
                                         window.route.current('messages.*')
@@ -320,6 +330,16 @@ export default function AuthenticatedLayout({ header, children }) {
                             }`}
                         >
                             Projects
+                        </Link>
+                        <Link
+                            href={route('contracts.index')}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                window.route.current('contracts.*')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            Contracts
                         </Link>
                         <Link
                             href={route('messages.index')}

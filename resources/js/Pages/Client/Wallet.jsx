@@ -277,7 +277,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                                         />
                                     </div>
                                     <p className="mt-2 text-sm text-gray-500">
-                                        Minimum deposit: {currency.symbol}1.00
+                                        Minimum deposit: {currency.symbol}50.00
                                     </p>
                                 </div>
 

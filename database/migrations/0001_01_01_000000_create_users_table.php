@@ -34,6 +34,7 @@ return new class extends Migration
             // Freelancer-specific fields
             $table->string('professional_title')->nullable();
             $table->decimal('hourly_rate', 8, 2)->nullable();
+            $table->enum('experience_level', ['beginner', 'intermediate', 'expert'])->nullable();
             $table->json('skills')->nullable();
             $table->json('languages')->nullable();
             $table->string('portfolio_url')->nullable();

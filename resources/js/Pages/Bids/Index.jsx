@@ -1,11 +1,109 @@
 import React, { useState } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import SuccessModal from '@/Components/SuccessModal';
 import { formatDistanceToNow } from 'date-fns';
+
+// Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor = 'green', isLoading = false }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                {/* Background overlay */}
+                <div
+                    className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                    onClick={onClose}
+                ></div>
+
+                {/* Modal panel */}
+                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div className="sm:flex sm:items-start">
+                            <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${confirmColor === 'green' ? 'bg-green-100' : confirmColor === 'gray' ? 'bg-gray-100' : 'bg-red-100'} sm:mx-0 sm:h-10 sm:w-10`}>
+                                {confirmColor === 'green' ? (
+                                    <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                ) : confirmColor === 'gray' ? (
+                                    <svg className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                ) : (
+                                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                )}
+                            </div>
+                            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                    {title}
+                                </h3>
+                                <div className="mt-2">
+                                    <p className="text-sm text-gray-500">
+                                        {message}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={isLoading}
+                            className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                                confirmColor === 'green'
+                                    ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                                    : confirmColor === 'gray'
+                                    ? 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500'
+                                    : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                            }`}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Processing...
+                                </span>
+                            ) : confirmText}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function BidsIndex({ bids }) {
     const { auth } = usePage().props;
     const [filter, setFilter] = useState('all');
+    const [processing, setProcessing] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        bidId: null,
+        action: null,
+        title: '',
+        message: '',
+        confirmText: '',
+        confirmColor: 'green'
+    });
+    const [successModal, setSuccessModal] = useState({
+        isOpen: false,
+        message: ''
+    });
+
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString();
     };
@@ -26,6 +124,135 @@ export default function BidsIndex({ bids }) {
     };
 
     const isFreelancer = auth.user.user_type === 'freelancer';
+
+    const handleBidAction = (bidId, action) => {
+        let title, message, confirmText, confirmColor;
+
+        switch (action) {
+            case 'accept':
+                title = 'Accept Proposal';
+                message = 'Are you sure you want to accept this proposal? This will create a new project and deduct the bid amount from your escrow balance.';
+                confirmText = 'Accept Proposal';
+                confirmColor = 'green';
+                break;
+            case 'reject':
+                title = 'Decline Proposal';
+                message = 'Are you sure you want to decline this proposal? This action cannot be undone.';
+                confirmText = 'Decline Proposal';
+                confirmColor = 'red';
+                break;
+            case 'withdraw':
+                title = 'Withdraw Bid';
+                message = 'Are you sure you want to withdraw this bid? You will not be able to resubmit it later.';
+                confirmText = 'Withdraw Bid';
+                confirmColor = 'gray';
+                break;
+            default:
+                return;
+        }
+
+        setConfirmModal({
+            isOpen: true,
+            bidId,
+            action,
+            title,
+            message,
+            confirmText,
+            confirmColor
+        });
+    };
+
+    const handleConfirmAction = () => {
+        setProcessing(true);
+
+        const { bidId, action } = confirmModal;
+        let url, method, data;
+
+        switch (action) {
+            case 'accept':
+                url = route('bids.update', bidId);
+                method = 'patch';
+                data = { status: 'accepted' };
+                break;
+            case 'reject':
+                url = route('bids.update', bidId);
+                method = 'patch';
+                data = { status: 'rejected' };
+                break;
+            case 'withdraw':
+                url = route('bids.destroy', bidId);
+                method = 'delete';
+                data = {};
+                break;
+            default:
+                setProcessing(false);
+                return;
+        }
+
+        router[method](url, data, {
+            preserveScroll: false,
+            onSuccess: (page) => {
+                setProcessing(false);
+                setConfirmModal({ ...confirmModal, isOpen: false });
+
+                // Check if there's an error in the flash messages
+                if (page.props?.flash?.error) {
+                    console.error('Bid action failed:', page.props.flash.error);
+                    return;
+                }
+
+                // Show success modal only if we have a success message
+                if (page.props?.flash?.success) {
+                    let successMessage = '';
+                    switch (action) {
+                        case 'accept':
+                            successMessage = 'Proposal accepted successfully! Redirecting to contract signing...';
+                            break;
+                        case 'reject':
+                            successMessage = 'Proposal declined successfully.';
+                            break;
+                        case 'withdraw':
+                            successMessage = 'Bid withdrawn successfully.';
+                            break;
+                    }
+
+                    setSuccessModal({
+                        isOpen: true,
+                        message: successMessage
+                    });
+
+                    // Handle redirect for accepted bids
+                    if (action === 'accept' && page.props?.flash?.redirect) {
+                        setTimeout(() => {
+                            router.visit(page.props.flash.redirect);
+                        }, 1500);
+                    } else if (action === 'accept') {
+                        setTimeout(() => {
+                            // Refresh to show updated status
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        setTimeout(() => {
+                            router.reload({ only: ['bids'] });
+                        }, 1500);
+                    }
+                } else {
+                    console.error('No success message received');
+                }
+            },
+            onError: (errors) => {
+                console.error('Bid action failed:', errors);
+                setProcessing(false);
+                setConfirmModal({ ...confirmModal, isOpen: false });
+            }
+        });
+    };
+
+    const handleCloseModal = () => {
+        if (!processing) {
+            setConfirmModal({ ...confirmModal, isOpen: false });
+        }
+    };
 
     return (
         <AuthenticatedLayout
@@ -91,54 +318,34 @@ export default function BidsIndex({ bids }) {
 
                                         {!isFreelancer && bid.status === 'pending' && (
                                             <div className="flex space-x-3">
-                                                <form method="POST" action={route('bids.update', bid.id)} className="inline">
-                                                    <input type="hidden" name="_method" value="PATCH" />
-                                                    <input type="hidden" name="status" value="accepted" />
-                                                    <button
-                                                        type="submit"
-                                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-                                                        onClick={(e) => {
-                                                            if (!confirm('Are you sure you want to accept this bid?')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                    >
-                                                        Accept Bid
-                                                    </button>
-                                                </form>
-                                                <form method="POST" action={route('bids.update', bid.id)} className="inline">
-                                                    <input type="hidden" name="_method" value="PATCH" />
-                                                    <input type="hidden" name="status" value="rejected" />
-                                                    <button
-                                                        type="submit"
-                                                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                                                        onClick={(e) => {
-                                                            if (!confirm('Are you sure you want to reject this bid?')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                    >
-                                                        Reject Bid
-                                                    </button>
-                                                </form>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleBidAction(bid.id, 'accept')}
+                                                    disabled={processing}
+                                                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {processing ? 'Processing...' : 'Accept Bid'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleBidAction(bid.id, 'reject')}
+                                                    disabled={processing}
+                                                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {processing ? 'Processing...' : 'Reject Bid'}
+                                                </button>
                                             </div>
                                         )}
 
                                         {isFreelancer && bid.status === 'pending' && (
-                                            <form method="POST" action={route('bids.destroy', bid.id)} className="inline">
-                                                <input type="hidden" name="_method" value="DELETE" />
-                                                <button
-                                                    type="submit"
-                                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-                                                    onClick={(e) => {
-                                                        if (!confirm('Are you sure you want to withdraw this bid?')) {
-                                                            e.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    Withdraw Bid
-                                                </button>
-                                            </form>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleBidAction(bid.id, 'withdraw')}
+                                                disabled={processing}
+                                                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {processing ? 'Processing...' : 'Withdraw Bid'}
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -194,6 +401,26 @@ export default function BidsIndex({ bids }) {
                     )}
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={handleCloseModal}
+                onConfirm={handleConfirmAction}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmText={confirmModal.confirmText}
+                confirmColor={confirmModal.confirmColor}
+                isLoading={processing}
+            />
+
+            {/* Success Modal */}
+            <SuccessModal
+                isOpen={successModal.isOpen}
+                onClose={() => setSuccessModal({ isOpen: false, message: '' })}
+                message={successModal.message}
+                duration={1000}
+            />
         </AuthenticatedLayout>
     );
 }

@@ -33,7 +33,7 @@ class Bid extends Model
      */
     public function job(): BelongsTo
     {
-        return $this->belongsTo(GigJob::class, 'job_id');
+        return $this->belongsTo(Job::class, 'job_id');
     }
 
     /**

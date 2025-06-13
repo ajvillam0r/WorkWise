@@ -15,6 +15,7 @@ use App\Http\Controllers\AIRecommendationController;
 use App\Http\Controllers\ClientWalletController;
 use App\Http\Controllers\FreelancerWalletController;
 use App\Http\Controllers\DepositController;
+use App\Http\Controllers\ContractController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -68,9 +69,6 @@ Route::get('/test-simple', function () {
 // Public job listings
 Route::get('/jobs', [GigJobController::class, 'index'])->name('jobs.index');
 
-// AI Test Connection (public route for testing)
-Route::get('/ai/test-connection', [AIRecommendationController::class, 'testConnection'])->name('ai.test-connection');
-
 Route::middleware('auth')->group(function () {
     // Onboarding routes
     Route::get('/onboarding/freelancer', [FreelancerOnboardingController::class, 'show'])->name('freelancer.onboarding');
@@ -101,9 +99,13 @@ Route::middleware('auth')->group(function () {
 
     // Additional feature routes
 
-    Route::get('/messages', function () {
-        return Inertia::render('Messages/Index');
-    })->name('messages.index');
+    // Message routes
+    Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
+    Route::get('/messages/users', [MessageController::class, 'getUsers'])->name('messages.users');
+    Route::get('/messages/{user}', [MessageController::class, 'conversation'])->name('messages.conversation');
+    Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
+    Route::get('/messages/unread/count', [MessageController::class, 'unreadCount'])->name('messages.unread.count');
+    Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead'])->name('messages.read');
 
     Route::get('/reports', function () {
         return Inertia::render('Reports/Index');
@@ -115,6 +117,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/bids/{bid}', [BidController::class, 'destroy'])->name('bids.destroy');
     Route::patch('/bids/{bid}/status', [BidController::class, 'updateStatus'])->name('bids.updateStatus');
 
+    // DEBUG: Test route to check if routing works
+    Route::patch('/test-bid/{bid}', function($bid) {
+        return back()->with('success', 'TEST ROUTE WORKS! Bid ID: ' . $bid);
+    })->name('test.bid');
+
     // Project routes
     Route::resource('projects', ProjectController::class)->only(['index', 'show']);
     Route::post('/projects/{project}/complete', [ProjectController::class, 'complete'])->name('projects.complete');
@@ -122,6 +129,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/projects/{project}/request-revision', [ProjectController::class, 'requestRevision'])->name('projects.requestRevision');
     Route::post('/projects/{project}/cancel', [ProjectController::class, 'cancel'])->name('projects.cancel');
     Route::post('/projects/{project}/review', [ProjectController::class, 'review'])->name('projects.review');
+
+    // Contract routes
+    Route::get('/contracts', [ContractController::class, 'index'])->name('contracts.index');
+    Route::get('/contracts/{contract}', [ContractController::class, 'show'])->name('contracts.show');
+    Route::get('/contracts/{contract}/sign', [ContractController::class, 'sign'])->name('contracts.sign');
+    Route::post('/contracts/{contract}/signature', [ContractController::class, 'processSignature'])->name('contracts.processSignature');
+    Route::get('/contracts/{contract}/pdf', [ContractController::class, 'downloadPdf'])->name('contracts.downloadPdf');
+    Route::post('/contracts/{contract}/cancel', [ContractController::class, 'cancel'])->name('contracts.cancel');
 
     // Payment routes
     Route::get('/projects/{project}/payment', [PaymentController::class, 'show'])->name('payment.show');
@@ -168,5 +183,9 @@ Route::middleware('auth')->group(function () {
         ->withoutMiddleware(['auth', 'csrf'])
         ->name('stripe.webhook');
 });
+
+// AI Test Connection
+Route::match(['GET', 'POST'], '/api/ai/test-connection', [AIRecommendationController::class, 'testConnection'])
+    ->withoutMiddleware(['web', 'csrf']);
 
 require __DIR__.'/auth.php';

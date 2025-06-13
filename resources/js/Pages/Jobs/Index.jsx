@@ -10,7 +10,37 @@ export default function JobsIndex({ jobs, filters = {} }) {
     const [budgetRange, setBudgetRange] = useState(filters.budget_range || 'all');
     const [experienceLevel, setExperienceLevel] = useState(filters.experience_level || 'all');
 
+    // Helper function to safely parse required_skills
+    const parseSkills = (skills) => {
+        if (!skills) return [];
+
+        // If it's already an array, return it
+        if (Array.isArray(skills)) return skills;
+
+        // If it's a string, try to parse it as JSON
+        if (typeof skills === 'string') {
+            try {
+                const parsed = JSON.parse(skills);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        return [];
+    };
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        jobId: null,
+        action: null,
+        title: '',
+        message: '',
+        confirmText: '',
+        confirmColor: 'red'
+    });
+
     const isClient = auth.user.user_type === 'client';
+    const [processing, setProcessing] = useState(false);
 
     const handleSearch = () => {
         router.get('/jobs', {
@@ -53,9 +83,64 @@ export default function JobsIndex({ jobs, filters = {} }) {
             open: 'bg-green-100 text-green-800',
             in_progress: 'bg-blue-100 text-blue-800',
             completed: 'bg-gray-100 text-gray-800',
-            cancelled: 'bg-red-100 text-red-800'
+            cancelled: 'bg-red-100 text-red-800',
+            closed: 'bg-gray-100 text-gray-800'
         };
         return badges[status] || 'bg-gray-100 text-gray-800';
+    };
+
+    const handleDeleteJob = (jobId) => {
+        setConfirmModal({
+            isOpen: true,
+            jobId: jobId,
+            action: 'delete',
+            title: 'Delete Job',
+            message: 'Are you sure you want to delete this job? This action cannot be undone and all proposals will be lost.',
+            confirmText: 'Delete Job',
+            confirmColor: 'red'
+        });
+    };
+
+    const handleCloseJob = (jobId) => {
+        setConfirmModal({
+            isOpen: true,
+            jobId: jobId,
+            action: 'close',
+            title: 'Close Job',
+            message: 'Are you sure you want to close this job? This will prevent new proposals from being submitted.',
+            confirmText: 'Close Job',
+            confirmColor: 'yellow'
+        });
+    };
+
+    const confirmAction = () => {
+        setProcessing(true);
+        if (confirmModal.action === 'delete') {
+            router.delete(route('jobs.destroy', confirmModal.jobId), {
+                onSuccess: () => {
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                    setProcessing(false);
+                    router.reload();
+                },
+                onError: () => {
+                    setProcessing(false);
+                }
+            });
+        } else if (confirmModal.action === 'close') {
+            router.patch(route('jobs.update', confirmModal.jobId),
+                { status: 'closed' },
+                {
+                    onSuccess: () => {
+                        setConfirmModal({ ...confirmModal, isOpen: false });
+                        setProcessing(false);
+                        router.reload();
+                    },
+                    onError: () => {
+                        setProcessing(false);
+                    }
+                }
+            );
+        }
     };
 
     return (
@@ -100,7 +185,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                             onChange={(e) => setSearch(e.target.value)}
                                             placeholder="Search jobs by title, skills, or description..."
                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                         />
                                     </div>
                                     <div>
@@ -143,7 +228,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                         Clear Filters
                                     </button>
                                     <Link
-                                        href="/recommendations"
+                                        href={route('ai.recommendations')}
                                         className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                     >
                                         🤖 AI Recommendations
@@ -232,7 +317,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                                 <div className="mb-4">
                                                     <div className="text-sm text-gray-500 mb-2">Required Skills</div>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {job.required_skills && job.required_skills.map((skill, index) => (
+                                                        {parseSkills(job.required_skills).map((skill, index) => (
                                                             <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                                 {skill}
                                                             </span>
@@ -266,6 +351,20 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                                                 >
                                                                     Edit
                                                                 </Link>
+                                                                {job.status === 'open' && (
+                                                                    <button
+                                                                        onClick={() => handleCloseJob(job.id)}
+                                                                        className="text-sm text-yellow-600 hover:text-yellow-800"
+                                                                    >
+                                                                        Close
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => handleDeleteJob(job.id)}
+                                                                    className="text-sm text-red-600 hover:text-red-800"
+                                                                >
+                                                                    Delete
+                                                                </button>
                                                                 <Link
                                                                     href={`/jobs/${job.id}`}
                                                                     className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -378,6 +477,57 @@ export default function JobsIndex({ jobs, filters = {} }) {
                     )}
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div className="mt-3 text-center">
+                            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${
+                                confirmModal.confirmColor === 'red' ? 'bg-red-100' : 'bg-yellow-100'
+                            }`}>
+                                <svg className={`h-6 w-6 ${
+                                    confirmModal.confirmColor === 'red' ? 'text-red-600' : 'text-yellow-600'
+                                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">
+                                {confirmModal.title}
+                            </h3>
+                            <div className="mt-2 px-7 py-3">
+                                <p className="text-sm text-gray-500">
+                                    {confirmModal.message}
+                                </p>
+                            </div>
+                            <div className="items-center px-4 py-3">
+                                <button
+                                    onClick={confirmAction}
+                                    disabled={processing}
+                                    className={`px-4 py-2 ${
+                                        confirmModal.confirmColor === 'red'
+                                            ? 'bg-red-500 hover:bg-red-700'
+                                            : 'bg-yellow-500 hover:bg-yellow-700'
+                                    } text-white text-base font-medium rounded-md w-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                        confirmModal.confirmColor === 'red'
+                                            ? 'focus:ring-red-500'
+                                            : 'focus:ring-yellow-500'
+                                    } disabled:opacity-50`}
+                                >
+                                    {processing ? 'Processing...' : confirmModal.confirmText}
+                                </button>
+                                <button
+                                    onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                                    className="mt-3 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 text-base font-medium rounded-md w-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

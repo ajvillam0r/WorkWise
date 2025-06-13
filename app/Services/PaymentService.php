@@ -139,17 +139,35 @@ class PaymentService
                 ];
             }
 
-            // Create transfer to freelancer's connected account
-            $transfer = $this->stripe->transfers->create([
-                'amount' => $this->convertToStripeAmount($project->net_amount),
-                'currency' => config('services.stripe.currency', 'php'),
-                'destination' => $project->freelancer->stripe_account_id,
-                'source_transaction' => $escrowTransaction->stripe_charge_id,
-                'metadata' => [
-                    'project_id' => $project->id,
-                    'escrow_transaction_id' => $escrowTransaction->id
-                ]
-            ]);
+            // Check if payment is already released
+            if ($project->payment_released) {
+                return [
+                    'success' => true,
+                    'message' => 'Payment already released'
+                ];
+            }
+
+            // For demo purposes, skip Stripe transfer if freelancer doesn't have stripe_account_id
+            $transferId = 'demo_transfer_' . time();
+
+            if ($project->freelancer->stripe_account_id && config('services.stripe.secret')) {
+                // Create transfer to freelancer's connected account
+                $transfer = $this->stripe->transfers->create([
+                    'amount' => $this->convertToStripeAmount($project->net_amount),
+                    'currency' => config('services.stripe.currency', 'php'),
+                    'destination' => $project->freelancer->stripe_account_id,
+                    'source_transaction' => $escrowTransaction->stripe_charge_id,
+                    'metadata' => [
+                        'project_id' => $project->id,
+                        'escrow_transaction_id' => $escrowTransaction->id
+                    ]
+                ]);
+                $transferId = $transfer->id;
+            }
+
+            // Add payment to freelancer's balance
+            $freelancer = $project->freelancer;
+            $freelancer->increment('escrow_balance', $project->net_amount);
 
             // Create release transaction record
             Transaction::create([
@@ -161,13 +179,23 @@ class PaymentService
                 'net_amount' => $project->net_amount,
                 'type' => 'release',
                 'status' => 'completed',
-                'stripe_payment_intent_id' => $transfer->id,
+                'stripe_payment_intent_id' => $transferId,
                 'description' => 'Payment release for project #' . $project->id,
                 'processed_at' => now()
             ]);
 
             // Update project status
-            $project->update(['payment_released' => true]);
+            $project->update([
+                'payment_released' => true,
+                'payment_released_at' => now()
+            ]);
+
+            \Log::info('Payment released successfully', [
+                'project_id' => $project->id,
+                'freelancer_id' => $freelancer->id,
+                'amount' => $project->net_amount,
+                'new_balance' => $freelancer->fresh()->escrow_balance
+            ]);
 
             return ['success' => true];
         } catch (\Exception $e) {

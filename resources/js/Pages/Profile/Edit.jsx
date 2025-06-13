@@ -26,6 +26,7 @@ export default function Edit({ mustVerifyEmail, status }) {
         // Freelancer fields
         professional_title: user.professional_title || '',
         hourly_rate: user.hourly_rate || '',
+        experience_level: user.experience_level || 'intermediate',
         skills: user.skills || [],
         languages: user.languages || [],
         portfolio_url: user.portfolio_url || '',
@@ -434,6 +435,28 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 Set your standard hourly rate. You can adjust this for specific projects.
                                                             </p>
                                                             {errors.hourly_rate && <p className="mt-2 text-sm text-red-600">{errors.hourly_rate}</p>}
+                                                        </div>
+
+                                                        {/* Experience Level */}
+                                                        <div>
+                                                            <label htmlFor="experience_level" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Experience Level *
+                                                            </label>
+                                                            <select
+                                                                id="experience_level"
+                                                                value={data.experience_level}
+                                                                onChange={(e) => setData('experience_level', e.target.value)}
+                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                required
+                                                            >
+                                                                <option value="beginner">Beginner (0-2 years)</option>
+                                                                <option value="intermediate">Intermediate (2-5 years)</option>
+                                                                <option value="expert">Expert (5+ years)</option>
+                                                            </select>
+                                                            <p className="mt-2 text-sm text-gray-500">
+                                                                This helps our AI match you with appropriate projects and affects your visibility in search results.
+                                                            </p>
+                                                            {errors.experience_level && <p className="mt-2 text-sm text-red-600">{errors.experience_level}</p>}
                                                         </div>
 
                                                         {/* Skills */}

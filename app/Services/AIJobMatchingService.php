@@ -37,7 +37,8 @@ class AIJobMatchingService
      */
     public function findMatchingJobs(User $freelancer, int $limit = 20): Collection
     {
-        $jobs = GigJob::where('status', 'open')
+        $jobs = GigJob::with(['employer']) // Load employer relationship
+            ->where('status', 'open')
             ->where('employer_id', '!=', $freelancer->id)
             ->whereDoesntHave('bids', function($query) use ($freelancer) {
                 $query->where('freelancer_id', $freelancer->id);
@@ -53,7 +54,7 @@ class AIJobMatchingService
                 'competition_level' => $this->calculateCompetitionLevel($job)
             ];
         })
-        ->filter(fn($match) => $match['match_score'] > 0.2)
+        ->filter(fn($match) => $match['match_score'] > 0.3)
         ->sortByDesc('match_score')
         ->take($limit)
         ->values();
@@ -67,29 +68,16 @@ class AIJobMatchingService
         $score = 0.0;
         $maxScore = 1.0;
 
-        // Skills matching (40% weight)
+        // Skills matching (70% weight) - Primary factor
         $skillsScore = $this->calculateSkillsMatch($job->required_skills, $freelancer->skills ?? []);
-        $score += $skillsScore * 0.4;
+        $score += $skillsScore * 0.7;
 
-        // Experience level matching (20% weight)
+        // Experience level matching (30% weight) - Secondary factor
         $experienceScore = $this->calculateExperienceMatch($job->experience_level, $freelancer);
-        $score += $experienceScore * 0.2;
+        $score += $experienceScore * 0.3;
 
-        // Budget compatibility (15% weight)
-        $budgetScore = $this->calculateBudgetMatch($job, $freelancer);
-        $score += $budgetScore * 0.15;
-
-        // Location preference (10% weight)
-        $locationScore = $this->calculateLocationMatch($job, $freelancer);
-        $score += $locationScore * 0.1;
-
-        // Success rate and ratings (10% weight)
-        $reputationScore = $this->calculateReputationScore($freelancer);
-        $score += $reputationScore * 0.1;
-
-        // Availability (5% weight)
-        $availabilityScore = $this->calculateAvailabilityScore($freelancer);
-        $score += $availabilityScore * 0.05;
+        // Remove all other factors (budget, location, reputation, availability)
+        // Focus only on skills and experience level
 
         return min($score, $maxScore);
     }
@@ -103,16 +91,39 @@ class AIJobMatchingService
             return 0.0;
         }
 
-        $requiredSkills = array_map('strtolower', $requiredSkills);
-        $freelancerSkills = array_map('strtolower', $freelancerSkills);
+        // Normalize skills for better matching
+        $requiredSkills = array_map(function($skill) {
+            return strtolower(trim($skill));
+        }, $requiredSkills);
 
-        $matchingSkills = array_intersect($requiredSkills, $freelancerSkills);
-        $matchPercentage = count($matchingSkills) / count($requiredSkills);
+        $freelancerSkills = array_map(function($skill) {
+            return strtolower(trim($skill));
+        }, $freelancerSkills);
+
+        // Direct matches
+        $directMatches = array_intersect($requiredSkills, $freelancerSkills);
+        $directMatchScore = count($directMatches) / count($requiredSkills);
+
+        // Partial matches (for similar skills)
+        $partialMatches = 0;
+        foreach ($requiredSkills as $required) {
+            if (!in_array($required, $directMatches)) {
+                foreach ($freelancerSkills as $freelancer) {
+                    if (str_contains($freelancer, $required) || str_contains($required, $freelancer)) {
+                        $partialMatches++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $partialMatchScore = ($partialMatches * 0.5) / count($requiredSkills);
+        $totalMatchScore = $directMatchScore + $partialMatchScore;
 
         // Bonus for having more skills than required
         $extraSkillsBonus = min(0.2, (count($freelancerSkills) - count($requiredSkills)) * 0.02);
 
-        return min(1.0, $matchPercentage + $extraSkillsBonus);
+        return min(1.0, $totalMatchScore + $extraSkillsBonus);
     }
 
     /**
@@ -122,16 +133,21 @@ class AIJobMatchingService
     {
         $levelMap = ['beginner' => 1, 'intermediate' => 2, 'expert' => 3];
         $required = $levelMap[$requiredLevel] ?? 2;
-        
-        // Estimate freelancer level based on completed projects and ratings
-        $completedProjects = $freelancer->freelancerProjects()->where('status', 'completed')->count();
-        $avgRating = $freelancer->receivedReviews()->avg('rating') ?? 3;
-        
-        $freelancerLevel = 1; // Default beginner
-        if ($completedProjects >= 10 && $avgRating >= 4.5) {
-            $freelancerLevel = 3; // Expert
-        } elseif ($completedProjects >= 3 && $avgRating >= 4.0) {
-            $freelancerLevel = 2; // Intermediate
+
+        // Use freelancer's set experience level if available, otherwise estimate
+        if ($freelancer->experience_level) {
+            $freelancerLevel = $levelMap[$freelancer->experience_level] ?? 2;
+        } else {
+            // Fallback: Estimate freelancer level based on completed projects and ratings
+            $completedProjects = $freelancer->freelancerProjects()->where('status', 'completed')->count();
+            $avgRating = $freelancer->receivedReviews()->avg('rating') ?? 3;
+
+            $freelancerLevel = 1; // Default beginner
+            if ($completedProjects >= 10 && $avgRating >= 4.5) {
+                $freelancerLevel = 3; // Expert
+            } elseif ($completedProjects >= 3 && $avgRating >= 4.0) {
+                $freelancerLevel = 2; // Intermediate
+            }
         }
 
         // Perfect match = 1.0, one level off = 0.7, two levels off = 0.3
@@ -251,41 +267,42 @@ class AIJobMatchingService
     {
         $reasons = [];
 
-        // Skills match
+        // Skills match with details (Primary factor)
         $skillsMatch = $this->calculateSkillsMatch($job->required_skills, $freelancer->skills ?? []);
+        $requiredSkills = array_map('strtolower', $job->required_skills);
+        $freelancerSkills = array_map('strtolower', $freelancer->skills ?? []);
+        $matchingSkills = array_intersect($requiredSkills, $freelancerSkills);
+
         if ($skillsMatch > 0.8) {
-            $reasons[] = "Excellent skills match";
+            $reasons[] = "Excellent skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
         } elseif ($skillsMatch > 0.5) {
-            $reasons[] = "Good skills match";
+            $reasons[] = "Good skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
+        } elseif ($skillsMatch > 0.2) {
+            $reasons[] = "Partial skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
+        } elseif ($skillsMatch > 0) {
+            $reasons[] = "Some skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
+        } else {
+            $reasons[] = "No direct skills match - consider learning: " . implode(', ', array_slice($job->required_skills, 0, 3));
         }
 
-        // Experience
+        // Experience level details (Secondary factor)
         $experienceMatch = $this->calculateExperienceMatch($job->experience_level, $freelancer);
         if ($experienceMatch > 0.8) {
-            $reasons[] = "Perfect experience level";
+            $reasons[] = "Perfect experience level match ({$freelancer->experience_level} = {$job->experience_level})";
+        } elseif ($experienceMatch > 0.5) {
+            $reasons[] = "Good experience level match ({$freelancer->experience_level} ≈ {$job->experience_level})";
+        } elseif ($freelancer->experience_level) {
+            $reasons[] = "Experience level: {$freelancer->experience_level} (required: {$job->experience_level})";
+        } else {
+            $reasons[] = "Experience level not specified in your profile";
         }
 
-        // Budget
-        $budgetMatch = $this->calculateBudgetMatch($job, $freelancer);
-        if ($budgetMatch > 0.8) {
-            $reasons[] = "Budget compatible";
-        }
+        // Remove all other factors (budget, location, reputation, availability)
+        // Focus only on skills and experience level
 
-        // Location
-        if ($freelancer->barangay) {
-            $reasons[] = "Local to Lapu-Lapu City";
-        }
-
-        // Reputation
-        $avgRating = $freelancer->receivedReviews()->avg('rating');
-        if ($avgRating && $avgRating >= 4.5) {
-            $reasons[] = "Highly rated freelancer";
-        }
-
-        // Availability
-        $activeProjects = $freelancer->freelancerProjects()->where('status', 'active')->count();
-        if ($activeProjects <= 1) {
-            $reasons[] = "Available to start soon";
+        // If no reasons found, provide basic info
+        if (empty($reasons)) {
+            $reasons[] = "Limited match - consider updating your skills and experience level";
         }
 
         return $reasons;

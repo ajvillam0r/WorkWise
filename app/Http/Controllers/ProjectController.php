@@ -72,9 +72,7 @@ class ProjectController extends Controller
     {
         // Ensure user is the freelancer
         if ($project->freelancer_id !== auth()->id()) {
-            return response()->json([
-                'error' => 'Only the freelancer can mark a project as complete.'
-            ], 403);
+            return back()->with('error', 'Only the freelancer can mark a project as complete.');
         }
 
         // Validate request
@@ -83,17 +81,13 @@ class ProjectController extends Controller
                 'completion_notes' => 'required|string|max:1000'
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'errors' => $e->errors()
-            ], 422);
+            return back()->withErrors($e->errors());
         }
 
         try {
             // Check if project is already completed
             if ($project->isCompleted()) {
-                return response()->json([
-                    'error' => 'Project is already marked as complete.'
-                ], 400);
+                return back()->with('error', 'Project is already marked as complete.');
             }
 
             // Update project
@@ -103,10 +97,7 @@ class ProjectController extends Controller
                 'completion_notes' => $validated['completion_notes']
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Project marked as complete. Waiting for client approval.'
-            ]);
+            return back()->with('success', 'Project marked as complete! The client will be notified to review and approve your work.');
 
         } catch (\Exception $e) {
             \Log::error('Failed to complete project', [
@@ -114,9 +105,7 @@ class ProjectController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([
-                'error' => 'Failed to complete project. Please try again.'
-            ], 500);
+            return back()->with('error', 'Failed to complete project. Please try again.');
         }
     }
 
@@ -140,7 +129,24 @@ class ProjectController extends Controller
                 'approved_at' => now()
             ]);
 
-            return back()->with('success', 'Project approved! You can now release the payment.');
+            // Automatically release payment upon approval
+            $paymentService = app(\App\Services\PaymentService::class);
+            $paymentResult = $paymentService->releasePayment($project);
+
+            \Log::info('Payment release attempt', [
+                'project_id' => $project->id,
+                'payment_result' => $paymentResult
+            ]);
+
+            if ($paymentResult['success']) {
+                return back()->with('success', 'Project approved and payment automatically released to freelancer!');
+            } else {
+                \Log::warning('Project approved but payment release failed', [
+                    'project_id' => $project->id,
+                    'payment_error' => $paymentResult['error'] ?? 'Unknown error'
+                ]);
+                return back()->with('success', 'Project approved! Payment release is being processed.');
+            }
         } catch (\Exception $e) {
             \Log::error('Failed to approve project', [
                 'project_id' => $project->id,

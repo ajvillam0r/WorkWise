@@ -1,14 +1,34 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function JobEdit({ job }) {
     const [skillInput, setSkillInput] = useState('');
-    
-    const { data, setData, put, processing, errors, reset } = useForm({
+
+    // Helper function to safely parse required_skills
+    const parseSkills = (skills) => {
+        if (!skills) return [];
+
+        // If it's already an array, return it
+        if (Array.isArray(skills)) return skills;
+
+        // If it's a string, try to parse it as JSON
+        if (typeof skills === 'string') {
+            try {
+                const parsed = JSON.parse(skills);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        return [];
+    };
+
+    const { data, setData, processing, errors } = useForm({
         title: job.title || '',
         description: job.description || '',
-        required_skills: job.required_skills || [],
+        required_skills: parseSkills(job.required_skills),
         budget_type: job.budget_type || 'fixed',
         budget_min: job.budget_min || '',
         budget_max: job.budget_max || '',
@@ -21,7 +41,38 @@ export default function JobEdit({ job }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('jobs.update', job.id));
+
+        console.log('=== FORM SUBMISSION DEBUG ===');
+        console.log('Job object:', job);
+        console.log('Job ID:', job.id);
+        console.log('Target URL:', `/jobs/${job.id}`);
+        console.log('Form data:', data);
+        console.log('Current URL:', window.location.href);
+
+        // Ensure we're not submitting to edit route
+        const targetUrl = `/jobs/${job.id}`;
+        if (targetUrl.includes('/edit')) {
+            console.error('ERROR: Target URL contains /edit!', targetUrl);
+            return;
+        }
+
+        // Try using router directly instead of useForm patch
+        router.patch(targetUrl, data, {
+            preserveScroll: true,
+            onStart: () => {
+                console.log('Router request started');
+            },
+            onSuccess: (page) => {
+                console.log('Router update successful', page);
+                // Success handled by redirect in controller
+            },
+            onError: (errors) => {
+                console.error('Router update errors:', errors);
+            },
+            onFinish: () => {
+                console.log('Router request finished');
+            }
+        });
     };
 
     const addSkill = () => {
@@ -136,7 +187,7 @@ export default function JobEdit({ job }) {
                                             type="text"
                                             value={skillInput}
                                             onChange={(e) => setSkillInput(e.target.value)}
-                                            onKeyPress={handleSkillKeyPress}
+                                            onKeyDown={handleSkillKeyPress}
                                             className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                             placeholder="Type a skill and press Enter"
                                         />

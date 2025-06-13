@@ -16,6 +16,7 @@ class Project extends Model
         'freelancer_id',
         'job_id',
         'bid_id',
+        'contract_id',
         'status',
         'started_at',
         'completed_at',
@@ -27,6 +28,8 @@ class Project extends Model
         'agreed_amount',
         'platform_fee',
         'net_amount',
+        'contract_signed',
+        'contract_signed_at',
     ];
 
     protected $casts = [
@@ -34,8 +37,10 @@ class Project extends Model
         'completed_at' => 'datetime',
         'approved_at' => 'datetime',
         'payment_released_at' => 'datetime',
+        'contract_signed_at' => 'datetime',
         'payment_released' => 'boolean',
         'client_approved' => 'boolean',
+        'contract_signed' => 'boolean',
         'agreed_amount' => 'decimal:2',
         'platform_fee' => 'decimal:2',
         'net_amount' => 'decimal:2',
@@ -76,6 +81,11 @@ class Project extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function contract(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class);
+    }
+
     public function isCompleted(): bool
     {
         return $this->status === 'completed' && $this->completed_at !== null;
@@ -84,6 +94,16 @@ class Project extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function isPendingContract(): bool
+    {
+        return $this->status === 'pending_contract';
+    }
+
+    public function hasSignedContract(): bool
+    {
+        return $this->contract_signed && $this->contract_signed_at !== null;
     }
 
     public function isDisputed(): bool

@@ -21,7 +21,7 @@ window.route = function(name, params = {}) {
         'projects.show': (id) => `/projects/${id}`,
         'messages.index': '/messages',
         'messages.conversation': (user) => `/messages/${user}`,
-        'ai.recommendations': '/recommendations',
+        'ai.recommendations': '/ai/recommendations',
         'ai.job.suggestions': '/ai/job-suggestions',
         'ai.insights': '/ai/insights',
         'payment.history': '/payment/history',
@@ -30,6 +30,11 @@ window.route = function(name, params = {}) {
         'deposits.index': '/deposits',
         'client.wallet': '/client/wallet',
         'freelancer.wallet': '/freelancer/wallet',
+        'contracts.index': '/contracts',
+        'contracts.show': (id) => `/contracts/${id}`,
+        'contracts.sign': (id) => `/contracts/${id}/sign`,
+        'contracts.processSignature': (id) => `/contracts/${id}/signature`,
+        'contracts.downloadPdf': (id) => `/contracts/${id}/pdf`,
         'login': '/login',
         'logout': '/logout',
         'register': '/register',
@@ -61,11 +66,12 @@ window.route.current = function(pattern) {
             'bids': '/bids',
             'projects': '/projects',
             'messages': '/messages',
-            'ai': ['/recommendations', '/ai/job-suggestions', '/ai/insights'],
+            'ai': ['/ai/recommendations', '/ai/job-suggestions', '/ai/insights'],
             'payment': '/payment',
             'reports': '/reports',
             'profile': '/profile',
-            'deposits': '/deposits'
+            'deposits': '/deposits',
+            'contracts': '/contracts'
         };
 
         const paths = routeMap[basePattern];
@@ -84,10 +90,11 @@ window.route.current = function(pattern) {
         'bids.index': '/bids',
         'projects.index': '/projects',
         'messages.index': '/messages',
-        'ai.recommendations': '/recommendations',
+        'ai.recommendations': '/ai/recommendations',
         'payment.history': '/payment/history',
         'reports.index': '/reports',
-        'deposits.index': '/deposits'
+        'deposits.index': '/deposits',
+        'contracts.index': '/contracts'
     };
 
     return currentPath === routeMap[pattern];

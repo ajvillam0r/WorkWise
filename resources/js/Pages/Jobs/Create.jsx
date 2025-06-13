@@ -138,7 +138,7 @@ export default function JobCreate() {
                                             type="text"
                                             value={skillInput}
                                             onChange={(e) => setSkillInput(e.target.value)}
-                                            onKeyPress={handleSkillKeyPress}
+                                            onKeyDown={handleSkillKeyPress}
                                             className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                             placeholder="Type a skill and press Enter"
                                         />

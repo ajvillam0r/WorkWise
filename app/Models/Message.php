@@ -64,4 +64,12 @@ class Message extends Model
     {
         return !empty($this->attachment_path);
     }
+
+    public function getAttachmentUrl(): ?string
+    {
+        if ($this->hasAttachment()) {
+            return asset('storage/' . $this->attachment_path);
+        }
+        return null;
+    }
 }

@@ -152,6 +152,14 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                                                     {Math.round(recommendation.match_score * 100)}% Match
                                                                 </span>
                                                             </div>
+                                                            <div className="text-sm text-gray-600 mb-2">
+                                                                Posted by: <span className="font-medium">
+                                                                    {recommendation.job.employer?.name ||
+                                                                     recommendation.job.employer?.full_name ||
+                                                                     `${recommendation.job.employer?.first_name || ''} ${recommendation.job.employer?.last_name || ''}`.trim() ||
+                                                                     'Client'}
+                                                                </span>
+                                                            </div>
                                                             <p className="text-gray-600 mb-3 line-clamp-2">
                                                                 {recommendation.job.description}
                                                             </p>
@@ -162,7 +170,10 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                                         <div>
                                                             <div className="text-sm text-gray-500">Budget</div>
                                                             <div className="font-semibold text-green-600">
-                                                                ${recommendation.job.budget_min} - ${recommendation.job.budget_max}
+                                                                ₱{recommendation.job.budget_min || 0} - ₱{recommendation.job.budget_max || 0}
+                                                                {recommendation.job.budget_type && (
+                                                                    <span className="text-xs text-gray-500 ml-1">({recommendation.job.budget_type})</span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div>

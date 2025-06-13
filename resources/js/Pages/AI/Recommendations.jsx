@@ -27,7 +27,9 @@ export default function Recommendations({ recommendations, userType }) {
                                     </Link>
                                 </h3>
                                 <div className="text-sm text-gray-600">
-                                    Posted by: {match.job.employer?.name}
+                                    Posted by: <span className="font-medium">
+                                        {match.job.employer && `${match.job.employer.first_name} ${match.job.employer.last_name}`}
+                                    </span>
                                 </div>
                             </div>
                             <div className="text-right">
@@ -45,7 +47,10 @@ export default function Recommendations({ recommendations, userType }) {
 
                         <div className="flex justify-between items-center">
                             <div className="text-sm text-gray-600">
-                                Budget: {match.job.budget_display}
+                                Budget: {match.job.budget_display || `₱${match.job.budget_min || 0} - ₱${match.job.budget_max || 0}`}
+                                {match.job.budget_type && (
+                                    <span className="text-xs text-gray-500 ml-1">({match.job.budget_type})</span>
+                                )}
                             </div>
                             <Link
                                 href={route('jobs.show', match.job.id)}

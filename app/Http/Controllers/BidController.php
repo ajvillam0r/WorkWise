@@ -4,13 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Bid;
 use App\Models\GigJob;
+use App\Services\ContractService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
+use App\Models\Project;
+use App\Models\Transaction;
 
 class BidController extends Controller
 {
+    protected ContractService $contractService;
+
+    public function __construct(ContractService $contractService)
+    {
+        $this->contractService = $contractService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -103,119 +112,109 @@ class BidController extends Controller
      */
     public function update(Request $request, Bid $bid)
     {
+        // Validate request
+        $request->validate([
+            'status' => 'required|in:accepted,rejected'
+        ]);
+
+        // Only job owner can accept/reject bids
+        if ($bid->job->employer_id !== auth()->id()) {
+            return back()->withErrors(['error' => 'You are not authorized to perform this action.']);
+        }
+
+        // Can only update pending bids
+        if (!$bid->isPending()) {
+            return back()->withErrors(['error' => 'You can only update pending bids.']);
+        }
+
         try {
-            \Log::info('Bid update request received', [
-                'bid_id' => $bid->id,
-                'request_data' => $request->all(),
-                'user_id' => auth()->id(),
-                'job_employer_id' => $bid->job->employer_id
-            ]);
+            DB::beginTransaction();
 
-            $validated = $request->validate([
-                'status' => 'required|in:accepted,rejected',
-            ]);
+            if ($request->status === 'accepted') {
+                // Check client balance
+                $client = auth()->user();
+                if ($client->escrow_balance < $bid->bid_amount) {
+                    throw new \Exception('Insufficient escrow balance.');
+                }
 
-            // Only job employer can update bid status
-            if ($bid->job->employer_id !== auth()->id()) {
-                \Log::warning('Unauthorized bid update attempt', [
-                    'user_id' => auth()->id(),
+                // Reject other bids
+                Bid::where('job_id', $bid->job_id)
+                    ->where('id', '!=', $bid->id)
+                    ->update(['status' => 'rejected']);
+
+                // Update job status
+                $bid->job->update(['status' => 'in_progress']);
+
+                // Calculate fees
+                $platformFee = $bid->bid_amount * 0.05; // 5% platform fee
+                $netAmount = $bid->bid_amount - $platformFee;
+
+                // Create project
+                $project = Project::create([
+                    'job_id' => $bid->job_id,
+                    'client_id' => $bid->job->employer_id,
+                    'freelancer_id' => $bid->freelancer_id,
                     'bid_id' => $bid->id,
-                    'job_employer_id' => $bid->job->employer_id
+                    'agreed_amount' => $bid->bid_amount,
+                    'platform_fee' => $platformFee,
+                    'net_amount' => $netAmount,
+                    'status' => 'active',
+                    'started_at' => now(),
                 ]);
-                return back()->with('error', 'Unauthorized action.');
+
+                // Deduct from client balance
+                $client->decrement('escrow_balance', $bid->bid_amount);
+
+                // Create transaction record
+                Transaction::create([
+                    'project_id' => $project->id,
+                    'payer_id' => $client->id,
+                    'payee_id' => $bid->freelancer_id,
+                    'amount' => $bid->bid_amount,
+                    'platform_fee' => $platformFee,
+                    'net_amount' => $netAmount,
+                    'type' => 'escrow',
+                    'status' => 'completed',
+                    'stripe_payment_intent_id' => 'escrow_' . time(),
+                    'stripe_charge_id' => 'charge_' . time(),
+                    'description' => 'Escrow payment for project #' . $project->id,
+                    'processed_at' => now(),
+                ]);
+
+                // Create contract
+                $contract = $this->contractService->createContractFromBid($project, $bid);
+
+                // Update bid status
+                $bid->update([
+                    'status' => 'accepted',
+                    'accepted_at' => now()
+                ]);
+
+                DB::commit();
+
+                // Return with success and redirect to contract
+                return back()->with([
+                    'success' => 'Proposal accepted successfully!',
+                    'redirect' => route('contracts.sign', $contract->id)
+                ]);
+
+            } else {
+                // Just update status to rejected
+                $bid->update(['status' => 'rejected']);
+                DB::commit();
+
+                return back()->with('success', 'Proposal declined successfully.');
             }
 
-            \Log::info('Bid status update', [
-                'bid_id' => $bid->id,
-                'old_status' => $bid->status,
-                'new_status' => $validated['status']
-            ]);
-
-            \DB::beginTransaction();
-            try {
-                // If accepting a bid, reject all other bids for this job
-                if ($validated['status'] === 'accepted') {
-                    Bid::where('job_id', $bid->job_id)
-                        ->where('id', '!=', $bid->id)
-                        ->update(['status' => 'rejected']);
-
-                    // Update job status to in_progress
-                    $bid->job->update(['status' => 'in_progress']);
-
-                    // Calculate platform fee and net amount
-                    $platformFee = $bid->bid_amount * 0.05; // 5% platform fee
-                    $netAmount = $bid->bid_amount - $platformFee;
-
-                    // Create project
-                    $project = \App\Models\Project::create([
-                        'job_id' => $bid->job_id,
-                        'client_id' => $bid->job->employer_id,
-                        'freelancer_id' => $bid->freelancer_id,
-                        'bid_id' => $bid->id,
-                        'agreed_amount' => $bid->bid_amount,
-                        'platform_fee' => $platformFee,
-                        'net_amount' => $netAmount,
-                        'status' => 'active',
-                        'started_at' => now(),
-                    ]);
-
-                    $bid->update($validated);
-
-                    \DB::commit();
-
-                    \Log::info('Project created successfully', [
-                        'project_id' => $project->id,
-                        'bid_id' => $bid->id
-                    ]);
-
-                    if ($request->wantsJson()) {
-                        return response()->json([
-                            'success' => true,
-                            'redirect' => route('projects.show', $project)
-                        ]);
-                    }
-
-                    return redirect()->route('projects.show', $project)
-                        ->with('success', 'Bid accepted! Project created. Please proceed with payment to start the work.');
-                }
-
-                $bid->update($validated);
-                \DB::commit();
-
-                \Log::info('Bid updated successfully', [
-                    'bid_id' => $bid->id,
-                    'status' => $validated['status']
-                ]);
-
-                if ($request->wantsJson()) {
-                    return response()->json(['success' => true]);
-                }
-
-                return back()->with('success', 'Bid status updated successfully!');
-            } catch (\Exception $e) {
-                \DB::rollBack();
-                \Log::error('Database transaction failed', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                
-                if ($request->wantsJson()) {
-                    return response()->json(['error' => 'Failed to update bid status. Please try again.'], 500);
-                }
-                
-                return back()->with('error', 'Failed to update bid status. Please try again.');
-            }
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in bid update', [
+            DB::rollBack();
+            \Log::error('Bid acceptance failed', [
+                'bid_id' => $bid->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
-            if ($request->wantsJson()) {
-                return response()->json(['error' => 'An unexpected error occurred. Please try again.'], 500);
-            }
-            
-            return back()->with('error', 'An unexpected error occurred. Please try again.');
+
+            return back()->withErrors(['error' => 'Failed to update bid status: ' . $e->getMessage()]);
         }
     }
 

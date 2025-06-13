@@ -34,6 +34,7 @@ class User extends Authenticatable
         'profile_photo',
         'professional_title',
         'hourly_rate',
+        'experience_level',
         'skills',
         'languages',
         'portfolio_url',

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import StartConversationModal from '@/Components/StartConversationModal';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function MessagesIndex({ conversations = [] }) {
     const { auth } = usePage().props;
     const [unreadCount, setUnreadCount] = useState(0);
+    const [showStartConversation, setShowStartConversation] = useState(false);
+    const [availableUsers, setAvailableUsers] = useState([]);
 
     useEffect(() => {
         // Fetch unread count
@@ -14,6 +17,17 @@ export default function MessagesIndex({ conversations = [] }) {
             .then(data => setUnreadCount(data.count))
             .catch(console.error);
     }, []);
+
+    const handleStartConversation = () => {
+        // Fetch available users
+        fetch('/messages/users')
+            .then(response => response.json())
+            .then(data => {
+                setAvailableUsers(data.users);
+                setShowStartConversation(true);
+            })
+            .catch(console.error);
+    };
 
     const getLastMessagePreview = (message) => {
         if (message.type === 'file') {
@@ -63,8 +77,16 @@ export default function MessagesIndex({ conversations = [] }) {
                             </p>
                         )}
                     </div>
-                    <div className="text-sm text-gray-600">
-                        {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+                    <div className="flex items-center space-x-4">
+                        <div className="text-sm text-gray-600">
+                            {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+                        </div>
+                        <button
+                            onClick={handleStartConversation}
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                        >
+                            ✉️ New Message
+                        </button>
                     </div>
                 </div>
             }
@@ -197,7 +219,7 @@ export default function MessagesIndex({ conversations = [] }) {
                                     </Link>
 
                                     <Link
-                                        href="/recommendations"
+                                        href={route('ai.recommendations')}
                                         className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                                     >
                                         <div className="flex-shrink-0">
@@ -214,7 +236,7 @@ export default function MessagesIndex({ conversations = [] }) {
                     )}
 
                     {/* Tips for Better Communication */}
-                    <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    {/* <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
                         <h3 className="text-lg font-semibold text-blue-900 mb-3">💡 Communication Tips</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
                             <div>
@@ -234,9 +256,16 @@ export default function MessagesIndex({ conversations = [] }) {
                                 </ul>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
+
+            {/* Start Conversation Modal */}
+            <StartConversationModal
+                isOpen={showStartConversation}
+                onClose={() => setShowStartConversation(false)}
+                users={availableUsers}
+            />
         </AuthenticatedLayout>
     );
 }

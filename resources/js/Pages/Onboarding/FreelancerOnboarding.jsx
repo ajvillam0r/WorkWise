@@ -13,6 +13,7 @@ export default function FreelancerOnboarding({ user }) {
     const { data, setData, post, processing, errors } = useForm({
         professional_title: '',
         hourly_rate: '',
+        experience_level: 'intermediate',
         bio: '',
         skills: [],
         languages: [],
@@ -139,6 +140,26 @@ export default function FreelancerOnboarding({ user }) {
                                             <InputError message={errors.hourly_rate} className="mt-2" />
                                             <p className="text-sm text-gray-500 mt-1">
                                                 You can always change this later
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <InputLabel htmlFor="experience_level" value="Experience Level" />
+                                            <select
+                                                id="experience_level"
+                                                name="experience_level"
+                                                value={data.experience_level}
+                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                                onChange={(e) => setData('experience_level', e.target.value)}
+                                                required
+                                            >
+                                                <option value="beginner">Beginner (0-2 years)</option>
+                                                <option value="intermediate">Intermediate (2-5 years)</option>
+                                                <option value="expert">Expert (5+ years)</option>
+                                            </select>
+                                            <InputError message={errors.experience_level} className="mt-2" />
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                This helps our AI match you with appropriate projects
                                             </p>
                                         </div>
 

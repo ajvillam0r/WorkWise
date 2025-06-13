@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\AIRecommendationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,4 +29,8 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Stripe webhook
-Route::post('/stripe/webhook', [WebhookController::class, 'handleStripeWebhook']); 
+Route::post('/stripe/webhook', [WebhookController::class, 'handleStripeWebhook']);
+
+// AI Test Connection
+Route::match(['GET', 'POST'], '/ai/test-connection', [AIRecommendationController::class, 'testConnection'])
+    ->withoutMiddleware(['web', 'csrf']); 

@@ -182,4 +182,36 @@ class MessageController extends Controller
             $message->attachment_name
         );
     }
+
+    /**
+     * Get users available for starting conversations
+     */
+    public function getUsers()
+    {
+        $currentUserId = auth()->id();
+
+        // Get users that the current user hasn't messaged with yet
+        $existingConversationUserIds = Message::where(function($query) use ($currentUserId) {
+            $query->where('sender_id', $currentUserId)
+                  ->orWhere('receiver_id', $currentUserId);
+        })
+        ->get()
+        ->pluck('sender_id', 'receiver_id')
+        ->flatten()
+        ->unique()
+        ->filter(function($id) use ($currentUserId) {
+            return $id !== $currentUserId;
+        })
+        ->values()
+        ->toArray();
+
+        // Get all users except current user and those already in conversations
+        $users = User::where('id', '!=', $currentUserId)
+            ->whereNotIn('id', $existingConversationUserIds)
+            ->select('id', 'first_name', 'last_name', 'user_type', 'professional_title', 'profile_photo')
+            ->orderBy('first_name')
+            ->get();
+
+        return response()->json(['users' => $users]);
+    }
 }

@@ -42,6 +42,7 @@ class FreelancerOnboardingController extends Controller
         $validated = $request->validate([
             'professional_title' => 'required|string|max:255',
             'hourly_rate' => 'required|numeric|min:5|max:1000',
+            'experience_level' => 'required|in:beginner,intermediate,expert',
             'bio' => 'required|string|min:50|max:1000',
             'skills' => 'required|array|min:3|max:15',
             'skills.*' => 'string|max:50',

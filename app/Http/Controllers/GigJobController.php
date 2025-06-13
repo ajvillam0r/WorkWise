@@ -14,9 +14,19 @@ class GigJobController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = GigJob::with(['employer', 'bids'])
-            ->where('status', 'open')
-            ->latest();
+        $user = auth()->user();
+
+        if ($user && $user->isClient()) {
+            // For clients, show their own jobs (all statuses)
+            $query = GigJob::with(['employer', 'bids'])
+                ->where('employer_id', $user->id)
+                ->latest();
+        } else {
+            // For freelancers and guests, show all open jobs
+            $query = GigJob::with(['employer', 'bids'])
+                ->where('status', 'open')
+                ->latest();
+        }
 
         // Search functionality
         if ($request->filled('search')) {
@@ -149,18 +159,19 @@ class GigJobController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'required_skills' => 'required|array|min:1',
+            'title' => 'sometimes|required|string|max:255',
+            'description' => 'sometimes|required|string',
+            'required_skills' => 'sometimes|required|array|min:1',
             'required_skills.*' => 'string',
-            'budget_type' => 'required|in:fixed,hourly',
-            'budget_min' => 'required|numeric|min:0',
-            'budget_max' => 'nullable|numeric|min:0|gte:budget_min',
-            'experience_level' => 'required|in:beginner,intermediate,expert',
-            'estimated_duration_days' => 'nullable|integer|min:1',
-            'deadline' => 'nullable|date|after:today',
-            'location' => 'nullable|string|max:255',
-            'is_remote' => 'boolean',
+            'budget_type' => 'sometimes|required|in:fixed,hourly',
+            'budget_min' => 'sometimes|required|numeric|min:0',
+            'budget_max' => 'sometimes|nullable|numeric|min:0|gte:budget_min',
+            'experience_level' => 'sometimes|required|in:beginner,intermediate,expert',
+            'estimated_duration_days' => 'sometimes|nullable|integer|min:1',
+            'deadline' => 'sometimes|nullable|date|after:today',
+            'location' => 'sometimes|nullable|string|max:255',
+            'is_remote' => 'sometimes|boolean',
+            'status' => 'sometimes|in:open,closed,cancelled',
         ]);
 
         $job->update($validated);

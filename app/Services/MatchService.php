@@ -46,16 +46,16 @@ class MatchService
             ? (count($matchingSkills) / count($jobSkills)) * 100 
             : 0;
 
-        $score += $skillScore * 0.6; // Skills are 60% of the score
+        $score += $skillScore * 0.7; // Skills are 70% of the score
 
         // Compare experience level
         $experienceLevels = ['beginner' => 1, 'intermediate' => 2, 'expert' => 3];
         $jobLevel = $experienceLevels[$job->experience_level] ?? 1;
-        $freelancerLevel = $experienceLevels[$freelancer->expertise_level] ?? 1;
-        
+        $freelancerLevel = $experienceLevels[$freelancer->experience_level] ?? 1;
+
         $levelDiff = abs($jobLevel - $freelancerLevel);
         $experienceScore = (3 - $levelDiff) * 33.33; // Convert to percentage
-        $score += $experienceScore * 0.4; // Experience is 40% of the score
+        $score += $experienceScore * 0.3; // Experience is 30% of the score
 
         // Build reason text
         if (count($matchingSkills) > 0) {
@@ -100,13 +100,20 @@ class MatchService
                       "Description: {$job->description}\n" .
                       "Required Skills: " . implode(', ', $job->required_skills) . "\n" .
                       "Experience Level: {$job->experience_level}\n" .
-                      "Budget: {$job->budget_min} - {$job->budget_max} {$job->budget_type}";
+                      "Budget: ₱{$job->budget_min} - ₱{$job->budget_max} ({$job->budget_type})";
 
             // Prepare freelancer profile
-            $freelancerText = "Name: {$freelancer->name}\n" .
-                            "Skills: " . implode(', ', $freelancer->skills ?? []) . "\n" .
-                            "Experience: {$freelancer->experience_years} years\n" .
-                            "Expertise Level: {$freelancer->expertise_level}";
+            $freelancerSkills = $freelancer->skills ?? [];
+            $experienceLevel = $freelancer->experience_level ?? 'Not specified';
+            $hourlyRate = $freelancer->hourly_rate ?? 'Not set';
+            $professionalTitle = $freelancer->professional_title ?? 'Not specified';
+
+            $freelancerText = "Your Profile:\n" .
+                            "Professional Title: {$professionalTitle}\n" .
+                            "Skills: " . (empty($freelancerSkills) ? 'No skills listed' : implode(', ', $freelancerSkills)) . "\n" .
+                            "Experience Level: {$experienceLevel}\n" .
+                            "Hourly Rate: ₱{$hourlyRate}\n" .
+                            "Bio: " . substr($freelancer->bio ?? 'No bio provided', 0, 150);
 
             // Make API call to OpenRouter
             $response = Http::withToken($this->apiKey)
@@ -122,11 +129,11 @@ class MatchService
                     'messages' => [
                         [
                             'role' => 'system',
-                            'content' => 'You are an expert job matching assistant that analyzes job requirements and freelancer profiles to determine compatibility. Provide a match score from 1-100 and a concise explanation focusing on key matching factors like skills, experience level, and expertise. Consider both technical qualifications and seniority requirements. Format your response exactly as: "Score: X\nReason: [Brief explanation focusing on strongest matching points or key mismatches]"'
+                            'content' => 'You are a personal AI assistant helping a freelancer find the best job matches on a Philippine freelancing platform. Act as their personal career advisor. Always address the freelancer as "you" or "your" - never use their name. Analyze job requirements against their profile focusing ONLY on skills match and experience level compatibility. Ignore budget, location, ratings, and other factors. Pay close attention to their stated experience level and skills. When mentioning budget amounts, always use Philippine Peso (₱) currency symbol, never use dollar signs ($). Provide a match score from 1-100 based solely on skills overlap and experience level fit. Format your response exactly as: "Score: X\nReason: [Personal explanation focusing only on skills and experience level match using \'you\' and \'your\']"'
                         ],
                         [
                             'role' => 'user',
-                            'content' => "Analyze this job post:\n{$jobText}\n\nWith this freelancer profile:\n{$freelancerText}\n\nProvide a match score and brief explanation."
+                            'content' => "Please analyze this job opportunity for me based ONLY on my skills and experience level:\n\n{$jobText}\n\nHere is my profile:\n{$freelancerText}\n\nHow well do my skills and experience level match this job? Ignore budget, location, and other factors. Focus only on skills overlap and experience level compatibility."
                         ]
                     ],
                     'temperature' => 0.3,
@@ -136,9 +143,16 @@ class MatchService
             if ($response->successful()) {
                 $content = $response->json()['choices'][0]['message']['content'];
                 
-                // Parse the response
-                preg_match('/Score: (\d+)/', $content, $scoreMatch);
-                preg_match('/Reason: (.+)/', $content, $reasonMatch);
+                // Parse the response with improved regex
+                preg_match('/Score:\s*(\d+)/i', $content, $scoreMatch);
+                preg_match('/Reason:\s*(.+)$/ims', $content, $reasonMatch);
+
+                // Log the AI response for debugging
+                Log::debug('AI Response', [
+                    'content' => $content,
+                    'score_match' => $scoreMatch,
+                    'reason_match' => $reasonMatch
+                ]);
 
                 $result = [
                     'score' => (int) ($scoreMatch[1] ?? 0),
@@ -199,7 +213,7 @@ class MatchService
      */
     public function getRecommendedJobs(User $freelancer, int $limit = 5): array
     {
-        $jobs = GigJob::where('status', 'open')->get();
+        $jobs = GigJob::with(['employer'])->where('status', 'open')->get();
 
         $matches = [];
         foreach ($jobs as $job) {

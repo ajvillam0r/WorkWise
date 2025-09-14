@@ -454,7 +454,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                     {/* Quick Stats for Freelancers */}
                     {!isClient && jobs.data && jobs.data.length > 0 && (
                         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                            <h3 className="text-lg font-semibold text-blue-900 mb-4">📊 Market Insights</h3>
+                            <h3 className="text-lg font-semibold text-blue-900 mb-4">Market Insights</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
                                 <div>
                                     <div className="font-medium">Total Jobs Available</div>

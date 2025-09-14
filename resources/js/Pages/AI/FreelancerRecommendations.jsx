@@ -65,7 +65,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                             <div className="p-6">
                                 <div className="flex items-center">
                                     <div className="flex-shrink-0">
-                                        <span className="text-2xl">📊</span>
+                                        <span className="text-2xl"></span>
                                     </div>
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500">Avg Match Score</div>
@@ -329,7 +329,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                             href="/payment/history"
                                             className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
                                         >
-                                            💰 Earnings History
+                                             Earnings History
                                         </Link>
                                     </div>
                                 </div>

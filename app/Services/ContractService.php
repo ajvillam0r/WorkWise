@@ -247,7 +247,7 @@ class ContractService
             case 'contract_ready':
                 // Notify freelancer that contract is ready for signing
                 $message = "🎉 Great news! {$contract->client->first_name} {$contract->client->last_name} has accepted your bid for \"{$contract->job->title}\"!\n\n" .
-                          "💰 Project Amount: ₱{$contract->total_payment}\n" .
+                          " Project Amount: ₱{$contract->total_payment}\n" .
                           "📋 Contract ID: {$contract->contract_id}\n\n" .
                           "Please review and sign the contract to begin work. You can access it from your Contracts dashboard.";
                 $senderId = $contract->client_id;
@@ -257,7 +257,7 @@ class ContractService
                 // Notify client that freelancer has signed
                 $message = "✅ {$contract->freelancer->first_name} {$contract->freelancer->last_name} has signed the contract for \"{$contract->job->title}\"!\n\n" .
                           "📋 Contract ID: {$contract->contract_id}\n" .
-                          "💰 Project Amount: ₱{$contract->total_payment}\n\n" .
+                          " Project Amount: ₱{$contract->total_payment}\n\n" .
                           "Please review and sign the contract to officially begin the project.";
                 $senderId = $contract->freelancer_id;
                 break;
@@ -266,7 +266,7 @@ class ContractService
                 // Notify both parties that contract is fully signed
                 $message = "🚀 The contract for \"{$contract->job->title}\" is now fully signed!\n\n" .
                           "📋 Contract ID: {$contract->contract_id}\n" .
-                          "💰 Project Amount: ₱{$contract->total_payment}\n\n" .
+                          " Project Amount: ₱{$contract->total_payment}\n\n" .
                           "Work can now officially begin. Good luck with your project!";
                 $senderId = $user->id === $contract->client_id ? $contract->freelancer_id : $contract->client_id;
                 break;

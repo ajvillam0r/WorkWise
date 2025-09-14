@@ -136,7 +136,7 @@ export default function ProjectsIndex({ projects }) {
                                                         </span>
                                                         {project.payment_released && (
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                                💰 Payment Released
+                                                                 Payment Released
                                                             </span>
                                                         )}
                                                     </div>

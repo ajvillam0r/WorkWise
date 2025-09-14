@@ -29,7 +29,7 @@ export default function ReportsIndex({ reports = { data: [] } }) {
             fraud: '🚨',
             spam: '📧',
             inappropriate: '⚠️',
-            scam: '💰',
+            scam: '',
             fake_profile: '👤',
             other: '📝'
         };

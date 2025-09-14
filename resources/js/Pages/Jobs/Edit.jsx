@@ -118,7 +118,7 @@ export default function JobEdit({ job }) {
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     {/* Warning Notice */}
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+                    {/* <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
                         <div className="flex">
                             <div className="flex-shrink-0">
                                 <span className="text-yellow-400 text-xl">⚠️</span>
@@ -132,7 +132,7 @@ export default function JobEdit({ job }) {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-8">
@@ -442,7 +442,7 @@ export default function JobEdit({ job }) {
 
                     {/* Job Stats */}
                     <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-blue-900 mb-4">📊 Job Statistics</h3>
+                        <h3 className="text-lg font-semibold text-blue-900 mb-4">Job Statistics</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
                             <div>
                                 <div className="font-medium">Total Proposals</div>

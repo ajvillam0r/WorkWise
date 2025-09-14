@@ -73,7 +73,7 @@ export default function CreateReport({ reportedUser, project, reportTypes }) {
             fraud: '🚨',
             spam: '📧',
             inappropriate: '⚠️',
-            scam: '💰',
+            scam: '',
             fake_profile: '👤',
             other: '📝'
         };

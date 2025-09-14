@@ -22,16 +22,16 @@ try {
     // Check for pending bids
     $stmt = $pdo->query("SELECT COUNT(*) as count FROM bids WHERE status = 'pending'");
     $result = $stmt->fetch();
-    echo "📊 Pending bids: {$result['count']}\n";
+    echo "Pending bids: {$result['count']}\n";
     
     // Check for users
     $stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE role = 'client'");
     $result = $stmt->fetch();
-    echo "📊 Clients: {$result['count']}\n";
+    echo "Clients: {$result['count']}\n";
     
     $stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE role = 'freelancer'");
     $result = $stmt->fetch();
-    echo "📊 Freelancers: {$result['count']}\n";
+    echo "Freelancers: {$result['count']}\n";
     
     // Get a specific pending bid for testing
     $stmt = $pdo->query("

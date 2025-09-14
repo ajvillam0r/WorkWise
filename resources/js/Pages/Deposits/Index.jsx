@@ -163,7 +163,7 @@ export default function Deposits({ deposits, stripe_key, currency }) {
 
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">💰 Wallet</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight"> Wallet</h2>}
         >
             <Head title="Wallet" />
 

@@ -16,6 +16,7 @@ use App\Http\Controllers\ClientWalletController;
 use App\Http\Controllers\FreelancerWalletController;
 use App\Http\Controllers\DepositController;
 use App\Http\Controllers\ContractController;
+use App\Http\Controllers\AnalyticsController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -111,7 +112,6 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Reports/Index');
     })->name('reports.index');
 
-
     Route::get('/bids/{bid}', [BidController::class, 'show'])->name('bids.show');
     Route::patch('/bids/{bid}', [BidController::class, 'update'])->name('bids.update');
     Route::delete('/bids/{bid}', [BidController::class, 'destroy'])->name('bids.destroy');
@@ -152,6 +152,13 @@ Route::middleware('auth')->group(function () {
 
     // Message attachment download
     Route::get('/messages/{message}/download', [MessageController::class, 'downloadAttachment'])->name('messages.download');
+
+    // Analytics routes
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('/analytics/earnings', [AnalyticsController::class, 'earnings'])->name('analytics.earnings');
+    Route::get('/analytics/projects', [AnalyticsController::class, 'projects'])->name('analytics.projects');
+    Route::get('/analytics/performance', [AnalyticsController::class, 'performance'])->name('analytics.performance');
+    Route::get('/analytics/export', [AnalyticsController::class, 'export'])->name('analytics.export');
 
     // Role-specific wallet routes
     Route::middleware(['auth'])->group(function () {

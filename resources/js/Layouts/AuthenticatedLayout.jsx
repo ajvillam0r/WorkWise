@@ -101,6 +101,17 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Projects
                                 </Link>
+
+                                <Link
+                                    href="/analytics"
+                                    className={`text-sm font-medium transition-colors ${
+                                        window.location.pathname.startsWith('/analytics')
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                     Analytics
+                                </Link>
                                 <Link
                                     href={route('contracts.index')}
                                     className={`text-sm font-medium transition-colors ${
@@ -130,7 +141,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             : 'text-gray-600 hover:text-gray-900'
                                     }`}
                                 >
-                                    💰 {isClient ? 'Wallet' : 'Earnings'}
+                                     {isClient ? 'Wallet' : 'Earnings'}
                                 </Link>
                             </div>
                         </div>
@@ -175,7 +186,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Profile Settings
                                         </Dropdown.Link>
                                         <Dropdown.Link href={isClient ? route('client.wallet') : route('freelancer.wallet')}>
-                                            💰 {isClient ? 'Wallet' : 'Earnings'}
+                                             {isClient ? 'Wallet' : 'Earnings'}
                                         </Dropdown.Link>
                                         <Dropdown.Link href="/reports">
                                             🛡️ My Reports
@@ -317,7 +328,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
                         >
-                            💰 {isClient ? 'Wallet' : 'Earnings'}
+                             {isClient ? 'Wallet' : 'Earnings'}
                         </Link>
 
                         {/* Common mobile navigation */}
@@ -330,6 +341,17 @@ export default function AuthenticatedLayout({ header, children }) {
                             }`}
                         >
                             Projects
+                        </Link>
+
+                        <Link
+                            href="/analytics"
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                                window.location.pathname.startsWith('/analytics')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                             Analytics
                         </Link>
                         <Link
                             href={route('contracts.index')}

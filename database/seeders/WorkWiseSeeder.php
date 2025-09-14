@@ -579,7 +579,7 @@ class WorkWiseSeeder extends Seeder
         $this->command->info('   • David → Web Development jobs (Wrong specialization)');
         $this->command->info('   • Web developers → Data Science jobs (Wrong specialization)');
         $this->command->info('');
-        $this->command->info('📊 SAMPLE DATA INCLUDES:');
+        $this->command->info(' SAMPLE DATA INCLUDES:');
         $this->command->info('   • 7 diverse job postings with different requirements');
         $this->command->info('   • 1 completed project with payment released (Sarah\'s content project)');
         $this->command->info('   • 2 completed projects awaiting client approval (Alex\'s landing page & Maria\'s e-commerce)');
@@ -587,7 +587,7 @@ class WorkWiseSeeder extends Seeder
         $this->command->info('   • Freelancers with different experience levels');
         $this->command->info('   • Clients with funded escrow balances');
         $this->command->info('');
-        $this->command->info('💰 PAYMENT TESTING:');
+        $this->command->info(' PAYMENT TESTING:');
         $this->command->info('   • Log in as jane.smith@example.com to approve Alex\'s completed project (₱427.50)');
         $this->command->info('   • Log in as john.doe@example.com to approve Maria\'s completed project (₱6,840.00)');
         $this->command->info('   • This will test automatic payment release functionality');

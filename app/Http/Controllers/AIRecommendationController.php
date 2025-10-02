@@ -25,22 +25,36 @@ class AIRecommendationController extends Controller
         $user = auth()->user();
         $recommendations = [];
 
-        if ($user->user_type === 'freelancer') {
-            $recommendations = $this->matchService->getRecommendedJobs($user);
-        } else {
-            // For employers, get matching freelancers for their active jobs
-            $activeJobs = $user->jobs()->where('status', 'open')->get();
-            foreach ($activeJobs as $job) {
-                $recommendations[$job->id] = [
-                    'job' => $job,
-                    'matches' => $this->matchService->getJobMatches($job)
-                ];
+        try {
+            // Set execution time limit to prevent timeout
+            set_time_limit(25); // 25 seconds max
+            
+            if ($user->user_type === 'gig_worker') {
+                $recommendations = $this->matchService->getRecommendedJobs($user, 5);
+            } else {
+                // For employers, limit to first 3 active jobs to prevent timeout
+                $activeJobs = $user->postedJobs()
+                    ->where('status', 'open')
+                    ->limit(3)
+                    ->get();
+                    
+                foreach ($activeJobs as $job) {
+                    $recommendations[$job->id] = [
+                        'job' => $job,
+                        'matches' => $this->matchService->getJobMatches($job, 3) // Limit matches per job
+                    ];
+                }
             }
+        } catch (\Exception $e) {
+            // If matching fails, return empty recommendations with error message
+            \Log::error('AI Recommendations error: ' . $e->getMessage());
+            $recommendations = [];
         }
 
         return Inertia::render('AI/Recommendations', [
             'recommendations' => $recommendations,
-            'userType' => $user->user_type
+            'userType' => $user->user_type,
+            'hasError' => empty($recommendations) && $user->postedJobs()->where('status', 'open')->exists()
         ]);
     }
 
@@ -50,13 +64,14 @@ class AIRecommendationController extends Controller
     public function testConnection()
     {
         try {
-            $apiKey = config('services.openrouter.api_key');
+            // Use META_LLAMA_L4_SCOUT_FREE API key from .env file
+            $apiKey = env('META_LLAMA_L4_SCOUT_FREE') ?: config('services.openrouter.api_key');
             $certPath = base_path('cacert.pem');
             
             if (empty($apiKey)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'OpenRouter API key is not configured in .env file'
+                    'message' => 'META_LLAMA_L4_SCOUT_FREE API key is not configured in .env file'
                 ]);
             }
 
@@ -69,7 +84,7 @@ class AIRecommendationController extends Controller
                     'X-Title' => 'WorkWise Job Matching'
                 ])
                 ->post(config('services.openrouter.base_url') . '/chat/completions', [
-                    'model' => config('services.openrouter.model'),
+                    'model' => 'meta-llama/llama-4-scout:free',
                     'messages' => [
                         ['role' => 'system', 'content' => 'You are a helpful assistant.'],
                         ['role' => 'user', 'content' => 'Hi, this is a test message.']

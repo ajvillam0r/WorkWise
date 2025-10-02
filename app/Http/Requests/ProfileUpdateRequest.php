@@ -16,7 +16,7 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         $user = $this->user();
-        $isFreelancer = $user->user_type === 'freelancer';
+        $isGigWorker = $user->user_type === 'freelancer';
 
         $rules = [
             // Basic information
@@ -33,7 +33,7 @@ class ProfileUpdateRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:20'],
             'bio' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'string', 'max:255'],
-            'barangay' => ['required', 'string', 'max:255'],
+            'barangay' => ['nullable', 'string', 'max:255'],
             'profile_photo' => ['nullable', 'image', 'max:2048'], // 2MB max
         ];
 

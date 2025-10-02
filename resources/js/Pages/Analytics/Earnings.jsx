@@ -181,7 +181,7 @@ export default function Earnings({ earnings, summary, period }) {
                                                     Project
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Client
+                                                    Employer
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Amount
@@ -209,7 +209,7 @@ export default function Earnings({ earnings, summary, period }) {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {earning.project?.client?.first_name} {earning.project?.client?.last_name}
+                                                        {earning.project?.employer?.first_name} {earning.project?.employer?.last_name}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                         {formatCurrency(earning.amount)}

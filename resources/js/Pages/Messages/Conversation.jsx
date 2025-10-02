@@ -166,11 +166,11 @@ export default function Conversation({ user, messages, currentUser }) {
                             </h2>
                             <div className="flex items-center space-x-2 text-sm text-gray-600">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    user.user_type === 'client' 
-                                        ? 'bg-blue-100 text-blue-800' 
+                                    user.user_type === 'employer'
+                                        ? 'bg-blue-100 text-blue-800'
                                         : 'bg-green-100 text-green-800'
                                 }`}>
-                                    {user.user_type === 'client' ? '👤 Client' : '💼 Freelancer'}
+                                    {user.user_type === 'employer' ? '👤 Employer' : '💼 Gig Worker'}
                                 </span>
                                 {user.professional_title && (
                                     <span>• {user.professional_title}</span>
@@ -320,7 +320,7 @@ export default function Conversation({ user, messages, currentUser }) {
                                 {user.hourly_rate && (
                                     <div>
                                         <dt className="text-sm font-medium text-gray-500">Hourly Rate</dt>
-                                        <dd className="mt-1 text-sm text-gray-900">${user.hourly_rate}/hour</dd>
+                                        <dd className="mt-1 text-sm text-gray-900">₱{user.hourly_rate}/hour</dd>
                                     </div>
                                 )}
                                 

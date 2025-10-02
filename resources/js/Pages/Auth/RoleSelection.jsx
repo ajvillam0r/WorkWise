@@ -14,14 +14,24 @@ export default function RoleSelection() {
 
     const handleContinue = () => {
         if (selectedRole) {
-            post(route('role.store'));
+            post(route('role.store'), {
+                onSuccess: () => {
+                    console.log('Role selection successful');
+                },
+                onError: (errors) => {
+                    console.error('Role selection failed:', errors);
+                    alert('There was an error selecting your role. Please try again.');
+                }
+            });
+        } else {
+            alert('Please select a role before continuing.');
         }
     };
 
     const roles = [
         {
-            type: 'freelancer',
-            title: 'I\'m a freelancer',
+            type: 'gig_worker',
+            title: 'I\'m a gig worker',
             subtitle: 'I\'m looking for work',
             description: 'I want to find projects and earn money using my skills',
             icon: (
@@ -33,12 +43,12 @@ export default function RoleSelection() {
                 'Browse and apply to projects',
                 'Build your portfolio',
                 'Get paid securely',
-                'Work with global clients'
+                'Work with global employers'
             ]
         },
         {
-            type: 'client',
-            title: 'I\'m a client',
+            type: 'employer',
+            title: 'I\'m an employer',
             subtitle: 'I\'m looking to hire',
             description: 'I want to hire skilled professionals for my projects',
             icon: (
@@ -48,7 +58,7 @@ export default function RoleSelection() {
             ),
             features: [
                 'Post projects and get proposals',
-                'Access to skilled freelancers',
+                'Access to skilled gig workers',
                 'Manage projects easily',
                 'Pay only when satisfied'
             ]
@@ -70,7 +80,7 @@ export default function RoleSelection() {
                             <div className="flex items-center space-x-4">
                                 <span className="text-sm text-gray-600">Already have an account?</span>
                                 <Link
-                                    href={route('login')}
+                                    href="/login"
                                     className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                                 >
                                     Log in
@@ -85,7 +95,7 @@ export default function RoleSelection() {
                     {/* Header */}
                     <div className="text-center mb-12">
                         <h1 className="text-4xl font-normal text-gray-900 mb-4">
-                            Join as a freelancer or client
+                            Join as a gig worker or employer
                         </h1>
                         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                             Choose how you'd like to use WorkWise. You can always switch between roles later.
@@ -120,7 +130,7 @@ export default function RoleSelection() {
                                 {/* Icon */}
                                 <div className="flex justify-center mb-6">
                                     <div className={`p-4 rounded-full ${
-                                        role.type === 'freelancer' ? 'bg-blue-100' : 'bg-green-100'
+                                        role.type === 'gig_worker' ? 'bg-blue-100' : 'bg-green-100'
                                     }`}>
                                         {role.icon}
                                     </div>
@@ -188,7 +198,7 @@ export default function RoleSelection() {
                     <div className="text-center mt-12">
                         <p className="text-gray-500">
                             Already have an account?{' '}
-                            <Link href={route('login')} className="text-blue-600 hover:text-blue-700 font-medium">
+                            <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
                                 Log in
                             </Link>
                         </p>

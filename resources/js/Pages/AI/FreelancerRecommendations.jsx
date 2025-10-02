@@ -157,7 +157,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                                                     {recommendation.job.employer?.name ||
                                                                      recommendation.job.employer?.full_name ||
                                                                      `${recommendation.job.employer?.first_name || ''} ${recommendation.job.employer?.last_name || ''}`.trim() ||
-                                                                     'Client'}
+                                                                     'Employer'}
                                                                 </span>
                                                             </div>
                                                             <p className="text-gray-600 mb-3 line-clamp-2">
@@ -199,11 +199,11 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                                     <div className="mb-4">
                                                         <div className="text-sm text-gray-500 mb-2">Required Skills</div>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {recommendation.job.required_skills.map((skill, skillIndex) => (
+                                                            {Array.isArray(recommendation?.job?.required_skills) ? recommendation.job.required_skills.map((skill, skillIndex) => (
                                                                 <span key={skillIndex} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                                     {skill}
                                                                 </span>
-                                                            ))}
+                                                            )) : null}
                                                         </div>
                                                     </div>
 

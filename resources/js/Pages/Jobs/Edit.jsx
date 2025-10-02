@@ -128,7 +128,7 @@ export default function JobEdit({ job }) {
                                     Important: Editing Active Job
                                 </h3>
                                 <div className="mt-2 text-sm text-yellow-700">
-                                    <p>Changes to this job will be visible to all freelancers. Existing proposals will remain unchanged.</p>
+                                    <p>Changes to this job will be visible to all gig workers. Existing proposals will remain unchanged.</p>
                                 </div>
                             </div>
                         </div>
@@ -168,7 +168,7 @@ export default function JobEdit({ job }) {
                                         onChange={(e) => setData('description', e.target.value)}
                                         rows={6}
                                         className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Describe your project in detail. Include specific requirements, deliverables, and any important information freelancers should know..."
+                                        placeholder="Describe your project in detail. Include specific requirements, deliverables, and any important information gig workers should know..."
                                         required
                                     />
                                     <p className="mt-1 text-sm text-gray-500">
@@ -334,7 +334,7 @@ export default function JobEdit({ job }) {
                                     </div>
                                 </div>
 
-                                {/* Location & Remote */}
+                                {/* Location & Remote
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-4">
                                         Work Location
@@ -384,7 +384,7 @@ export default function JobEdit({ job }) {
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                </div> */}
 
                                 {/* Deadline */}
                                 <div>

@@ -108,11 +108,11 @@ export default function StartConversationModal({ isOpen, onClose, users = [] }) 
                                                                     </p>
                                                                 </div>
                                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                                    user.user_type === 'client' 
-                                                                        ? 'bg-blue-100 text-blue-800' 
+                                                                    user.user_type === 'employer'
+                                                                        ? 'bg-blue-100 text-blue-800'
                                                                         : 'bg-green-100 text-green-800'
                                                                 }`}>
-                                                                    {user.user_type === 'client' ? 'Client' : 'Freelancer'}
+                                                                    {user.user_type === 'employer' ? 'Employer' : 'Gig Worker'}
                                                                 </span>
                                                             </div>
                                                         </button>

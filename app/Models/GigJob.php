@@ -71,6 +71,14 @@ class GigJob extends Model
     }
 
     /**
+     * Projects created from this job
+     */
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'job_id');
+    }
+
+    /**
      * Get budget display string
      */
     public function getBudgetDisplayAttribute(): string

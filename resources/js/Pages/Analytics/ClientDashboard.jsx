@@ -109,7 +109,7 @@ export default function ClientDashboard({ overview, monthly_spending, recent_pro
                             color="yellow"
                         />
                         <StatCard
-                            title="Freelancers Hired"
+                            title="Gig Workers Hired"
                             value={overview.freelancers_hired}
                             icon={UserGroupIcon}
                             color="purple"
@@ -168,7 +168,7 @@ export default function ClientDashboard({ overview, monthly_spending, recent_pro
                                     
                                     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                                         <div>
-                                            <p className="text-sm font-medium text-gray-600">Repeat Freelancers</p>
+                                            <p className="text-sm font-medium text-gray-600">Repeat Gig Workers</p>
                                             <p className="text-2xl font-bold text-gray-900">
                                                 {hiring_insights.repeat_freelancers}
                                             </p>
@@ -215,7 +215,7 @@ export default function ClientDashboard({ overview, monthly_spending, recent_pro
                                                             {project.job?.title || 'Untitled Project'}
                                                         </h4>
                                                         <p className="text-sm text-gray-600">
-                                                            Freelancer: {project.freelancer?.first_name} {project.freelancer?.last_name}
+                                                            Gig Worker: {project.gig_worker?.first_name} {project.gig_worker?.last_name}
                                                         </p>
                                                         <p className="text-sm text-gray-500">
                                                             Status: <span className="capitalize">{project.status}</span>

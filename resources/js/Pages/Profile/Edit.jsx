@@ -10,8 +10,8 @@ export default function Edit({ mustVerifyEmail, status }) {
     const [skillInput, setSkillInput] = useState('');
     const [languageInput, setLanguageInput] = useState('');
 
-    const isFreelancer = user.user_type === 'freelancer';
-    const isClient = user.user_type === 'client';
+    const isGigWorker = user.user_type === 'gig_worker';
+    const isEmployer = user.user_type === 'employer';
 
     const { data, setData, patch, processing, errors, recentlySuccessful } = useForm({
         first_name: user.first_name || '',
@@ -117,7 +117,7 @@ export default function Edit({ mustVerifyEmail, status }) {
 
     const tabs = [
         { id: 'basic', name: 'Basic Info', icon: '👤' },
-        { id: 'professional', name: isFreelancer ? 'Professional' : 'Business', icon: isFreelancer ? '💼' : '🏢' },
+        { id: 'professional', name: isGigWorker ? 'Professional' : 'Business', icon: isGigWorker ? '💼' : '🏢' },
         { id: 'security', name: 'Security', icon: '🔒' },
     ];
 
@@ -152,15 +152,15 @@ export default function Edit({ mustVerifyEmail, status }) {
                                             {user.first_name} {user.last_name}
                                         </h3>
                                         <p className="text-sm text-gray-600">
-                                            {isFreelancer ? user.professional_title || 'Freelancer' : user.company_name || 'Client'}
+                                            {isGigWorker ? user.professional_title || 'Gig Worker' : user.company_name || 'Employer'}
                                         </p>
                                         <div className="mt-3">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                user.user_type === 'client'
+                                                user.user_type === 'employer'
                                                     ? 'bg-blue-100 text-blue-800'
                                                     : 'bg-green-100 text-green-800'
                                             }`}>
-                                                {user.user_type === 'client' ? '👤 Client' : '💼 Freelancer'}
+                                                {user.user_type === 'employer' ? '🏢 Employer' : '💼 Gig Worker'}
                                             </span>
                                         </div>
                                     </div>
@@ -175,7 +175,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                             <div className="bg-blue-600 h-2 rounded-full" style={{ width: '85%' }}></div>
                                         </div>
                                         <p className="text-xs text-gray-500 mt-2">
-                                            Complete your profile to attract more {isFreelancer ? 'clients' : 'freelancers'}
+                                            Complete your profile to attract more {isGigWorker ? 'employers' : 'gig workers'}
                                         </p>
                                     </div>
 
@@ -357,8 +357,8 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                         onChange={(e) => setData('bio', e.target.value)}
                                                         rows={4}
                                                         className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                        placeholder={isFreelancer
-                                                            ? "Tell clients about your experience, skills, and what makes you unique..."
+                                                        placeholder={isGigWorker
+                                                            ? "Tell employers about your experience, skills, and what makes you unique..."
                                                             : "Describe your company, the type of projects you work on, and what you're looking for..."
                                                         }
                                                     />
@@ -378,10 +378,10 @@ export default function Edit({ mustVerifyEmail, status }) {
                                         <div className="p-8">
                                             <div className="mb-8">
                                                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                                    {isFreelancer ? 'Professional Information' : 'Business Information'}
+                                                    {isGigWorker ? 'Professional Information' : 'Business Information'}
                                                 </h3>
                                                 <p className="text-sm text-gray-600">
-                                                    {isFreelancer
+                                                    {isGigWorker
                                                         ? 'Showcase your skills, experience, and professional details'
                                                         : 'Tell us about your business and project requirements'
                                                     }
@@ -389,7 +389,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                             </div>
 
                                             <div className="space-y-6">
-                                                {isFreelancer ? (
+                                                {isGigWorker ? (
                                                     <>
                                                         {/* Professional Title */}
                                                         <div>
@@ -644,7 +644,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 placeholder="Describe the types of projects you typically work on and your business goals..."
                                                             />
                                                             <p className="mt-2 text-sm text-gray-500">
-                                                                Help freelancers understand your business needs and project requirements
+                                                                Help gig workers understand your business needs and project requirements
                                                             </p>
                                                             {errors.project_intent && <p className="mt-2 text-sm text-red-600">{errors.project_intent}</p>}
                                                         </div>
@@ -769,16 +769,16 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                         <div>
                                                             <h4 className="text-sm font-medium text-gray-900">Account Type</h4>
                                                             <p className="text-sm text-gray-600">
-                                                                You are registered as a {user.user_type}
+                                                                You are registered as a {user.user_type === 'employer' ? 'Employer' : 'Gig Worker'}
                                                             </p>
                                                         </div>
                                                         <div>
                                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                user.user_type === 'client'
+                                                                user.user_type === 'employer'
                                                                     ? 'bg-blue-100 text-blue-800'
                                                                     : 'bg-green-100 text-green-800'
                                                             }`}>
-                                                                {user.user_type === 'client' ? '👤 Client' : '💼 Freelancer'}
+                                                                {user.user_type === 'employer' ? '🏢 Employer' : '💼 Gig Worker'}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -869,10 +869,10 @@ export default function Edit({ mustVerifyEmail, status }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <h4 className="font-medium text-blue-900 mb-3">
-                                    {isFreelancer ? 'Stand Out to Clients:' : 'Attract Top Freelancers:'}
+                                    {isGigWorker ? 'Stand Out to Employers:' : 'Attract Top Gig Workers:'}
                                 </h4>
                                 <ul className="text-sm text-blue-800 space-y-2">
-                                    {isFreelancer ? (
+                                    {isGigWorker ? (
                                         <>
                                             <li className="flex items-start">
                                                 <span className="text-blue-500 mr-2">•</span>
@@ -926,7 +926,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                     </li>
                                     <li className="flex items-start">
                                         <span className="text-green-500 mr-2">✓</span>
-                                        <span>Increased trust from {isFreelancer ? 'clients' : 'freelancers'}</span>
+                                        <span>Increased trust from {isGigWorker ? 'employers' : 'gig workers'}</span>
                                     </li>
                                     <li className="flex items-start">
                                         <span className="text-green-500 mr-2">✓</span>

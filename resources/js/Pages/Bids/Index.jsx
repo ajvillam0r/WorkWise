@@ -108,6 +108,11 @@ export default function BidsIndex({ bids }) {
         return new Date(dateString).toLocaleDateString();
     };
 
+    const formatAmount = (value) => {
+        const number = Number(value ?? 0);
+        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'pending':
@@ -123,7 +128,7 @@ export default function BidsIndex({ bids }) {
         }
     };
 
-    const isFreelancer = auth.user.user_type === 'freelancer';
+    const isGigWorker = auth.user.user_type === 'gig_worker';
 
     const handleBidAction = (bidId, action) => {
         let title, message, confirmText, confirmColor;
@@ -259,11 +264,11 @@ export default function BidsIndex({ bids }) {
             user={auth.user}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    {isFreelancer ? 'My Bids' : 'Bids on My Jobs'}
+                    {isGigWorker ? 'My Bids' : 'Bids on My Jobs'}
                 </h2>
             }
         >
-            <Head title={isFreelancer ? 'My Bids' : 'Bids on My Jobs'} />
+            <Head title={isGigWorker ? 'My Bids' : 'Bids on My Jobs'} />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -283,10 +288,10 @@ export default function BidsIndex({ bids }) {
                                                     </Link>
                                                 </h3>
                                                 <div className="text-sm text-gray-600 space-y-1">
-                                                    {isFreelancer ? (
-                                                        <p>Posted by: {bid.job.employer.name}</p>
+                                                    {isGigWorker ? (
+                                                        <p>Posted by: {bid.job.employer?.first_name} {bid.job.employer?.last_name}</p>
                                                     ) : (
-                                                        <p>Bid by: {bid.freelancer.name}</p>
+                                                        <p>Bid by: {bid.gig_worker?.first_name} {bid.gig_worker?.last_name}</p>
                                                     )}
                                                     <p>Submitted: {formatDate(bid.submitted_at)}</p>
                                                 </div>
@@ -299,7 +304,7 @@ export default function BidsIndex({ bids }) {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                             <div>
                                                 <span className="text-sm text-gray-500">Bid Amount:</span>
-                                                <p className="font-medium">₱{bid.bid_amount}</p>
+                                                <p className="font-medium">₱{formatAmount(bid.bid_amount)}</p>
                                             </div>
                                             <div>
                                                 <span className="text-sm text-gray-500">Estimated Days:</span>
@@ -316,7 +321,7 @@ export default function BidsIndex({ bids }) {
                                             <p className="text-gray-700 mt-1">{bid.proposal_message}</p>
                                         </div>
 
-                                        {!isFreelancer && bid.status === 'pending' && (
+                                        {!isGigWorker && bid.status === 'pending' && (
                                             <div className="flex space-x-3">
                                                 <button
                                                     type="button"
@@ -337,7 +342,7 @@ export default function BidsIndex({ bids }) {
                                             </div>
                                         )}
 
-                                        {isFreelancer && bid.status === 'pending' && (
+                                        {isGigWorker && bid.status === 'pending' && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleBidAction(bid.id, 'withdraw')}
@@ -355,12 +360,12 @@ export default function BidsIndex({ bids }) {
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-6 text-center">
                                 <p className="text-gray-500 text-lg mb-4">
-                                    {isFreelancer 
-                                        ? "You haven't submitted any bids yet." 
+                                    {isGigWorker
+                                        ? "You haven't submitted any bids yet."
                                         : "No bids have been submitted on your jobs yet."
                                     }
                                 </p>
-                                {isFreelancer && (
+                                {isGigWorker && (
                                     <Link
                                         href={route('jobs.index')}
                                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"

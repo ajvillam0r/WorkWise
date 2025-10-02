@@ -12,13 +12,13 @@ class ClientOnboardingController extends Controller
     /**
      * Show the client onboarding page
      */
-    public function show(): Response
+    public function show(): Response|RedirectResponse
     {
         $user = auth()->user();
 
         // Redirect if not a client
         if ($user->user_type !== 'client') {
-            return redirect()->route('dashboard');
+            return redirect()->route('jobs.index');
         }
 
         return Inertia::render('Onboarding/ClientOnboarding', [
@@ -47,7 +47,7 @@ class ClientOnboardingController extends Controller
             'profile_status' => 'approved' // Clients are auto-approved
         ]));
 
-        return redirect()->route('dashboard')->with('success',
+        return redirect()->route('jobs.index')->with('success',
             'Welcome to WorkWise! You can now start posting projects and hiring freelancers.');
     }
 
@@ -63,7 +63,7 @@ class ClientOnboardingController extends Controller
             'profile_status' => 'approved'
         ]);
 
-        return redirect()->route('dashboard')->with('info',
-            'You can complete your profile later from your dashboard.');
+        return redirect()->route('jobs.index')->with('info',
+            'You can complete your profile later from your profile settings.');
     }
 }

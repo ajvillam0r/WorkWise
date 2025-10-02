@@ -14,8 +14,8 @@ class Contract extends Model
     protected $fillable = [
         'contract_id',
         'project_id',
-        'client_id',
-        'freelancer_id',
+        'employer_id',
+        'gig_worker_id',
         'job_id',
         'bid_id',
         'scope_of_work',
@@ -23,20 +23,20 @@ class Contract extends Model
         'contract_type',
         'project_start_date',
         'project_end_date',
-        'client_responsibilities',
-        'freelancer_responsibilities',
+        'employer_responsibilities',
+        'gig_worker_responsibilities',
         'preferred_communication',
         'communication_frequency',
         'status',
-        'freelancer_signed_at',
-        'client_signed_at',
+        'gig_worker_signed_at',
+        'employer_signed_at',
         'fully_signed_at',
         'pdf_path',
         'pdf_generated_at',
     ];
 
     protected $attributes = [
-        'status' => 'pending_client_signature',
+        'status' => 'pending_employer_signature',
     ];
 
     protected function casts(): array
@@ -45,10 +45,10 @@ class Contract extends Model
             'total_payment' => 'decimal:2',
             'project_start_date' => 'date',
             'project_end_date' => 'date',
-            'client_responsibilities' => 'array',
-            'freelancer_responsibilities' => 'array',
-            'freelancer_signed_at' => 'datetime',
-            'client_signed_at' => 'datetime',
+            'employer_responsibilities' => 'array',
+            'gig_worker_responsibilities' => 'array',
+            'gig_worker_signed_at' => 'datetime',
+            'employer_signed_at' => 'datetime',
             'fully_signed_at' => 'datetime',
             'pdf_generated_at' => 'datetime',
         ];
@@ -82,14 +82,30 @@ class Contract extends Model
         return $this->belongsTo(Project::class);
     }
 
-    public function client(): BelongsTo
+    public function employer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'client_id');
+        return $this->belongsTo(User::class, 'employer_id');
     }
 
+    /**
+     * Get the client (deprecated - use employer)
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'employer_id');
+    }
+
+    public function gigWorker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'gig_worker_id');
+    }
+
+    /**
+     * Get the freelancer (deprecated - use gigWorker)
+     */
     public function freelancer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'freelancer_id');
+        return $this->belongsTo(User::class, 'gig_worker_id');
     }
 
     public function job(): BelongsTo
@@ -110,14 +126,30 @@ class Contract extends Model
     /**
      * Status check methods
      */
-    public function isPendingFreelancerSignature(): bool
+    public function isPendingGigWorkerSignature(): bool
     {
-        return $this->status === 'pending_freelancer_signature';
+        return $this->status === 'pending_gig_worker_signature';
     }
 
+    /**
+     * Check if contract is pending freelancer signature (deprecated - use isPendingGigWorkerSignature)
+     */
+    public function isPendingFreelancerSignature(): bool
+    {
+        return $this->status === 'pending_gig_worker_signature';
+    }
+
+    public function isPendingEmployerSignature(): bool
+    {
+        return $this->status === 'pending_employer_signature';
+    }
+
+    /**
+     * Check if contract is pending client signature (deprecated - use isPendingEmployerSignature)
+     */
     public function isPendingClientSignature(): bool
     {
-        return $this->status === 'pending_client_signature';
+        return $this->status === 'pending_employer_signature';
     }
 
     public function isFullySigned(): bool
@@ -148,23 +180,23 @@ class Contract extends Model
 
     /**
      * Get next signer (who needs to sign next)
-     * Client must sign first, then freelancer
+     * Employer must sign first, then gig worker
      */
     public function getNextSigner(): ?string
     {
-        // If status is empty or null, default to pending client signature
+        // If status is empty or null, default to pending employer signature
         if (empty($this->status)) {
-            return 'client';
+            return 'employer';
         }
 
-        // Client must sign first
-        if ($this->isPendingClientSignature()) {
-            return 'client';
+        // Employer must sign first
+        if ($this->isPendingEmployerSignature()) {
+            return 'employer';
         }
 
-        // After client signs, freelancer can sign
-        if ($this->isPendingFreelancerSignature()) {
-            return 'freelancer';
+        // After employer signs, gig worker can sign
+        if ($this->isPendingGigWorkerSignature()) {
+            return 'gig_worker';
         }
 
         return null;
@@ -178,17 +210,17 @@ class Contract extends Model
         \Log::info('Checking if user can sign contract', [
             'contract_id' => $this->id,
             'user_id' => $userId,
-            'client_id' => $this->client_id,
-            'freelancer_id' => $this->freelancer_id,
+            'employer_id' => $this->employer_id,
+            'gig_worker_id' => $this->gig_worker_id,
             'contract_status' => $this->status
         ]);
 
-        // User must be either client or freelancer
-        if ($userId !== $this->client_id && $userId !== $this->freelancer_id) {
-            \Log::warning('User is not client or freelancer', [
+        // User must be either employer or gig worker
+        if ($userId !== $this->employer_id && $userId !== $this->gig_worker_id) {
+            \Log::warning('User is not employer or gig worker', [
                 'user_id' => $userId,
-                'client_id' => $this->client_id,
-                'freelancer_id' => $this->freelancer_id
+                'employer_id' => $this->employer_id,
+                'gig_worker_id' => $this->gig_worker_id
             ]);
             return false;
         }
@@ -217,8 +249,8 @@ class Contract extends Model
         $userRole = $this->getUserRole($userId);
         $nextSigner = $this->getNextSigner();
 
-        // If status is empty, default to client-first workflow
-        if (empty($this->status) && $userRole === 'client') {
+        // If status is empty, default to employer-first workflow
+        if (empty($this->status) && $userRole === 'employer') {
             return true;
         }
 
@@ -243,20 +275,36 @@ class Contract extends Model
     }
 
     /**
-     * Check if client has signed the contract
+     * Check if employer has signed the contract
      */
-    public function hasClientSigned(): bool
+    public function hasEmployerSigned(): bool
     {
-        return $this->client_signed_at !== null;
+        return $this->employer_signed_at !== null;
     }
 
     /**
-     * Check if freelancer can view/sign contract
-     * Freelancer can only view/sign after client has signed
+     * Check if client has signed the contract (deprecated - use hasEmployerSigned)
+     */
+    public function hasClientSigned(): bool
+    {
+        return $this->employer_signed_at !== null;
+    }
+
+    /**
+     * Check if gig worker can view/sign contract
+     * Gig worker can only view/sign after employer has signed
+     */
+    public function canGigWorkerAccess(): bool
+    {
+        return $this->hasEmployerSigned();
+    }
+
+    /**
+     * Check if freelancer can view/sign contract (deprecated - use canGigWorkerAccess)
      */
     public function canFreelancerAccess(): bool
     {
-        return $this->hasClientSigned();
+        return $this->hasEmployerSigned();
     }
 
     /**
@@ -264,12 +312,12 @@ class Contract extends Model
      */
     public function getUserRole(int $userId): ?string
     {
-        if ($userId === $this->client_id) {
-            return 'client';
+        if ($userId === $this->employer_id) {
+            return 'employer';
         }
 
-        if ($userId === $this->freelancer_id) {
-            return 'freelancer';
+        if ($userId === $this->gig_worker_id) {
+            return 'gig_worker';
         }
 
         return null;

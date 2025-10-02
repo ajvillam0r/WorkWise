@@ -1,0 +1,173 @@
+import React, { useState, useEffect } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+
+export default function AdminLayout({ children, header }) {
+    const { auth, url } = usePage().props;
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+    // Function to check if current path matches navigation item
+    const isCurrentPage = (href) => {
+        if (!url) return false;
+        if (href === '/admin') {
+            return url === '/' || url === '/admin' || url.startsWith('/admin/dashboard');
+        }
+        return url.startsWith(href);
+    };
+
+    const navigation = [
+        { id: 'dashboard', name: 'Dashboard', href: '/admin', icon: 'dashboard', current: isCurrentPage('/admin') },
+        { id: 'users', name: 'Users', href: '/admin/users', icon: 'group', current: isCurrentPage('/admin/users') },
+        { id: 'analytics', name: 'Analytics', href: '/admin/analytics', icon: 'analytics', current: isCurrentPage('/admin/analytics') },
+        { id: 'projects', name: 'Projects', href: '/admin/projects', icon: 'cases', current: isCurrentPage('/admin/projects') },
+        { id: 'payments', name: 'Payments', href: '/admin/payments', icon: 'payments', current: isCurrentPage('/admin/payments') },
+        { id: 'reports', name: 'Reports', href: '/admin/reports', icon: 'flag', current: isCurrentPage('/admin/reports') },
+        { id: 'fraud', name: 'Fraud Detection', href: '/admin/fraud', icon: 'security', current: isCurrentPage('/admin/fraud') },
+    ];
+
+    // Fallback navigation when url is not available
+    const fallbackNavigation = [
+        { id: 'dashboard-fallback', name: 'Dashboard', href: '/admin', icon: 'dashboard', current: true },
+        { id: 'users-fallback', name: 'Users', href: '/admin/users', icon: 'group', current: false },
+        { id: 'analytics-fallback', name: 'Analytics', href: '/admin/analytics', icon: 'analytics', current: false },
+        { id: 'projects-fallback', name: 'Projects', href: '/admin/projects', icon: 'cases', current: false },
+        { id: 'payments-fallback', name: 'Payments', href: '/admin/payments', icon: 'payments', current: false },
+        { id: 'reports-fallback', name: 'Reports', href: '/admin/reports', icon: 'flag', current: false },
+        { id: 'fraud-fallback', name: 'Fraud Detection', href: '/admin/fraud', icon: 'security', current: false },
+    ];
+
+    const bottomNavigation = [
+        { id: 'settings', name: 'Settings', href: '/admin/settings', icon: 'settings', current: isCurrentPage('/admin/settings') },
+    ];
+
+    const toggleSidebar = () => {
+        setIsSidebarCollapsed(!isSidebarCollapsed);
+    };
+
+    return (
+        <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+            <div className="flex h-full grow flex-row">
+                {/* Collapsible Sidebar */}
+                <aside className={`flex h-full flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/80 p-4 transition-all duration-300 ease-in-out ${
+                    isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'
+                }`} id="sidebar">
+                    <div className="flex items-center justify-between">
+                        <h1 className={`text-xl font-bold text-indigo-600 dark:text-slate-100 transition-all duration-300 ${
+                            isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
+                        }`} id="sidebar-title">WorkWise</h1>
+                        <button
+                            className="p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                            id="sidebar-toggle"
+                            onClick={toggleSidebar}
+                        >
+                            <span className="material-symbols-outlined text-3xl text-indigo-600 transition-transform duration-300" id="sidebar-icon">
+                                {isSidebarCollapsed ? 'menu' : 'menu_open'}
+                            </span>
+                        </button>
+                    </div>
+
+                    <nav className="mt-8 flex flex-col gap-2">
+                        {(url ? navigation : fallbackNavigation).map((item) => (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-indigo-100 hover:text-indigo-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-indigo-900/20 ${
+                                    item.current ? 'bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-900/20' : ''
+                                }`}
+                            >
+                                <span className={`material-symbols-outlined transition-all duration-300 group-hover:scale-110 ${
+                                    item.current ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600'
+                                }`}>{item.icon}</span>
+                                <p className={`text-sm font-medium transition-all duration-300 ${
+                                    isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
+                                }`}>{item.name}</p>
+                                {item.current && (
+                                    <div className="ml-auto h-2 w-2 rounded-full bg-indigo-600"></div>
+                                )}
+                            </Link>
+                        ))}
+                    </nav>
+
+                    <div className="mt-auto flex flex-col gap-1">
+                        {(url ? bottomNavigation : [{ id: 'settings-fallback', name: 'Settings', href: '/admin/settings', icon: 'settings', current: false }]).map((item) => (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-indigo-100 hover:text-indigo-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-indigo-900/20 ${
+                                    item.current ? 'bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-900/20' : ''
+                                }`}
+                            >
+                                <span className={`material-symbols-outlined transition-all duration-300 group-hover:scale-110 ${
+                                    item.current ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600'
+                                }`}>{item.icon}</span>
+                                <p className={`text-sm font-medium transition-all duration-300 ${
+                                    isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
+                                }`}>{item.name}</p>
+                                {item.current && (
+                                    <div className="ml-auto h-2 w-2 rounded-full bg-indigo-600"></div>
+                                )}
+                            </Link>
+                        ))}
+                    </div>
+                </aside>
+
+                {/* Main Content */}
+                <main className="flex-1 bg-slate-50 dark:bg-slate-900 transition-all duration-300">
+                    <div className="p-4 sm:p-8">
+                        {/* Header */}
+                        <header className="mb-8 flex items-center justify-between">
+                            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+                            <div className="flex items-center gap-4">
+                                <button className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
+                                    <span className="material-symbols-outlined">notifications</span>
+                                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-pink-500"></span>
+                                </button>
+                                <img
+                                    alt="Admin Avatar"
+                                    className="h-10 w-10 rounded-full"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOCY6awUGXO9qpXCakLmiyJOG8u-9woIFjfbsQoMnrqqNIqnELGkwM4PuO0HlVw6dSi3VotgFv6aCSWbZkf6ow5_PYUHOtbzdgY-Mb8c7kuYUhieBguC2jV7wvoozmVKEzsK2MI9rcuajXuKadizjPd_kBpEpAi3zQm9tK9Yv-qMEU4JWVm--RD6dosM_ZvMM7WbjD08m2VtfMIeGYd733bbRt9FwzRjXM00W3QmUumhjELkFi6UZq0gWaQummEzGQTfELnEIIiNE"
+                                />
+                                <Link
+                                    href="/admin/admin/logout"
+                                    method="post"
+                                    as="button"
+                                    className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                >
+                                    <span className="material-symbols-outlined text-base">logout</span>
+                                    Logout
+                                </Link>
+                            </div>
+                        </header>
+
+                        {/* Page Content */}
+                        {children}
+                    </div>
+                </main>
+            </div>
+
+            <style jsx="true">{`
+                .sidebar-expanded {
+                    width: 16rem;
+                }
+                .sidebar-collapsed {
+                    width: 5rem;
+                }
+                .nav-text-expanded {
+                    opacity: 1;
+                    transition: opacity 0.3s ease-in-out;
+                }
+                .nav-text-collapsed {
+                    opacity: 0;
+                    width: 0;
+                    overflow: hidden;
+                    transition: opacity 0.2s ease-in-out, width 0s linear 0.2s;
+                }
+                .icon-hover {
+                    transition: transform 0.3s ease-in-out;
+                }
+                .icon-hover:hover {
+                    transform: scale(1.1) rotate(-6deg);
+                }
+            `}</style>
+        </div>
+    );
+}

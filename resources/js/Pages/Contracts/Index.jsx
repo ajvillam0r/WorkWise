@@ -20,8 +20,8 @@ export default function Index({ auth, contracts, userRole }) {
 
     const getStatusBadge = (status) => {
         const statusConfig = {
-            'pending_freelancer_signature': { color: 'bg-yellow-100 text-yellow-800', text: 'Pending Freelancer' },
-            'pending_client_signature': { color: 'bg-blue-100 text-blue-800', text: 'Pending Client' },
+            'pending_gig_worker_signature': { color: 'bg-yellow-100 text-yellow-800', text: 'Pending Gig Worker' },
+            'pending_employer_signature': { color: 'bg-blue-100 text-blue-800', text: 'Pending Employer' },
             'fully_signed': { color: 'bg-green-100 text-green-800', text: 'Fully Signed' },
             'cancelled': { color: 'bg-red-100 text-red-800', text: 'Cancelled' }
         };
@@ -38,8 +38,8 @@ export default function Index({ auth, contracts, userRole }) {
     const getActionButton = (contract) => {
         const hasUserSigned = contract.signatures?.some(sig => sig.user_id === auth.user.id);
         const clientSignature = contract.signatures?.find(sig => sig.role === 'client');
-        const isFreelancer = userRole === 'freelancer';
-        const isClient = userRole === 'client';
+        const isGigWorker = userRole === 'gig_worker';
+        const isEmployer = userRole === 'employer';
 
         // Contract is fully signed - show download PDF
         if (contract.status === 'fully_signed') {
@@ -71,8 +71,8 @@ export default function Index({ auth, contracts, userRole }) {
             );
         }
 
-        // Client can sign if pending client signature
-        if (isClient && contract.status === 'pending_client_signature') {
+        // Employer can sign if pending employer signature
+        if (isEmployer && contract.status === 'pending_employer_signature') {
             return (
                 <Link
                     href={route('contracts.sign', contract.id)}
@@ -83,8 +83,8 @@ export default function Index({ auth, contracts, userRole }) {
             );
         }
 
-        // Freelancer can only sign after client has signed
-        if (isFreelancer && contract.status === 'pending_freelancer_signature' && clientSignature) {
+        // Gig Worker can only sign after employer has signed
+        if (isGigWorker && contract.status === 'pending_gig_worker_signature' && employerSignature) {
             return (
                 <Link
                     href={route('contracts.sign', contract.id)}
@@ -95,11 +95,11 @@ export default function Index({ auth, contracts, userRole }) {
             );
         }
 
-        // Freelancer waiting for client to sign first
-        if (isFreelancer && !clientSignature) {
+        // Gig Worker waiting for employer to sign first
+        if (isGigWorker && !employerSignature) {
             return (
                 <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-yellow-600">
-                    Waiting for client
+                    Waiting for employer
                 </span>
             );
         }
@@ -112,10 +112,10 @@ export default function Index({ auth, contracts, userRole }) {
     };
 
     const getOtherParty = (contract) => {
-        if (userRole === 'client') {
-            return `${contract.freelancer.first_name} ${contract.freelancer.last_name}`;
+        if (userRole === 'employer') {
+            return `${contract.gig_worker.first_name} ${contract.gig_worker.last_name}`;
         } else {
-            return `${contract.client.first_name} ${contract.client.last_name}`;
+            return `${contract.employer.first_name} ${contract.employer.last_name}`;
         }
     };
 
@@ -160,7 +160,7 @@ export default function Index({ auth, contracts, userRole }) {
                                             href={route('jobs.index')}
                                             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                         >
-                                            {userRole === 'client' ? 'Post a Job' : 'Browse Jobs'}
+                                            {userRole === 'employer' ? 'Post a Job' : 'Browse Jobs'}
                                         </Link>
                                     </div>
                                 </div>
@@ -173,7 +173,7 @@ export default function Index({ auth, contracts, userRole }) {
                                                     Contract
                                                 </th>
                                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    {userRole === 'client' ? 'Freelancer' : 'Client'}
+                                                    {userRole === 'employer' ? 'Gig Worker' : 'Employer'}
                                                 </th>
                                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Project

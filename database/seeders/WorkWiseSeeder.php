@@ -21,14 +21,14 @@ class WorkWiseSeeder extends Seeder
     {
         $this->command->info('🚀 Creating comprehensive sample data with AI match scores...');
 
-        // Create diverse client accounts
-        $client1 = User::create([
+        // Create diverse employer accounts
+        $employer1 = User::create([
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john.doe@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Mactan',
-            'user_type' => 'client',
+            'user_type' => 'employer',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'company_name' => 'Tech Startup Inc',
@@ -40,13 +40,13 @@ class WorkWiseSeeder extends Seeder
             'escrow_balance' => 15000.00,
         ]);
 
-        $client2 = User::create([
+        $employer2 = User::create([
             'first_name' => 'Jane',
             'last_name' => 'Smith',
             'email' => 'jane.smith@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Poblacion',
-            'user_type' => 'client',
+            'user_type' => 'employer',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'company_name' => 'Digital Agency Pro',
@@ -58,13 +58,13 @@ class WorkWiseSeeder extends Seeder
             'escrow_balance' => 8500.00,
         ]);
 
-        $client3 = User::create([
+        $employer3 = User::create([
             'first_name' => 'Michael',
             'last_name' => 'Chen',
             'email' => 'michael.chen@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Lahug',
-            'user_type' => 'client',
+            'user_type' => 'employer',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'company_name' => 'E-commerce Solutions Ltd',
@@ -76,14 +76,14 @@ class WorkWiseSeeder extends Seeder
             'escrow_balance' => 25000.00,
         ]);
 
-        // Create diverse freelancer accounts with different experience levels and skills
-        $freelancer1 = User::create([
+        // Create diverse gig worker accounts with different experience levels and skills
+        $gigWorker1 = User::create([
             'first_name' => 'Maria',
             'last_name' => 'Garcia',
             'email' => 'maria.garcia@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Basak',
-            'user_type' => 'freelancer',
+            'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Senior Full Stack Developer',
@@ -96,13 +96,13 @@ class WorkWiseSeeder extends Seeder
             'portfolio_url' => 'https://mariagarcia.dev',
         ]);
 
-        $freelancer2 = User::create([
+        $gigWorker2 = User::create([
             'first_name' => 'Carlos',
             'last_name' => 'Rodriguez',
             'email' => 'carlos.rodriguez@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Punta Engaño',
-            'user_type' => 'freelancer',
+            'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Senior UI/UX Designer',
@@ -115,13 +115,13 @@ class WorkWiseSeeder extends Seeder
             'portfolio_url' => 'https://carlosdesigns.com',
         ]);
 
-        $freelancer3 = User::create([
+        $gigWorker3 = User::create([
             'first_name' => 'Sarah',
             'last_name' => 'Johnson',
             'email' => 'sarah.johnson@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Agus',
-            'user_type' => 'freelancer',
+            'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Content Writer & SEO Specialist',
@@ -134,14 +134,14 @@ class WorkWiseSeeder extends Seeder
             'portfolio_url' => 'https://sarahjohnson.writer',
         ]);
 
-        // Beginner freelancer for lower match scores
-        $freelancer4 = User::create([
+        // Beginner gig worker for lower match scores
+        $gigWorker4 = User::create([
             'first_name' => 'Alex',
             'last_name' => 'Kim',
             'email' => 'alex.kim@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Talamban',
-            'user_type' => 'freelancer',
+            'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Junior Web Developer',
@@ -155,13 +155,13 @@ class WorkWiseSeeder extends Seeder
         ]);
 
         // Mobile developer for specific matches
-        $freelancer5 = User::create([
+        $gigWorker5 = User::create([
             'first_name' => 'Priya',
             'last_name' => 'Patel',
             'email' => 'priya.patel@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'IT Park',
-            'user_type' => 'freelancer',
+            'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Mobile App Developer',
@@ -175,13 +175,13 @@ class WorkWiseSeeder extends Seeder
         ]);
 
         // Data scientist for mismatch scenarios
-        $freelancer6 = User::create([
+        $gigWorker6 = User::create([
             'first_name' => 'David',
             'last_name' => 'Wilson',
             'email' => 'david.wilson@example.com',
             'password' => Hash::make('password'),
             'barangay' => 'Banilad',
-            'user_type' => 'freelancer',
+            'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Data Scientist',
@@ -199,7 +199,7 @@ class WorkWiseSeeder extends Seeder
 
         // High match job for Maria (Expert React/Laravel developer)
         $job1 = GigJob::create([
-            'employer_id' => $client1->id,
+            'employer_id' => $employer1->id,
             'title' => 'Senior React & Laravel Developer for E-commerce Platform',
             'description' => 'We need an experienced React and Laravel developer to build a comprehensive e-commerce platform. The project involves creating responsive components, building REST APIs, implementing payment integration, and ensuring scalability.',
             'required_skills' => ['React', 'Laravel', 'JavaScript', 'PHP', 'MySQL', 'REST API'],
@@ -214,7 +214,7 @@ class WorkWiseSeeder extends Seeder
 
         // Perfect match job for Carlos (Expert UI/UX Designer)
         $job2 = GigJob::create([
-            'employer_id' => $client2->id,
+            'employer_id' => $employer2->id,
             'title' => 'Senior UI/UX Designer for Mobile App',
             'description' => 'Looking for a talented senior UI/UX designer to create wireframes, user research, and high-fidelity designs for our new mobile application. Must have experience with mobile design patterns, prototyping, and user testing.',
             'required_skills' => ['UI Design', 'UX Design', 'Figma', 'Prototyping', 'User Research', 'Wireframing'],
@@ -229,7 +229,7 @@ class WorkWiseSeeder extends Seeder
 
         // Good match job for Sarah (Intermediate Content Writer)
         $job3 = GigJob::create([
-            'employer_id' => $client1->id,
+            'employer_id' => $employer1->id,
             'title' => 'Content Writer & SEO Specialist for Tech Blog',
             'description' => 'We need a skilled content writer to create engaging blog posts about technology trends, software development, and startup culture. Must be able to research topics, write in an engaging style, and optimize for SEO.',
             'required_skills' => ['Content Writing', 'SEO', 'Technical Writing', 'Blog Writing'],
@@ -244,7 +244,7 @@ class WorkWiseSeeder extends Seeder
 
         // Mobile app job - perfect for Priya
         $job4 = GigJob::create([
-            'employer_id' => $client3->id,
+            'employer_id' => $employer3->id,
             'title' => 'React Native E-commerce Mobile App Development',
             'description' => 'Looking for an expert mobile developer to build a comprehensive e-commerce mobile application using React Native. The app should support both iOS and Android, include payment integration, and have a modern UI.',
             'required_skills' => ['React Native', 'Mobile Development', 'iOS', 'Android', 'Firebase'],
@@ -259,7 +259,7 @@ class WorkWiseSeeder extends Seeder
 
         // Beginner-friendly job for Alex
         $job5 = GigJob::create([
-            'employer_id' => $client2->id,
+            'employer_id' => $employer2->id,
             'title' => 'Simple Landing Page Development',
             'description' => 'Need a simple, responsive landing page for our new product. Should be built with HTML, CSS, and basic JavaScript. Perfect for someone starting their career.',
             'required_skills' => ['HTML', 'CSS', 'JavaScript', 'Bootstrap'],
@@ -274,7 +274,7 @@ class WorkWiseSeeder extends Seeder
 
         // Mismatch job - Data Science (no good matches)
         $job6 = GigJob::create([
-            'employer_id' => $client1->id,
+            'employer_id' => $employer1->id,
             'title' => 'Machine Learning Model for Customer Analytics',
             'description' => 'We need a data scientist to build machine learning models for customer behavior analysis. Requires expertise in Python, TensorFlow, and statistical analysis.',
             'required_skills' => ['Python', 'Machine Learning', 'TensorFlow', 'Data Analysis', 'Statistics'],
@@ -289,7 +289,7 @@ class WorkWiseSeeder extends Seeder
 
         // Partial match job - requires some skills but not all
         $job7 = GigJob::create([
-            'employer_id' => $client2->id,
+            'employer_id' => $employer2->id,
             'title' => 'WordPress Website with Custom JavaScript',
             'description' => 'Need to build a WordPress website with custom JavaScript functionality. Some React knowledge would be helpful but not required.',
             'required_skills' => ['WordPress', 'JavaScript', 'PHP', 'CSS'],
@@ -307,7 +307,7 @@ class WorkWiseSeeder extends Seeder
         // Create sample bids for different scenarios
         Bid::create([
             'job_id' => $job1->id,
-            'freelancer_id' => $freelancer1->id,
+            'gig_worker_id' => $gigWorker1->id,
             'bid_amount' => 7200,
             'proposal_message' => 'Hi! I have extensive experience building React and Laravel applications. I can deliver a high-quality, scalable e-commerce platform that meets all your requirements. My portfolio includes several similar projects.',
             'estimated_days' => 42,
@@ -315,7 +315,7 @@ class WorkWiseSeeder extends Seeder
 
         Bid::create([
             'job_id' => $job2->id,
-            'freelancer_id' => $freelancer2->id,
+            'gig_worker_id' => $gigWorker2->id,
             'bid_amount' => 75,
             'proposal_message' => 'Hello! I specialize in mobile UI/UX design and have worked on numerous successful app projects. I can provide user research, wireframes, and pixel-perfect designs that will make your app stand out.',
             'estimated_days' => 20,
@@ -323,7 +323,7 @@ class WorkWiseSeeder extends Seeder
 
         $bid3 = Bid::create([
             'job_id' => $job3->id,
-            'freelancer_id' => $freelancer3->id,
+            'gig_worker_id' => $gigWorker3->id,
             'bid_amount' => 1500,
             'proposal_message' => 'I am a professional content writer with a strong background in technology writing. I can create engaging, SEO-optimized blog posts that will help establish your company as a thought leader in the tech space.',
             'estimated_days' => 12,
@@ -333,7 +333,7 @@ class WorkWiseSeeder extends Seeder
         // Mobile app bid
         Bid::create([
             'job_id' => $job4->id,
-            'freelancer_id' => $freelancer5->id,
+            'gig_worker_id' => $gigWorker5->id,
             'bid_amount' => 15000,
             'proposal_message' => 'I specialize in React Native development and have built several e-commerce mobile apps. I can deliver a high-quality, cross-platform solution with all the features you need.',
             'estimated_days' => 55,
@@ -342,7 +342,7 @@ class WorkWiseSeeder extends Seeder
         // Beginner job bid
         Bid::create([
             'job_id' => $job5->id,
-            'freelancer_id' => $freelancer4->id,
+            'gig_worker_id' => $gigWorker4->id,
             'bid_amount' => 450,
             'proposal_message' => 'I am a junior developer eager to work on this project. I have solid skills in HTML, CSS, and JavaScript and can deliver a clean, responsive landing page.',
             'estimated_days' => 6,
@@ -356,8 +356,8 @@ class WorkWiseSeeder extends Seeder
         // Create sample completed project with payment released
         $project1 = Project::create([
             'job_id' => $job3->id,
-            'client_id' => $client1->id,
-            'freelancer_id' => $freelancer3->id,
+            'employer_id' => $employer1->id,
+            'gig_worker_id' => $gigWorker3->id,
             'bid_id' => $bid1->id,
             'agreed_amount' => 1500,
             'platform_fee' => 75, // 5% platform fee
@@ -365,22 +365,22 @@ class WorkWiseSeeder extends Seeder
             'status' => 'completed',
             'started_at' => now()->subDays(20),
             'completed_at' => now()->subDays(3),
-            'completion_notes' => 'All blog posts delivered on time with excellent quality. Client was very satisfied with the SEO optimization.',
-            'client_approved' => true,
+            'completion_notes' => 'All blog posts delivered on time with excellent quality. Employer was very satisfied with the SEO optimization.',
+            'employer_approved' => true,
             'approved_at' => now()->subDays(2),
             'payment_released' => true,
             'payment_released_at' => now()->subDays(2),
         ]);
 
-        // Create another project that's completed but awaiting client approval (to test auto payment release)
+        // Create another project that's completed but awaiting employer approval (to test auto payment release)
         $bid2 = Bid::where('job_id', $job5->id)->first(); // Landing page project
         $bid2->update(['status' => 'accepted']);
         $job5->update(['status' => 'in_progress']);
 
         $project2 = Project::create([
             'job_id' => $job5->id,
-            'client_id' => $client2->id,
-            'freelancer_id' => $freelancer4->id,
+            'employer_id' => $employer2->id,
+            'gig_worker_id' => $gigWorker4->id,
             'bid_id' => $bid2->id,
             'agreed_amount' => 450,
             'platform_fee' => 22.50, // 5% platform fee
@@ -389,7 +389,7 @@ class WorkWiseSeeder extends Seeder
             'started_at' => now()->subDays(10),
             'completed_at' => now()->subDays(1),
             'completion_notes' => 'Landing page completed as requested. All responsive features working perfectly.',
-            'client_approved' => false, // Not yet approved - ready for testing
+            'employer_approved' => false, // Not yet approved - ready for testing
             'approved_at' => null,
             'payment_released' => false,
             'payment_released_at' => null,
@@ -402,8 +402,8 @@ class WorkWiseSeeder extends Seeder
 
         $project3 = Project::create([
             'job_id' => $job1->id,
-            'client_id' => $client1->id,
-            'freelancer_id' => $freelancer1->id,
+            'employer_id' => $employer1->id,
+            'gig_worker_id' => $gigWorker1->id,
             'bid_id' => $bid3->id,
             'agreed_amount' => 7200,
             'platform_fee' => 360, // 5% platform fee
@@ -412,7 +412,7 @@ class WorkWiseSeeder extends Seeder
             'started_at' => now()->subDays(15),
             'completed_at' => now()->subDays(2),
             'completion_notes' => 'E-commerce platform completed with all requested features. Fully responsive and optimized.',
-            'client_approved' => false, // Not yet approved - ready for testing
+            'employer_approved' => false, // Not yet approved - ready for testing
             'approved_at' => null,
             'payment_released' => false,
             'payment_released_at' => null,
@@ -421,8 +421,8 @@ class WorkWiseSeeder extends Seeder
         // Create sample transactions
         Transaction::create([
             'project_id' => $project1->id,
-            'payer_id' => $client1->id,
-            'payee_id' => $freelancer3->id,
+            'payer_id' => $employer1->id,
+            'payee_id' => $gigWorker3->id,
             'amount' => 1500,
             'platform_fee' => 75,
             'net_amount' => 1425,
@@ -436,8 +436,8 @@ class WorkWiseSeeder extends Seeder
 
         Transaction::create([
             'project_id' => $project1->id,
-            'payer_id' => $client1->id,
-            'payee_id' => $freelancer3->id,
+            'payer_id' => $employer1->id,
+            'payee_id' => $gigWorker3->id,
             'amount' => 1425,
             'platform_fee' => 0,
             'net_amount' => 1425,
@@ -451,8 +451,8 @@ class WorkWiseSeeder extends Seeder
         // Create escrow transaction for the second project (awaiting approval)
         Transaction::create([
             'project_id' => $project2->id,
-            'payer_id' => $client2->id,
-            'payee_id' => $freelancer4->id,
+            'payer_id' => $employer2->id,
+            'payee_id' => $gigWorker4->id,
             'amount' => 450,
             'platform_fee' => 22.50,
             'net_amount' => 427.50,
@@ -467,8 +467,8 @@ class WorkWiseSeeder extends Seeder
         // Create escrow transaction for the third project (awaiting approval)
         Transaction::create([
             'project_id' => $project3->id,
-            'payer_id' => $client1->id,
-            'payee_id' => $freelancer1->id,
+            'payer_id' => $employer1->id,
+            'payee_id' => $gigWorker1->id,
             'amount' => 7200,
             'platform_fee' => 360,
             'net_amount' => 6840,
@@ -482,8 +482,8 @@ class WorkWiseSeeder extends Seeder
 
         // Create sample messages
         Message::create([
-            'sender_id' => $client1->id,
-            'receiver_id' => $freelancer3->id,
+            'sender_id' => $employer1->id,
+            'receiver_id' => $gigWorker3->id,
             'project_id' => $project1->id,
             'message' => 'Hi Sarah! I\'m excited to work with you on this content project. When can we start?',
             'type' => 'text',
@@ -493,8 +493,8 @@ class WorkWiseSeeder extends Seeder
         ]);
 
         Message::create([
-            'sender_id' => $freelancer3->id,
-            'receiver_id' => $client1->id,
+            'sender_id' => $gigWorker3->id,
+            'receiver_id' => $employer1->id,
             'project_id' => $project1->id,
             'message' => 'Hello John! Thank you for choosing me. I can start immediately. I\'ll send you the content outline by tomorrow.',
             'type' => 'text',
@@ -504,8 +504,8 @@ class WorkWiseSeeder extends Seeder
         ]);
 
         Message::create([
-            'sender_id' => $client1->id,
-            'receiver_id' => $freelancer3->id,
+            'sender_id' => $employer1->id,
+            'receiver_id' => $gigWorker3->id,
             'project_id' => $project1->id,
             'message' => 'Perfect! Looking forward to seeing the content. Please make sure to include SEO optimization as we discussed.',
             'type' => 'text',
@@ -517,8 +517,8 @@ class WorkWiseSeeder extends Seeder
         // Create sample reviews
         Review::create([
             'project_id' => $project1->id,
-            'reviewer_id' => $client1->id,
-            'reviewee_id' => $freelancer3->id,
+            'reviewer_id' => $employer1->id,
+            'reviewee_id' => $gigWorker3->id,
             'rating' => 5,
             'comment' => 'Excellent work! Sarah delivered high-quality content that exceeded our expectations. Great SEO optimization and perfect timing.',
             'criteria_ratings' => [
@@ -531,10 +531,10 @@ class WorkWiseSeeder extends Seeder
 
         Review::create([
             'project_id' => $project1->id,
-            'reviewer_id' => $freelancer3->id,
-            'reviewee_id' => $client1->id,
+            'reviewer_id' => $gigWorker3->id,
+            'reviewee_id' => $employer1->id,
             'rating' => 5,
-            'comment' => 'Great client to work with! Clear requirements, prompt payments, and very professional. Highly recommended!',
+            'comment' => 'Great employer to work with! Clear requirements, prompt payments, and very professional. Highly recommended!',
             'criteria_ratings' => [
                 'communication' => 5,
                 'clarity' => 5,
@@ -547,12 +547,12 @@ class WorkWiseSeeder extends Seeder
         $this->command->info('');
         $this->command->info('🎯 Demo Accounts Created:');
         $this->command->info('');
-        $this->command->info('👤 CLIENTS:');
+        $this->command->info('👤 EMPLOYERS:');
         $this->command->info('   • john.doe@example.com / password (Tech Startup - $15,000 balance)');
         $this->command->info('   • jane.smith@example.com / password (Digital Agency - $8,500 balance)');
         $this->command->info('   • michael.chen@example.com / password (E-commerce - $25,000 balance)');
         $this->command->info('');
-        $this->command->info('💼 FREELANCERS:');
+        $this->command->info('💼 GIG WORKERS:');
         $this->command->info('   • maria.garcia@example.com / password (Expert Full Stack - React/Laravel)');
         $this->command->info('   • carlos.rodriguez@example.com / password (Expert UI/UX Designer)');
         $this->command->info('   • sarah.johnson@example.com / password (Intermediate Content Writer)');
@@ -582,17 +582,17 @@ class WorkWiseSeeder extends Seeder
         $this->command->info(' SAMPLE DATA INCLUDES:');
         $this->command->info('   • 7 diverse job postings with different requirements');
         $this->command->info('   • 1 completed project with payment released (Sarah\'s content project)');
-        $this->command->info('   • 2 completed projects awaiting client approval (Alex\'s landing page & Maria\'s e-commerce)');
+        $this->command->info('   • 2 completed projects awaiting employer approval (Alex\'s landing page & Maria\'s e-commerce)');
         $this->command->info('   • Sample messages, reviews, and bids');
-        $this->command->info('   • Freelancers with different experience levels');
-        $this->command->info('   • Clients with funded escrow balances');
+        $this->command->info('   • Gig workers with different experience levels');
+        $this->command->info('   • Employers with funded escrow balances');
         $this->command->info('');
         $this->command->info(' PAYMENT TESTING:');
         $this->command->info('   • Log in as jane.smith@example.com to approve Alex\'s completed project (₱427.50)');
         $this->command->info('   • Log in as john.doe@example.com to approve Maria\'s completed project (₱6,840.00)');
         $this->command->info('   • This will test automatic payment release functionality');
-        $this->command->info('   • Log in as freelancers to see payments move from pending to available balance');
+        $this->command->info('   • Log in as gig workers to see payments move from pending to available balance');
         $this->command->info('');
-        $this->command->info('🚀 Ready to test AI matching! Log in as any freelancer to see personalized job recommendations.');
+        $this->command->info('🚀 Ready to test AI matching! Log in as any gig worker to see personalized job recommendations.');
     }
 }

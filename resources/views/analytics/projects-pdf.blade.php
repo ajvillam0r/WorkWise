@@ -194,7 +194,7 @@
                 <thead>
                     <tr>
                         <th>Project</th>
-                        <th>{{ $userRole === 'freelancer' ? 'Client' : 'Freelancer' }}</th>
+                        <th>{{ $userRole === 'gig_worker' ? 'Employer' : 'Gig Worker' }}</th>
                         <th>Amount</th>
                         <th>Status</th>
                         <th>Started</th>
@@ -206,7 +206,7 @@
                     @foreach($data as $project)
                         <tr>
                             <td>{{ $project['Project'] }}</td>
-                            <td>{{ $userRole === 'freelancer' ? $project['Client'] : $project['Freelancer'] }}</td>
+                            <td>{{ $userRole === 'gig_worker' ? $project['Employer'] : $project['Gig Worker'] }}</td>
                             <td class="amount">₱{{ number_format($project['Amount'], 2) }}</td>
                             <td>
                                 <span class="status status-{{ strtolower($project['Status']) }}">

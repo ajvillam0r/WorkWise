@@ -38,7 +38,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                 throw new Error('CSRF token not found. Please refresh the page and try again.');
             }
 
-            const response = await fetch('/client/wallet/create-intent', {
+            const response = await fetch('/employer/wallet/create-intent', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -91,11 +91,16 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
         setAmount('');
     };
 
+    const formatAmount = (value) => {
+        const number = Number(value ?? 0);
+        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight"> Client Wallet</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight"> Employer Wallet</h2>}
         >
-            <Head title="Client Wallet" />
+            <Head title="Employer Wallet" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -113,7 +118,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Escrow Balance</h3>
                                     <div className="text-3xl font-bold text-green-600">
-                                        {currency.symbol}{parseFloat(escrowBalance || 0).toFixed(2)}
+                                        {currency.symbol}{formatAmount(escrowBalance || 0)}
                                     </div>
                                     <p className="text-sm text-gray-500 mt-1">Available for project payments</p>
                                 </div>
@@ -137,7 +142,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Total Spent</p>
                                     <p className="text-2xl font-bold text-blue-600">
-                                        {currency.symbol}{parseFloat(totalSpent || 0).toFixed(2)}
+                                        {currency.symbol}{formatAmount(totalSpent || 0)}
                                     </p>
                                 </div>
                             </div>
@@ -156,7 +161,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                                                 <div>
                                                     <h4 className="font-medium text-gray-900">{project.job.title}</h4>
                                                     <p className="text-sm text-gray-600">
-                                                        Freelancer: {project.freelancer.first_name} {project.freelancer.last_name}
+                                                        Gig Worker: {project.gig_worker.first_name} {project.gig_worker.last_name}
                                                     </p>
                                                     <p className="text-sm text-gray-500">
                                                         Status: {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
@@ -164,7 +169,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-lg font-bold text-blue-600">
-                                                        {currency.symbol}{parseFloat(project.agreed_amount).toFixed(2)}
+                                                        {currency.symbol}{formatAmount(project.agreed_amount)}
                                                     </p>
                                                     {project.payment_released && (
                                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -207,7 +212,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                                                         {new Date(deposit.created_at).toLocaleDateString()}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {currency.symbol}{parseFloat(deposit.amount).toFixed(2)}
+                                                        {currency.symbol}{formatAmount(deposit.amount)}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -230,7 +235,7 @@ export default function ClientWallet({ deposits, paidProjects, transactions, tot
                                     </svg>
                                     <h3 className="mt-2 text-sm font-medium text-gray-900">No deposits yet</h3>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        Add funds to your escrow balance to start hiring freelancers.
+                                        Add funds to your escrow balance to start hiring gig workers.
                                     </p>
                                 </div>
                             )}

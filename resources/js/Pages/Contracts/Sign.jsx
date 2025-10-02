@@ -3,9 +3,12 @@ import { Head, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 
-export default function Sign({ auth, contract, userRole, user }) {
+export default function Sign({ auth, contract, userRole, user, waitingForEmployer, employerName }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showWaitingModal, setShowWaitingModal] = useState(waitingForEmployer || false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     
     const { data, setData, post, processing, errors } = useForm({
         full_name: `${user.first_name} ${user.last_name}`,
@@ -31,8 +34,30 @@ export default function Sign({ auth, contract, userRole, user }) {
             })
             .catch((error) => {
                 console.error('Contract signing error:', error);
+
+                // Check if this is a "waiting for employer" error
+                if (error.response?.data?.waiting_for_employer || error.response?.data?.message?.includes('employer signs first')) {
+                    setShowWaitingModal(true);
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Handle other errors with better messaging
+                let errorMessage = 'Failed to sign contract. Please try again.';
+
+                if (error.response?.data?.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.response?.status === 500) {
+                    errorMessage = 'Server error occurred. Please try again later or contact support if the problem persists.';
+                } else if (error.response?.status === 403) {
+                    errorMessage = 'You are not authorized to sign this contract or have already signed it.';
+                } else if (error.response?.status === 422) {
+                    errorMessage = 'Invalid data provided. Please check your information and try again.';
+                }
+
+                setErrorMessage(errorMessage);
+                setShowErrorModal(true);
                 setIsSubmitting(false);
-                // Handle error display here if needed
             })
             .finally(() => {
                 setIsSubmitting(false);
@@ -87,7 +112,7 @@ export default function Sign({ auth, contract, userRole, user }) {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <h4 className="font-medium text-gray-700 mb-2">Project Details</h4>
-                                    <p className="text-sm text-gray-600 mb-1"><strong>Title:</strong> {contract.job.title}</p>
+                                    <p className="text-sm text-gray-600 mb-1"><strong>Title:</strong> {contract.job?.title || 'N/A'}</p>
                                     <p className="text-sm text-gray-600 mb-1"><strong>Total Payment:</strong> {formatCurrency(contract.total_payment)}</p>
                                     <p className="text-sm text-gray-600 mb-1"><strong>Contract Type:</strong> {contract.contract_type}</p>
                                 </div>
@@ -96,7 +121,7 @@ export default function Sign({ auth, contract, userRole, user }) {
                                     <h4 className="font-medium text-gray-700 mb-2">Timeline</h4>
                                     <p className="text-sm text-gray-600 mb-1"><strong>Start Date:</strong> {formatDate(contract.project_start_date)}</p>
                                     <p className="text-sm text-gray-600 mb-1"><strong>End Date:</strong> {formatDate(contract.project_end_date)}</p>
-                                    <p className="text-sm text-gray-600 mb-1"><strong>Duration:</strong> {contract.bid.estimated_days} days</p>
+                                    <p className="text-sm text-gray-600 mb-1"><strong>Duration:</strong> {contract.bid?.estimated_days || 'N/A'} days</p>
                                 </div>
                             </div>
 
@@ -104,14 +129,14 @@ export default function Sign({ auth, contract, userRole, user }) {
                                 <h4 className="font-medium text-gray-700 mb-2">Parties</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="bg-gray-50 p-3 rounded">
-                                        <p className="font-medium text-gray-700">Client</p>
-                                        <p className="text-sm text-gray-600">{contract.client.first_name} {contract.client.last_name}</p>
-                                        <p className="text-sm text-gray-600">{contract.client.email}</p>
+                                        <p className="font-medium text-gray-700">Employer</p>
+                                        <p className="text-sm text-gray-600">{contract.employer?.first_name} {contract.employer?.last_name}</p>
+                                        <p className="text-sm text-gray-600">{contract.employer?.email}</p>
                                     </div>
                                     <div className="bg-gray-50 p-3 rounded">
-                                        <p className="font-medium text-gray-700">Freelancer</p>
-                                        <p className="text-sm text-gray-600">{contract.freelancer.first_name} {contract.freelancer.last_name}</p>
-                                        <p className="text-sm text-gray-600">{contract.freelancer.email}</p>
+                                        <p className="font-medium text-gray-700">Gig Worker</p>
+                                        <p className="text-sm text-gray-600">{contract.gigWorker?.first_name} {contract.gigWorker?.last_name}</p>
+                                        <p className="text-sm text-gray-600">{contract.gigWorker?.email}</p>
                                     </div>
                                 </div>
                             </div>
@@ -139,7 +164,7 @@ export default function Sign({ auth, contract, userRole, user }) {
                                     </div>
                                     <div className="ml-3">
                                         <h4 className="text-sm font-medium text-blue-800">
-                                            Ready to Sign as {userRole === 'client' ? 'Client' : 'Freelancer'}
+                                            Ready to Sign as {userRole === 'employer' ? 'Employer' : 'Gig Worker'}
                                         </h4>
                                         <p className="text-sm text-blue-700 mt-1">
                                             By clicking "Confirm and Sign," you agree to the terms of this contract.
@@ -221,6 +246,70 @@ export default function Sign({ auth, contract, userRole, user }) {
                                 <p className="text-sm text-gray-500">
                                     Your signature has been recorded. Redirecting...
                                 </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Waiting for Employer Modal */}
+            {showWaitingModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div className="mt-3 text-center">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+                                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">Waiting for Employer Signature</h3>
+                            <div className="mt-2 px-7 py-3">
+                                <p className="text-sm text-gray-500">
+                                    You cannot sign this contract until {employerName || 'the employer'} signs first.
+                                </p>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    Please wait for the employer to review and sign the contract before proceeding.
+                                </p>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    You will be notified once the employer has signed the contract.
+                                </p>
+                            </div>
+                            <div className="mt-4">
+                                <button
+                                    onClick={() => setShowWaitingModal(false)}
+                                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    I Understand
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Error Modal */}
+            {showErrorModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div className="mt-3 text-center">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">Contract Signing Error</h3>
+                            <div className="mt-2 px-7 py-3">
+                                <p className="text-sm text-gray-500">
+                                    {errorMessage}
+                                </p>
+                            </div>
+                            <div className="mt-4">
+                                <button
+                                    onClick={() => setShowErrorModal(false)}
+                                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                >
+                                    Close
+                                </button>
                             </div>
                         </div>
                     </div>

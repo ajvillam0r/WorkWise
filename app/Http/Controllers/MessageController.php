@@ -130,6 +130,25 @@ class MessageController extends Controller
 
         $message->load(['sender', 'receiver']);
 
+        // Send notification to receiver about new message
+        $notificationService = new \App\Services\NotificationService();
+        $notificationService->create([
+            'user_id' => $request->receiver_id,
+            'type' => 'new_message',
+            'title' => 'New Message',
+            'message' => $message->type === 'file'
+                ? "📎 {$message->sender->first_name} sent you a file: {$message->attachment_name}"
+                : "💬 {$message->sender->first_name}: {$message->message}",
+            'data' => [
+                'sender_id' => $message->sender_id,
+                'message_id' => $message->id,
+                'message_type' => $message->type,
+                'attachment_name' => $message->attachment_name
+            ],
+            'action_url' => route('messages.conversation', ['user' => $message->sender_id]),
+            'icon' => 'comments'
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => $message
@@ -213,5 +232,90 @@ class MessageController extends Controller
             ->get();
 
         return response()->json(['users' => $users]);
+    }
+
+    /**
+     * Get recent conversations for dropdown
+     */
+    public function getRecentConversations()
+    {
+        $userId = auth()->id();
+
+        // Get conversations (unique users the current user has messaged with)
+        $conversations = Message::where(function($query) use ($userId) {
+            $query->where('sender_id', $userId)
+                  ->orWhere('receiver_id', $userId);
+        })
+        ->with(['sender:id,first_name,last_name,user_type,professional_title',
+                'receiver:id,first_name,last_name,user_type,professional_title'])
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->groupBy(function($message) use ($userId) {
+            // Group by the other user in the conversation
+            return $message->sender_id === $userId
+                ? $message->receiver_id
+                : $message->sender_id;
+        })
+        ->map(function($messages) use ($userId) {
+            $latestMessage = $messages->first();
+            $otherUser = $latestMessage->sender_id === $userId
+                ? $latestMessage->receiver
+                : $latestMessage->sender;
+
+            $unreadCount = $messages->where('receiver_id', $userId)
+                                  ->where('is_read', false)
+                                  ->count();
+
+            return [
+                'user' => $otherUser,
+                'latest_message' => [
+                    'message' => $latestMessage->message,
+                    'type' => $latestMessage->type,
+                    'attachment_name' => $latestMessage->attachment_name,
+                    'created_at' => $latestMessage->created_at
+                ],
+                'unread_count' => $unreadCount,
+                'last_activity' => $latestMessage->created_at
+            ];
+        })
+        ->sortByDesc('last_activity')
+        ->take(5) // Limit to 5 recent conversations
+        ->values()
+        ->all();
+
+        return response()->json(['conversations' => $conversations]);
+    }
+
+    /**
+     * Get unread message count for the authenticated user
+     */
+    public function getUnreadCount()
+    {
+        $userId = auth()->id();
+        $unreadCount = Message::where('receiver_id', $userId)
+            ->where('is_read', false)
+            ->count();
+
+        return response()->json(['count' => $unreadCount]);
+    }
+
+    /**
+     * Get messages for a specific conversation
+     */
+    public function getConversation($userId)
+    {
+        $currentUserId = auth()->id();
+
+        $messages = Message::where(function($query) use ($currentUserId, $userId) {
+            $query->where('sender_id', $currentUserId)
+                  ->where('receiver_id', $userId);
+        })->orWhere(function($query) use ($currentUserId, $userId) {
+            $query->where('sender_id', $userId)
+                  ->where('receiver_id', $currentUserId);
+        })->with(['sender', 'receiver'])
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+        return response()->json(['messages' => $messages]);
     }
 }

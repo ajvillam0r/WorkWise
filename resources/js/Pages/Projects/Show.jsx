@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SuccessModal from '@/Components/SuccessModal';
+import MessagesModal from '@/Components/MessagesModal';
 import { formatDistanceToNow } from 'date-fns';
 
 // Confirmation Modal Component
@@ -86,12 +87,14 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
     );
 };
 
-export default function ProjectShow({ project, hasPayment, canReview, isClient }) {
+export default function ProjectShow({ project, hasPayment, canReview, isEmployer }) {
     const { auth } = usePage().props;
     const [showReviewForm, setShowReviewForm] = useState(false);
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [showCompletionForm, setShowCompletionForm] = useState(false);
     const [completionError, setCompletionError] = useState(null);
+    const [showMessagesModal, setShowMessagesModal] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState(null);
 
     // Helper function to safely parse required_skills
     const parseSkills = (skills) => {
@@ -164,7 +167,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
             isOpen: true,
             action: 'approve',
             title: 'Approve Project Completion',
-            message: 'Are you sure you want to approve this project as completed? This will automatically release the payment to the freelancer.',
+            message: 'Are you sure you want to approve this project as completed? This will automatically release the payment to the gig worker.',
             confirmText: 'Approve & Release Payment',
             confirmColor: 'blue'
         });
@@ -175,7 +178,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
             isOpen: true,
             action: 'release',
             title: 'Release Payment',
-            message: 'Are you sure you want to release the payment? This action cannot be undone and the funds will be transferred to the freelancer immediately.',
+            message: 'Are you sure you want to release the payment? This action cannot be undone and the funds will be transferred to the gig worker immediately.',
             confirmText: 'Release Payment',
             confirmColor: 'green'
         });
@@ -188,7 +191,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                     setConfirmModal({ ...confirmModal, isOpen: false });
                     setSuccessModal({
                         isOpen: true,
-                        message: 'Project approved successfully! Payment has been automatically released to the freelancer.'
+                        message: `Project approved successfully! Payment of ₱${project.net_amount} has been automatically sent to ${project.gig_worker?.first_name} ${project.gig_worker?.last_name}.`
                     });
                 },
                 onError: () => setConfirmModal({ ...confirmModal, isOpen: false })
@@ -199,7 +202,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                     setConfirmModal({ ...confirmModal, isOpen: false });
                     setSuccessModal({
                         isOpen: true,
-                        message: 'Payment released successfully! Funds have been transferred to the freelancer.'
+                        message: `Payment of ₱${project.net_amount} has been successfully sent to ${project.gig_worker?.first_name} ${project.gig_worker?.last_name}!`
                     });
                 },
                 onError: () => setConfirmModal({ ...confirmModal, isOpen: false })
@@ -211,6 +214,11 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
         if (!processing) {
             setConfirmModal({ ...confirmModal, isOpen: false });
         }
+    };
+
+    const handleSendMessage = (userId) => {
+        setSelectedUserId(userId);
+        setShowMessagesModal(true);
     };
 
     const submitReview = (e) => {
@@ -247,7 +255,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                 resetCompletion();
                 setSuccessModal({
                     isOpen: true,
-                    message: 'Project marked as complete! The client will be notified to review and approve your work.'
+                    message: 'Project marked as complete! The employer will be notified to review and approve your work.'
                 });
                 // Refresh the page after modal closes to show updated status
                 setTimeout(() => {
@@ -276,7 +284,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                             {project.job.title}
                         </h2>
                         <p className="text-sm text-gray-600 mt-1">
-                            Project with {isClient ? project.freelancer.first_name : project.client.first_name} {isClient ? project.freelancer.last_name : project.client.last_name}
+                            Project with {isEmployer ? project.gig_worker.first_name : project.employer.first_name} {isEmployer ? project.gig_worker.last_name : project.employer.last_name}
                         </p>
                     </div>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(project.status)}`}>
@@ -305,7 +313,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                             <dt className="text-sm font-medium text-gray-500">Required Skills</dt>
                                             <dd className="mt-1">
                                                 <div className="flex flex-wrap gap-2">
-                                                    {parseSkills(project.job.required_skills).map((skill, index) => (
+                                                    {parseSkills(project?.job?.required_skills || []).map((skill, index) => (
                                                         <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                             {skill}
                                                         </span>
@@ -327,7 +335,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                     <div className="p-6">
                                         <h3 className="text-lg font-semibold mb-4">Project Actions</h3>
                                         <div className="flex flex-wrap gap-3">
-                                            {!isClient && (
+                                            {!isEmployer && (
                                                 <button
                                                     onClick={handleComplete}
                                                     className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -336,7 +344,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                                 </button>
                                             )}
                                             
-                                            {isClient && (
+                                            {isEmployer && (
                                                 <button
                                                     onClick={() => setShowRevisionForm(true)}
                                                     className="inline-flex items-center px-4 py-2 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700 focus:bg-yellow-700 active:bg-yellow-900 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -345,12 +353,12 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                                 </button>
                                             )}
 
-                                            <Link
-                                                href={`/messages/${isClient ? project.freelancer.id : project.client.id}`}
+                                            <button
+                                                onClick={() => handleSendMessage(isEmployer ? project.gig_worker.id : project.employer.id)}
                                                 className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                             >
                                                 💬 Send Message
-                                            </Link>
+                                            </button>
                                         </div>
 
                                         {/* Completion Form Modal */}
@@ -373,7 +381,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                                                 onChange={e => setCompletionData('completion_notes', e.target.value)}
                                                                 rows={4}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                placeholder="Describe what you've completed and any final notes for the client..."
+                                                                placeholder="Describe what you've completed and any final notes for the employer..."
                                                                 required
                                                             />
                                                         </div>
@@ -439,7 +447,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                         </div>
 
                                         <div className="flex flex-wrap gap-3">
-                                            {isClient && !project.client_approved && (
+                                            {isEmployer && !project.employer_approved && (
                                                 <button
                                                     onClick={handleApprove}
                                                     className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -448,7 +456,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                                 </button>
                                             )}
 
-                                            {isClient && project.client_approved && hasPayment && !project.payment_released && (
+                                            {isEmployer && project.employer_approved && hasPayment && !project.payment_released && (
                                                 <button
                                                     onClick={handleReleasePayment}
                                                     className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -482,7 +490,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                                     <div className="w-24 flex-shrink-0 text-gray-500">Completed:</div>
                                                     <div className="text-gray-900">{formatDistanceToNow(new Date(project.completed_at))} ago</div>
                                                 </div>
-                                                {project.client_approved && (
+                                                {project.employer_approved && (
                                                     <div className="flex items-center text-sm">
                                                         <div className="w-24 flex-shrink-0 text-gray-500">Approved:</div>
                                                         <div className="text-gray-900">{formatDistanceToNow(new Date(project.approved_at))} ago</div>
@@ -607,12 +615,12 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                 <div className="p-6">
                                     <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                                     <div className="space-y-2">
-                                        <Link
-                                            href={`/messages/${isClient ? project.freelancer.id : project.client.id}`}
+                                        <button
+                                            onClick={() => handleSendMessage(isEmployer ? project.gig_worker.id : project.employer.id)}
                                             className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
                                         >
                                             💬 Send Message
-                                        </Link>
+                                        </button>
                                         <Link
                                             href="/payment/history"
                                             className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
@@ -620,7 +628,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                                             💳 Payment History
                                         </Link>
                                         <Link
-                                            href={`/reports/create?user_id=${isClient ? project.freelancer.id : project.client.id}&project_id=${project.id}`}
+                                            href={`/reports/create?user_id=${isEmployer ? project.gig_worker.id : project.employer.id}&project_id=${project.id}`}
                                             className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md"
                                         >
                                             🚨 Report Issue
@@ -753,7 +761,15 @@ export default function ProjectShow({ project, hasPayment, canReview, isClient }
                 isOpen={successModal.isOpen}
                 onClose={() => setSuccessModal({ isOpen: false, message: '' })}
                 message={successModal.message}
-                duration={1000}
+                duration={successModal.message.toLowerCase().includes('payment') ? 4000 : 2000}
+                showProcessing={!successModal.message.toLowerCase().includes('payment')}
+            />
+
+            {/* Messages Modal */}
+            <MessagesModal
+                isOpen={showMessagesModal}
+                onClose={() => setShowMessagesModal(false)}
+                initialUserId={selectedUserId}
             />
         </AuthenticatedLayout>
     );

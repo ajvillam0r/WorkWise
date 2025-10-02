@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatDistanceToNow } from 'date-fns';
@@ -39,20 +39,31 @@ export default function JobsIndex({ jobs, filters = {} }) {
         confirmColor: 'red'
     });
 
-    const isClient = auth.user.user_type === 'client';
+    const isEmployer = auth.user?.user_type === 'employer';
     const [processing, setProcessing] = useState(false);
 
-    const handleSearch = () => {
-        router.get('/jobs', {
-            search,
-            category: selectedCategory !== 'all' ? selectedCategory : '',
-            budget_range: budgetRange !== 'all' ? budgetRange : '',
-            experience_level: experienceLevel !== 'all' ? experienceLevel : '',
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-        });
-    };
+    // Debounced search function
+    const debouncedSearch = useCallback(() => {
+        const timeoutId = setTimeout(() => {
+            router.get('/jobs', {
+                search: search || '',
+                category: selectedCategory !== 'all' ? selectedCategory : '',
+                budget_range: budgetRange !== 'all' ? budgetRange : '',
+                experience_level: experienceLevel !== 'all' ? experienceLevel : '',
+            }, {
+                preserveState: true,
+                preserveScroll: true,
+            });
+        }, 500); // 500ms debounce delay
+
+        return () => clearTimeout(timeoutId);
+    }, [search, selectedCategory, budgetRange, experienceLevel]);
+
+    // Trigger search when any filter changes
+    useEffect(() => {
+        const cleanup = debouncedSearch();
+        return cleanup;
+    }, [debouncedSearch]);
 
     const clearFilters = () => {
         setSearch('');
@@ -62,11 +73,16 @@ export default function JobsIndex({ jobs, filters = {} }) {
         router.get('/jobs');
     };
 
+    const formatAmount = (value) => {
+        const number = Number(value ?? 0);
+        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     const getBudgetDisplay = (job) => {
         if (job.budget_type === 'fixed') {
-            return `₱${job.budget_min} - ₱${job.budget_max}`;
+            return `₱${formatAmount(job.budget_min)} - ₱${formatAmount(job.budget_max)}`;
         }
-        return `₱${job.budget_min} - ₱${job.budget_max}/hr`;
+        return `₱${formatAmount(job.budget_min)} - ₱${formatAmount(job.budget_max)}/hr`;
     };
 
     const getExperienceBadge = (level) => {
@@ -149,16 +165,16 @@ export default function JobsIndex({ jobs, filters = {} }) {
                 <div className="flex justify-between items-center">
                     <div>
                         <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                            {isClient ? 'My Posted Jobs' : 'Browse Jobs'}
+                            {isEmployer ? 'My Posted Jobs' : 'Browse Jobs'}
                         </h2>
                         <p className="text-sm text-gray-600 mt-1">
-                            {isClient 
+                            {isEmployer
                                 ? 'Manage your job postings and review proposals'
-                                : 'Find your next freelance opportunity'
+                                : 'Find your next gig work opportunity'
                             }
                         </p>
                     </div>
-                    {isClient && (
+                    {isEmployer && (
                         <Link
                             href={route('jobs.create')}
                             className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -169,12 +185,12 @@ export default function JobsIndex({ jobs, filters = {} }) {
                 </div>
             }
         >
-            <Head title={isClient ? 'My Jobs' : 'Browse Jobs'} />
+            <Head title={isEmployer ? 'My Jobs' : 'Browse Jobs'} />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {/* Search and Filters */}
-                    {!isClient && (
+                    {!isEmployer && (
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                             <div className="p-6">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -185,7 +201,6 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                             onChange={(e) => setSearch(e.target.value)}
                                             placeholder="Search jobs by title, skills, or description..."
                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                         />
                                     </div>
                                     <div>
@@ -216,12 +231,6 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                 </div>
                                 <div className="flex items-center space-x-3">
                                     <button
-                                        onClick={handleSearch}
-                                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                    >
-                                        🔍 Search Jobs
-                                    </button>
-                                    <button
                                         onClick={clearFilters}
                                         className="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                     >
@@ -244,15 +253,15 @@ export default function JobsIndex({ jobs, filters = {} }) {
                             <div className="p-12 text-center">
                                 <div className="text-6xl mb-4">💼</div>
                                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                    {isClient ? 'No jobs posted yet' : 'No jobs found'}
+                                    {isEmployer ? 'No jobs posted yet' : 'No jobs found'}
                                 </h3>
                                 <p className="text-gray-600 mb-6">
-                                    {isClient 
-                                        ? "Start by posting your first job to find talented freelancers."
+                                    {isEmployer
+                                        ? "Start by posting your first job to find talented gig workers."
                                         : "Try adjusting your search criteria or check back later for new opportunities."
                                     }
                                 </p>
-                                {isClient && (
+                                {isEmployer && (
                                     <Link
                                         href={route('jobs.create')}
                                         className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -283,7 +292,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                                     </span>
                                                 </div>
 
-                                                <p className="text-gray-700 mb-4 line-clamp-3">
+                                                <p className="text-gray-700 mb-4 line-clamp-3 break-all">
                                                     {job.description}
                                                 </p>
 
@@ -317,7 +326,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                                 <div className="mb-4">
                                                     <div className="text-sm text-gray-500 mb-2">Required Skills</div>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {parseSkills(job.required_skills).map((skill, index) => (
+                                                        {parseSkills(job?.required_skills || []).map((skill, index) => (
                                                             <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                                 {skill}
                                                             </span>
@@ -328,9 +337,9 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                                                         <span>
-                                                            Posted by: 
+                                                            Posted by:
                                                             <span className="font-medium ml-1">
-                                                                {job.employer ? `${job.employer.first_name} ${job.employer.last_name}` : 'Client'}
+                                                                {job.employer ? `${job.employer.first_name} ${job.employer.last_name}` : 'Employer'}
                                                             </span>
                                                         </span>
                                                         <span>•</span>
@@ -343,7 +352,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                                         )}
                                                     </div>
                                                     <div className="flex items-center space-x-2">
-                                                        {isClient ? (
+                                                        {isEmployer ? (
                                                             <>
                                                                 <Link
                                                                     href={`/jobs/${job.id}/edit`}
@@ -451,8 +460,8 @@ export default function JobsIndex({ jobs, filters = {} }) {
                         </div>
                     )}
 
-                    {/* Quick Stats for Freelancers */}
-                    {!isClient && jobs.data && jobs.data.length > 0 && (
+                    {/* Quick Stats for Gig Workers */}
+                    {!isEmployer && jobs.data && jobs.data.length > 0 && (
                         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
                             <h3 className="text-lg font-semibold text-blue-900 mb-4">Market Insights</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
@@ -463,7 +472,7 @@ export default function JobsIndex({ jobs, filters = {} }) {
                                 <div>
                                     <div className="font-medium">Average Budget</div>
                                     <div className="text-2xl font-bold text-green-600">
-                                        ${Math.round(jobs.data.reduce((sum, job) => sum + ((job.budget_min + job.budget_max) / 2), 0) / jobs.data.length) || 0}
+                                        ₱{formatAmount(Math.round(jobs.data.reduce((sum, job) => sum + ((job.budget_min + job.budget_max) / 2), 0) / jobs.data.length) || 0)}
                                     </div>
                                 </div>
                                 <div>

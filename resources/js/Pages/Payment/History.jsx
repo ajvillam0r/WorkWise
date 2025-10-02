@@ -5,7 +5,7 @@ import { formatDistanceToNow, parseISO, isValid } from 'date-fns';
 
 export default function PaymentHistory({ transactions }) {
     const { auth } = usePage().props;
-    const isClient = auth.user.user_type === 'client';
+    const isEmployer = auth.user.user_type === 'employer';
 
     const formatDate = (dateString) => {
         try {
@@ -30,7 +30,7 @@ export default function PaymentHistory({ transactions }) {
                         <div className="mb-8">
                             <h3 className="text-lg font-medium mb-4">Summary</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {isClient ? (
+                                {isEmployer ? (
                                     <>
                                         <div className="bg-gray-50 p-4 rounded-lg">
                                             <div className="text-sm text-gray-500">Escrow Balance</div>

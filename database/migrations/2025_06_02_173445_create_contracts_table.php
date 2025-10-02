@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('contract_id')->unique(); // e.g., WW-2025-001234
             $table->foreignId('project_id')->constrained('projects')->onDelete('cascade');
-            $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('freelancer_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('employer_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('gig_worker_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('job_id')->constrained('gig_jobs')->onDelete('cascade');
             $table->foreignId('bid_id')->constrained('bids')->onDelete('cascade');
             
@@ -27,18 +27,18 @@ return new class extends Migration
             $table->date('project_start_date');
             $table->date('project_end_date');
             
-            // Client and freelancer responsibilities
-            $table->json('client_responsibilities')->nullable();
-            $table->json('freelancer_responsibilities')->nullable();
+            // Employer and gig worker responsibilities
+            $table->json('employer_responsibilities')->nullable();
+            $table->json('gig_worker_responsibilities')->nullable();
             
             // Communication preferences
             $table->string('preferred_communication')->default('Email and WorkWise messaging');
             $table->string('communication_frequency')->default('Weekly updates');
             
             // Contract status and signatures
-            $table->enum('status', ['pending_freelancer_signature', 'pending_client_signature', 'fully_signed', 'cancelled'])->default('pending_client_signature');
-            $table->timestamp('freelancer_signed_at')->nullable();
-            $table->timestamp('client_signed_at')->nullable();
+            $table->enum('status', ['pending_gig_worker_signature', 'pending_employer_signature', 'fully_signed', 'cancelled'])->default('pending_employer_signature');
+            $table->timestamp('gig_worker_signed_at')->nullable();
+            $table->timestamp('employer_signed_at')->nullable();
             $table->timestamp('fully_signed_at')->nullable();
             
             // PDF storage
@@ -48,8 +48,8 @@ return new class extends Migration
             $table->timestamps();
             
             $table->index(['status']);
-            $table->index(['client_id']);
-            $table->index(['freelancer_id']);
+            $table->index(['employer_id']);
+            $table->index(['gig_worker_id']);
             $table->index(['project_id']);
         });
     }

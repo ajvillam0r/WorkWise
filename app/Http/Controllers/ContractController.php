@@ -29,10 +29,10 @@ class ContractController extends Controller
         $user = auth()->user();
         
         $contracts = Contract::where(function ($query) use ($user) {
-            $query->where('client_id', $user->id)
-                  ->orWhere('freelancer_id', $user->id);
+            $query->where('employer_id', $user->id)
+                  ->orWhere('gig_worker_id', $user->id);
         })
-        ->with(['client', 'freelancer', 'job', 'project', 'signatures'])
+        ->with(['employer', 'gigWorker', 'job', 'project', 'signatures'])
         ->orderBy('created_at', 'desc')
         ->paginate(10);
 
@@ -50,20 +50,20 @@ class ContractController extends Controller
         $user = auth()->user();
 
         // Check if user is authorized to view this contract
-        if ($contract->client_id !== $user->id && $contract->freelancer_id !== $user->id) {
+        if ($contract->employer_id !== $user->id && $contract->gig_worker_id !== $user->id) {
             abort(403, 'Unauthorized to view this contract');
         }
 
         $userRole = $contract->getUserRole($user->id);
 
-        // Additional check: Freelancers can only view contract after client has signed
-        if ($userRole === 'freelancer' && !$contract->canFreelancerAccess()) {
-            abort(403, 'Contract is not available for viewing until the client signs first');
+        // Additional check: Gig workers can only view contract after employer has signed
+        if ($userRole === 'gig_worker' && !$contract->canGigWorkerAccess()) {
+            abort(403, 'Contract is not available for viewing until the employer signs first');
         }
 
         $contract->load([
-            'client',
-            'freelancer',
+            'employer',
+            'gigWorker',
             'job',
             'project',
             'bid',
@@ -93,9 +93,9 @@ class ContractController extends Controller
             'contract_id' => $contract->id,
             'contract_contract_id' => $contract->contract_id,
             'user_id' => $user->id,
-            'user_role' => $user->role,
-            'contract_client_id' => $contract->client_id,
-            'contract_freelancer_id' => $contract->freelancer_id,
+            'user_role' => $user->user_type,
+            'contract_employer_id' => $contract->employer_id,
+            'contract_gig_worker_id' => $contract->gig_worker_id,
             'contract_status' => $contract->status,
             'user_can_sign' => $contract->canUserSign($user->id),
             'user_role_in_contract' => $contract->getUserRole($user->id),
@@ -104,14 +104,32 @@ class ContractController extends Controller
 
         $userRole = $contract->getUserRole($user->id);
 
-        // Additional check: Freelancers can only sign after client has signed
-        if ($userRole === 'freelancer' && !$contract->canFreelancerAccess()) {
-            \Log::warning('Freelancer trying to sign before client', [
+        // Additional check: Gig workers can only sign after employer has signed
+        if ($userRole === 'gig_worker' && !$contract->canGigWorkerAccess()) {
+            \Log::warning('Gig worker trying to sign before employer', [
                 'contract_id' => $contract->id,
                 'user_id' => $user->id,
-                'client_signed' => $contract->hasClientSigned()
+                'employer_signed' => $contract->hasEmployerSigned()
             ]);
-            abort(403, 'You cannot sign this contract until the client signs first');
+
+            // Load contract relationships for proper display
+            $contract->load([
+                'employer',
+                'gigWorker',
+                'job',
+                'project',
+                'bid',
+                'signatures'
+            ]);
+
+            // Return Inertia response with waiting flag for modal handling
+            return Inertia::render('Contracts/OptimizedSign', [
+                'contract' => $contract,
+                'userRole' => $userRole,
+                'user' => $user,
+                'waitingForEmployer' => true,
+                'employerName' => $contract->employer ? $contract->employer->first_name . ' ' . $contract->employer->last_name : 'the employer'
+            ]);
         }
 
         // Check authorization
@@ -125,14 +143,15 @@ class ContractController extends Controller
         }
 
         $contract->load([
-            'client',
-            'freelancer',
+            'employer',
+            'gigWorker',
             'job',
             'project',
-            'bid'
+            'bid',
+            'signatures'
         ]);
 
-        return Inertia::render('Contracts/Sign', [
+        return Inertia::render('Contracts/OptimizedSign', [
             'contract' => $contract,
             'userRole' => $userRole,
             'user' => $user
@@ -146,20 +165,35 @@ class ContractController extends Controller
     {
         $user = auth()->user();
 
-        // Validate request
+        // Enhanced validation
         $request->validate([
-            'full_name' => 'required|string|max:255',
-            'browser_info' => 'nullable|array'
+            'full_name' => 'required|string|max:255|min:2',
+            'browser_info' => 'nullable|array',
+            'browser_info.userAgent' => 'nullable|string',
+            'browser_info.language' => 'nullable|string',
+            'browser_info.platform' => 'nullable|string',
+            'browser_info.timestamp' => 'nullable|string',
         ]);
+
+        // Additional security checks
+        $fullName = trim($request->full_name);
+        if (empty($fullName) || strlen($fullName) < 2) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide a valid full name for the signature'
+            ], 422);
+        }
 
         $userRole = $contract->getUserRole($user->id);
 
-        // Additional check: Freelancers can only sign after client has signed
-        if ($userRole === 'freelancer' && !$contract->canFreelancerAccess()) {
+        // Additional check: Gig workers can only sign after employer has signed
+        if ($userRole === 'gig_worker' && !$contract->canGigWorkerAccess()) {
             return response()->json([
                 'success' => false,
-                'message' => 'You cannot sign this contract until the client signs first'
-            ], 403);
+                'message' => 'You cannot sign this contract until the employer signs first',
+                'waiting_for_employer' => true,
+                'employer_name' => $contract->employer ? $contract->employer->first_name . ' ' . $contract->employer->last_name : 'the employer'
+            ], 200); // Return 200 instead of 403 for modal handling
         }
 
         // Check authorization
@@ -174,7 +208,17 @@ class ContractController extends Controller
             \DB::beginTransaction();
 
             $userRole = $contract->getUserRole($user->id);
-            
+
+            // Ensure contract relationships are loaded
+            $contract->load([
+                'employer',
+                'gigWorker',
+                'job',
+                'project',
+                'bid',
+                'signatures'
+            ]);
+
             // Create signature
             $signature = ContractSignature::createSignature(
                 $contract,
@@ -196,13 +240,17 @@ class ContractController extends Controller
 
             $contract->refresh();
 
+            // Check if contract has a valid project
+            $redirectUrl = route('contracts.show', $contract);
+            if ($contract->isFullySigned() && $contract->project_id) {
+                $redirectUrl = route('projects.show', $contract->project_id);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Contract signed successfully!',
                 'contract_status' => $contract->status,
-                'redirect_url' => $contract->isFullySigned()
-                    ? route('projects.show', $contract->project)
-                    : route('contracts.show', $contract)
+                'redirect_url' => $redirectUrl
             ]);
 
         } catch (\Exception $e) {
@@ -210,12 +258,15 @@ class ContractController extends Controller
             \Log::error('Contract signing failed', [
                 'contract_id' => $contract->id,
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to sign contract. Please try again.'
+                'message' => 'Failed to sign contract. Please try again. Error: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -228,7 +279,7 @@ class ContractController extends Controller
         $user = auth()->user();
 
         // Check authorization
-        if ($contract->client_id !== $user->id && $contract->freelancer_id !== $user->id) {
+        if ($contract->employer_id !== $user->id && $contract->gig_worker_id !== $user->id) {
             abort(403, 'Unauthorized to download this contract');
         }
 
@@ -256,11 +307,11 @@ class ContractController extends Controller
     {
         $user = auth()->user();
 
-        // Only client can cancel, and only if not fully signed
-        if ($contract->client_id !== $user->id) {
+        // Only employer can cancel, and only if not fully signed
+        if ($contract->employer_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only the client can cancel the contract'
+                'message' => 'Only the employer can cancel the contract'
             ], 403);
         }
 

@@ -253,7 +253,7 @@
                 <div class="logo-section">
                     <div>
                         <strong>WorkWise</strong><br>
-                        <small>Freelance Platform</small>
+                        <small>Gig Worker Platform</small>
                     </div>
                     <div class="company-info">
                         bitboss@workwise.com<br>
@@ -282,22 +282,22 @@
                 <div class="section-title">Parties Involved:</div>
                 
                 <div class="party">
-                    <div class="party-title">CLIENT</div>
+                    <div class="party-title">EMPLOYER</div>
                     <div class="party-details">
-                        <div><span class="party-label">Name:</span> {{ $client->first_name }} {{ $client->last_name }}</div>
-                        <div><span class="party-label">Email:</span> {{ $client->email }}</div>
-                        <div><span class="party-label">Phone Number:</span> {{ $client->phone ?? 'Not provided' }}</div>
-                        <div><span class="party-label">Location:</span> {{ $client->location ?? $client->barangay ?? 'Not provided' }}</div>
+                        <div><span class="party-label">Name:</span> {{ $employer->first_name }} {{ $employer->last_name }}</div>
+                        <div><span class="party-label">Email:</span> {{ $employer->email }}</div>
+                        <div><span class="party-label">Phone Number:</span> {{ $employer->phone ?? 'Not provided' }}</div>
+                        <div><span class="party-label">Location:</span> {{ $employer->location ?? $employer->barangay ?? 'Not provided' }}</div>
                     </div>
                 </div>
 
                 <div class="party">
-                    <div class="party-title">FREELANCER</div>
+                    <div class="party-title">GIG WORKER</div>
                     <div class="party-details">
-                        <div><span class="party-label">Name:</span> {{ $freelancer->first_name }} {{ $freelancer->last_name }}</div>
-                        <div><span class="party-label">Email:</span> {{ $freelancer->email }}</div>
-                        <div><span class="party-label">Phone Number:</span> {{ $freelancer->phone ?? 'Not provided' }}</div>
-                        <div><span class="party-label">Location:</span> {{ $freelancer->location ?? $freelancer->barangay ?? 'Not provided' }}</div>
+                        <div><span class="party-label">Name:</span> {{ $gigWorker->first_name }} {{ $gigWorker->last_name }}</div>
+                        <div><span class="party-label">Email:</span> {{ $gigWorker->email }}</div>
+                        <div><span class="party-label">Phone Number:</span> {{ $gigWorker->phone ?? 'Not provided' }}</div>
+                        <div><span class="party-label">Location:</span> {{ $gigWorker->location ?? $gigWorker->barangay ?? 'Not provided' }}</div>
                     </div>
                 </div>
 
@@ -311,10 +311,17 @@
             <div class="break-page"></div>
 
             <!-- Scope of Work -->
-            <div class="section">
+            <!-- <div class="section">
                 <div class="section-title">Scope of Work</div>
                 <div style="white-space: pre-line;">{{ $contract->scope_of_work }}</div>
+            </div> -->
+            <div class="section">
+                <div class="section-title">Scope of Work</div>
+                <div style="white-space: pre-line; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">
+                    {{ $contract->scope_of_work }}
+                </div>
             </div>
+
 
             <!-- Payment Terms -->
             <div class="section">
@@ -342,12 +349,12 @@
                 </div>
             </div>
 
-            <!-- Client Responsibilities -->
+            <!-- Employer Responsibilities -->
             <div class="section">
-                <div class="section-title">Client Responsibilities</div>
+                <div class="section-title">Employer Responsibilities</div>
                 <div class="responsibilities">
                     <ul>
-                        @foreach($contract->client_responsibilities as $responsibility)
+                        @foreach($contract->employer_responsibilities ?? [] as $responsibility)
                             <li>{{ $responsibility }}</li>
                         @endforeach
                     </ul>
@@ -357,12 +364,12 @@
             <!-- Page break for page 3 -->
             <div class="break-page"></div>
 
-            <!-- Freelancer Responsibilities -->
+            <!-- Gig Worker Responsibilities -->
             <div class="section">
-                <div class="section-title">Freelancer Responsibilities</div>
+                <div class="section-title">Gig Worker Responsibilities</div>
                 <div class="responsibilities">
                     <ul>
-                        @foreach($contract->freelancer_responsibilities as $responsibility)
+                        @foreach($contract->gig_worker_responsibilities ?? [] as $responsibility)
                             <li>{{ $responsibility }}</li>
                         @endforeach
                     </ul>
@@ -388,8 +395,8 @@
             <div class="section">
                 <div class="section-title">Additional Terms</div>
                 <ul>
-                    <li>All work produced under this contract will be the property of the client upon final payment.</li>
-                    <li>The freelancer agrees to maintain confidentiality and not disclose any project details without the client's consent.</li>
+                    <li>All work produced under this contract will be the property of the employer upon final payment.</li>
+                    <li>The gig worker agrees to maintain confidentiality and not disclose any project details without the employer's consent.</li>
                 </ul>
             </div>
 
@@ -408,28 +415,28 @@
 
                 <div class="signatures">
                     <div class="signature-block">
-                        <div class="signature-title">Freelancer</div>
+                        <div class="signature-title">Gig Worker</div>
                         <div class="signature-line">
-                            @if($freelancerSignature)
-                                {{ $freelancerSignature->full_name }}
+                            @if($gigWorkerSignature)
+                                {{ $gigWorkerSignature->full_name }}
                             @endif
                         </div>
-                        <div class="signature-name">{{ $freelancer->first_name }} {{ $freelancer->last_name }}</div>
-                        @if($freelancerSignature)
-                            <div class="signature-date">Date: {{ $freelancerSignature->signed_at->format('F j, Y') }}</div>
+                        <div class="signature-name">{{ $gigWorker->first_name }} {{ $gigWorker->last_name }}</div>
+                        @if($gigWorkerSignature)
+                            <div class="signature-date">Date: {{ $gigWorkerSignature->signed_at->format('F j, Y') }}</div>
                         @endif
                     </div>
 
                     <div class="signature-block">
-                        <div class="signature-title">Client</div>
+                        <div class="signature-title">Employer</div>
                         <div class="signature-line">
-                            @if($clientSignature)
-                                {{ $clientSignature->full_name }}
+                            @if($employerSignature)
+                                {{ $employerSignature->full_name }}
                             @endif
                         </div>
-                        <div class="signature-name">{{ $client->first_name }} {{ $client->last_name }}</div>
-                        @if($clientSignature)
-                            <div class="signature-date">Date: {{ $clientSignature->signed_at->format('F j, Y') }}</div>
+                        <div class="signature-name">{{ $employer->first_name }} {{ $employer->last_name }}</div>
+                        @if($employerSignature)
+                            <div class="signature-date">Date: {{ $employerSignature->signed_at->format('F j, Y') }}</div>
                         @endif
                     </div>
                 </div>

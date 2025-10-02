@@ -12,7 +12,7 @@ class Bid extends Model
 
     protected $fillable = [
         'job_id',
-        'freelancer_id',
+        'gig_worker_id',
         'bid_amount',
         'proposal_message',
         'estimated_days',
@@ -33,15 +33,23 @@ class Bid extends Model
      */
     public function job(): BelongsTo
     {
-        return $this->belongsTo(Job::class, 'job_id');
+        return $this->belongsTo(GigJob::class, 'job_id');
     }
 
     /**
-     * The freelancer who made this bid
+     * The gig worker who made this bid
+     */
+    public function gigWorker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'gig_worker_id');
+    }
+
+    /**
+     * The freelancer who made this bid (deprecated - use gigWorker)
      */
     public function freelancer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'freelancer_id');
+        return $this->belongsTo(User::class, 'gig_worker_id');
     }
 
     /**

@@ -12,18 +12,18 @@ class FreelancerOnboardingController extends Controller
     /**
      * Show the freelancer onboarding page
      */
-    public function show(): Response
+    public function show(): Response|RedirectResponse
     {
         $user = auth()->user();
 
-        // Redirect if not a freelancer
-        if ($user->user_type !== 'freelancer') {
-            return redirect()->route('dashboard');
+        // Redirect if not a gig worker
+        if ($user->user_type !== 'gig_worker') {
+            return redirect()->route('jobs.index');
         }
 
-        // If profile is already completed, redirect to dashboard
+        // If profile is already completed, redirect to jobs
         if ($user->profile_completed) {
-            return redirect()->route('dashboard');
+            return redirect()->route('jobs.index');
         }
 
         return Inertia::render('Onboarding/FreelancerOnboarding', [
@@ -64,7 +64,23 @@ class FreelancerOnboardingController extends Controller
             'profile_status' => 'pending' // Requires approval
         ]));
 
-        return redirect()->route('dashboard')->with('success',
+        return redirect()->route('jobs.index')->with('success',
             'Your profile has been submitted for review. You\'ll be notified once it\'s approved.');
+    }
+
+    /**
+     * Skip onboarding (optional for freelancers)
+     */
+    public function skip(): RedirectResponse
+    {
+        $user = auth()->user();
+
+        $user->update([
+            'profile_completed' => true,
+            'profile_status' => 'approved'
+        ]);
+
+        return redirect()->route('jobs.index')->with('info',
+            'You can complete your profile later from your profile settings.');
     }
 }

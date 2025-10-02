@@ -146,11 +146,11 @@ export default function MessagesIndex({ conversations = [] }) {
                                                                 {conversation.user.first_name} {conversation.user.last_name}
                                                             </h3>
                                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                                conversation.user.user_type === 'client' 
-                                                                    ? 'bg-blue-100 text-blue-800' 
+                                                                conversation.user.user_type === 'employer'
+                                                                    ? 'bg-blue-100 text-blue-800'
                                                                     : 'bg-green-100 text-green-800'
                                                             }`}>
-                                                                {conversation.user.user_type === 'client' ? '👤 Client' : '💼 Freelancer'}
+                                                                {conversation.user.user_type === 'employer' ? '👤 Employer' : '💼 Gig Worker'}
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-gray-500">
@@ -240,7 +240,7 @@ export default function MessagesIndex({ conversations = [] }) {
                         <h3 className="text-lg font-semibold text-blue-900 mb-3">💡 Communication Tips</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
                             <div>
-                                <h4 className="font-medium mb-2">For Clients:</h4>
+                                <h4 className="font-medium mb-2">For Employers:</h4>
                                 <ul className="space-y-1 text-blue-700">
                                     <li>• Be clear about project requirements</li>
                                     <li>• Provide timely feedback</li>
@@ -248,9 +248,9 @@ export default function MessagesIndex({ conversations = [] }) {
                                 </ul>
                             </div>
                             <div>
-                                <h4 className="font-medium mb-2">For Freelancers:</h4>
+                                <h4 className="font-medium mb-2">For Gig Workers:</h4>
                                 <ul className="space-y-1 text-blue-700">
-                                    <li>• Update clients on progress regularly</li>
+                                    <li>• Update employers on progress regularly</li>
                                     <li>• Ask for clarification when needed</li>
                                     <li>• Share work samples and previews</li>
                                 </ul>

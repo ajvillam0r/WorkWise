@@ -82,6 +82,31 @@ export default function ReportsIndex({ reports = { data: [] } }) {
                         </div>
                     </div>
 
+                    {/* Transaction Reports Section */}
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="text-2xl">💰</div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900">
+                                            Transaction Reports
+                                        </h3>
+                                        <p className="text-sm text-gray-600">
+                                            View and download your financial transaction history
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link
+                                    href="/reports/transactions"
+                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                    View Transactions
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
                     {!reports?.data?.length ? (
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-12 text-center">

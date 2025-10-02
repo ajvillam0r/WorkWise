@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta charset="utf-8"/>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Inter%3Awght%40400%3B500%3B700%3B900&amp;family=Poppins:wght@400;500;600;700" rel="stylesheet"/>
+<title>WorkWise Admin</title>
+<link href="data:image/x-icon;base64," rel="icon" type="image/x-icon"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style type="text/tailwindcss">
+        :root {
+        --primary: #4f46e5;
+        --secondary: #ec4899;
+        --accent: #10b981;
+        --background-light: #f8fafc;
+        --background-dark: #0f172a;
+        --text-light: #f1f5f9;
+        --text-dark: #020617;
+        --card-light: #ffffff;
+        --card-dark: #1e293b;
+        }
+        .icon-hover {
+        @apply transition-transform duration-300 ease-in-out;
+        }
+        .icon-hover:hover {
+        @apply scale-110 -rotate-6;
+        }
+        .sidebar-expanded {
+            width: 16rem;}
+        .sidebar-collapsed {
+            width: 5rem;}
+        .nav-text-expanded {
+            opacity: 1;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .nav-text-collapsed {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            transition: opacity 0.2s ease-in-out, width 0s linear 0.2s;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-['Poppins']">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<div class="flex h-full grow flex-row">
+<aside class="flex h-full flex-col border-r border-slate-200 bg-card-light dark:border-slate-700 dark:bg-card-dark/80 p-4 transition-all duration-300 ease-in-out sidebar-expanded" id="sidebar">
+<div class="flex items-center justify-between">
+<h1 class="text-xl font-bold text-primary dark:text-text-light nav-text-expanded" id="sidebar-title">WorkWise</h1>
+<button class="p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary" id="sidebar-toggle">
+<span class="material-symbols-outlined text-3xl text-primary transition-transform duration-300" id="sidebar-icon">menu_open</span>
+</button>
+</div>
+<nav class="mt-8 flex flex-col gap-2">
+<a class="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-3 text-primary transition-all duration-300 hover:bg-primary/20 dark:bg-primary/20" href="#">
+<span class="material-symbols-outlined icon-hover">dashboard</span>
+<p class="text-sm font-medium nav-text-expanded">Dashboard</p>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-primary/10 hover:text-primary dark:text-slate-400 dark:hover:bg-primary/20" href="#">
+<span class="material-symbols-outlined icon-hover">group</span>
+<p class="text-sm font-medium nav-text-expanded">Users</p>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-primary/10 hover:text-primary dark:text-slate-400 dark:hover:bg-primary/20" href="#">
+<span class="material-symbols-outlined icon-hover">cases</span>
+<p class="text-sm font-medium nav-text-expanded">Projects</p>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-primary/10 hover:text-primary dark:text-slate-400 dark:hover:bg-primary/20" href="#">
+<span class="material-symbols-outlined icon-hover">payments</span>
+<p class="text-sm font-medium nav-text-expanded">Payments</p>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-1">
+<a class="flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-primary/10 hover:text-primary dark:text-slate-400 dark:hover:bg-primary/20" href="#">
+<span class="material-symbols-outlined icon-hover">settings</span>
+<p class="text-sm font-medium nav-text-expanded">Settings</p>
+</a>
+</div>
+</aside>
+<main class="flex-1 bg-background-light dark:bg-background-dark">
+<div class="p-4 sm:p-8">
+<header class="mb-8 flex items-center justify-between">
+<h1 class="text-3xl font-bold text-text-dark dark:text-text-light">Dashboard</h1>
+<div class="flex items-center gap-4">
+<button class="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-secondary"></span>
+</button>
+<img alt="Admin Avatar" class="h-10 w-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOCY6awUGXO9qpXCakLmiyJOG8u-9woIFjfbsQoMnrqqNIqnELGkwM4PuO0HlVw6dSi3VotgFv6aCSWbZkf6ow5_PYUHOtbzdgY-Mb8c7kuYUhieBguC2jV7wvoozmVKEzsK2MI9rcuajXuKadizjPd_kBpEpAi3zQm9tK9Yv-qMEU4JWVm--RD6dosM_ZvMM7WbjD08m2VtfMIeGYd733bbRt9FwzRjXM00W3QmUumhjELkFi6UZq0gWaQummEzGQTfELnEIIiNE"/>
+</div>
+</header>
+<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+<div class="transform rounded-xl border border-slate-200 bg-card-light p-6 shadow-lg transition-transform duration-300 hover:-translate-y-2 dark:border-slate-700 dark:bg-card-dark">
+<div class="flex items-center justify-between">
+<p class="text-base font-medium text-slate-500 dark:text-slate-400">Total Revenue</p>
+<span class="material-symbols-outlined text-accent">monitoring</span>
+</div>
+<p class="mt-2 text-3xl font-bold text-text-dark dark:text-text-light">$34,589</p>
+<p class="mt-1 text-sm text-accent">+12% from last month</p>
+</div>
+<div class="transform rounded-xl border border-slate-200 bg-card-light p-6 shadow-lg transition-transform duration-300 hover:-translate-y-2 dark:border-slate-700 dark:bg-card-dark">
+<div class="flex items-center justify-between">
+<p class="text-base font-medium text-slate-500 dark:text-slate-400">New Freelancers</p>
+<span class="material-symbols-outlined text-primary">person_add</span>
+</div>
+<p class="mt-2 text-3xl font-bold text-text-dark dark:text-text-light">128</p>
+<p class="mt-1 text-sm text-accent">+25 new this week</p>
+</div>
+<div class="transform rounded-xl border border-slate-200 bg-card-light p-6 shadow-lg transition-transform duration-300 hover:-translate-y-2 dark:border-slate-700 dark:bg-card-dark">
+<div class="flex items-center justify-between">
+<p class="text-base font-medium text-slate-500 dark:text-slate-400">Projects Completed</p>
+<span class="material-symbols-outlined text-secondary">task_alt</span>
+</div>
+<p class="mt-2 text-3xl font-bold text-text-dark dark:text-text-light">45</p>
+<p class="mt-1 text-sm text-accent">+5 from yesterday</p>
+</div>
+<div class="transform rounded-xl border border-slate-200 bg-card-light p-6 shadow-lg transition-transform duration-300 hover:-translate-y-2 dark:border-slate-700 dark:bg-card-dark">
+<div class="flex items-center justify-between">
+<p class="text-base font-medium text-slate-500 dark:text-slate-400">Open Tickets</p>
+<span class="material-symbols-outlined text-yellow-500">support_agent</span>
+</div>
+<p class="mt-2 text-3xl font-bold text-text-dark dark:text-text-light">7</p>
+<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">2 urgent</p>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+<div class="rounded-xl border border-slate-200 bg-card-light p-6 shadow-lg dark:border-slate-700 dark:bg-card-dark lg:col-span-2">
+<h2 class="mb-4 text-xl font-bold text-text-dark dark:text-text-light">User Growth</h2>
+<div class="h-80">
+<canvas id="userGrowthChart"></canvas>
+</div>
+</div>
+<div class="rounded-xl border border-slate-200 bg-card-light p-6 shadow-lg dark:border-slate-700 dark:bg-card-dark">
+<h2 class="mb-4 text-xl font-bold text-text-dark dark:text-text-light">Project Status</h2>
+<div class="h-80">
+<canvas id="projectStatusChart"></canvas>
+</div>
+</div>
+</div>
+<div class="mt-8 rounded-xl border border-slate-200 bg-card-light p-6 shadow-lg dark:border-slate-700 dark:bg-card-dark">
+<h2 class="mb-4 text-xl font-bold text-text-dark dark:text-text-light">Recent Activities</h2>
+<ul class="space-y-4">
+<li class="flex animate-[fadeIn_0.5s_ease-in-out] items-center space-x-4">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+<span class="material-symbols-outlined text-emerald-500">add</span>
+</div>
+<div>
+<p class="font-medium text-text-dark dark:text-text-light">New user <span class="font-bold text-primary">Alex Doe</span> signed up.</p>
+<p class="text-sm text-slate-500 dark:text-slate-400">2 minutes ago</p>
+</div>
+</li>
+<li class="flex animate-[fadeIn_0.7s_ease-in-out] items-center space-x-4">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-900/50">
+<span class="material-symbols-outlined text-pink-500">cases</span>
+</div>
+<div>
+<p class="font-medium text-text-dark dark:text-text-light">Project <span class="font-bold text-secondary">'E-commerce Platform'</span> was completed.</p>
+<p class="text-sm text-slate-500 dark:text-slate-400">1 hour ago</p>
+</div>
+</li>
+<li class="flex animate-[fadeIn_0.9s_ease-in-out] items-center space-x-4">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
+<span class="material-symbols-outlined text-blue-500">payment</span>
+</div>
+<div>
+<p class="font-medium text-text-dark dark:text-text-light">Payment of <span class="font-bold text-accent">$1,200</span> was received from <span class="font-bold text-primary">Jane Smith</span>.</p>
+<p class="text-sm text-slate-500 dark:text-slate-400">3 hours ago</p>
+</div>
+</li>
+<li class="flex animate-[fadeIn_1.1s_ease-in-out] items-center space-x-4">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/50">
+<span class="material-symbols-outlined text-yellow-500">flag</span>
+</div>
+<div>
+<p class="font-medium text-text-dark dark:text-text-light">A new dispute was opened for project <span class="font-bold text-secondary">'Logo Design'</span>.</p>
+<p class="text-sm text-slate-500 dark:text-slate-400">1 day ago</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</main>
+</div>
+</div>
+<script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarIcon = document.getElementById('sidebar-icon');
+        const sidebarTitle = document.getElementById('sidebar-title');
+        const navTexts = document.querySelectorAll('.nav-text-expanded');
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-expanded');
+            sidebar.classList.toggle('sidebar-collapsed');
+            const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+            sidebarIcon.textContent = isCollapsed ? 'menu' : 'menu_open';
+            sidebarIcon.classList.toggle('rotate-180', isCollapsed);
+            if (isCollapsed) {
+                sidebarTitle.classList.remove('nav-text-expanded');
+                sidebarTitle.classList.add('nav-text-collapsed');
+                navTexts.forEach(text => {
+                    text.classList.remove('nav-text-expanded');
+                    text.classList.add('nav-text-collapsed');
+                });
+            } else {
+                sidebarTitle.classList.add('nav-text-expanded');
+                sidebarTitle.classList.remove('nav-text-collapsed');
+                navTexts.forEach(text => {
+                    text.classList.add('nav-text-expanded');
+                    text.classList.remove('nav-text-collapsed');
+                });
+            }
+        });
+        const userGrowthCtx = document.getElementById('userGrowthChart').getContext('2d');
+        new Chart(userGrowthCtx, {
+            type: 'line',
+            data: {
+                labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                datasets: [{
+                    label: 'New Users',
+                    data: [65, 59, 80, 81, 56, 55, 90],
+                    fill: true,
+                    borderColor: 'rgb(79, 70, 229)',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        const projectStatusCtx = document.getElementById('projectStatusChart').getContext('2d');
+        new Chart(projectStatusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'In Progress', 'Pending'],
+                datasets: [{
+                    label: 'Project Status',
+                    data: [300, 150, 50],
+                    backgroundColor: [
+                        'rgb(16, 185, 129)',
+                        'rgb(236, 72, 153)',
+                        'rgb(251, 191, 36)'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+            }
+        });
+    </script>
+</body></html>

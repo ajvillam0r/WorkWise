@@ -9,49 +9,23 @@ export default function Register({ selectedUserType }) {
         email: '',
         password: '',
         password_confirmation: '',
-        barangay: '',
-        user_type: selectedUserType || 'freelancer',
+        user_type: selectedUserType || 'gig_worker',
         terms_agreed: false,
         marketing_emails: false,
     });
 
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // List of barangays in Lapu-Lapu City, Philippines
-    const barangays = [
-        'Agus',
-        'Babag',
-        'Bankal',
-        'Basak',
-        'Buaya',
-        'Calawisan',
-        'Canjulao',
-        'Caubian',
-        'Caw-oy',
-        'Gun-ob',
-        'Ibo',
-        'Looc',
-        'Mactan',
-        'Maribago',
-        'Marigondon',
-        'Pajac',
-        'Pajican',
-        'Pajo',
-        'Pangan-an',
-        'Pilipog',
-        'Poblacion',
-        'Punta Engaño',
-        'Sabang',
-        'Santa Rosa',
-        'Subabasbas',
-        'Talima',
-        'Tingo',
-        'Tungasan',
-        'Yapak'
-    ];
 
     const submit = (e) => {
         e.preventDefault();
+
+        // Client-side password confirmation validation
+        if (data.password !== data.password_confirmation) {
+            alert('Passwords do not match. Please make sure both password fields are identical.');
+            return;
+        }
 
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
@@ -59,7 +33,7 @@ export default function Register({ selectedUserType }) {
     };
 
     const getTitle = () => {
-        return selectedUserType === 'client' ? 'Sign up to hire talent' : 'Sign up to find work';
+        return selectedUserType === 'employer' ? 'Sign up to hire talent' : 'Sign up to find work';
     };
 
     return (
@@ -181,42 +155,37 @@ export default function Register({ selectedUserType }) {
                             <InputError message={errors.password} className="mt-1" />
                         </div>
 
-                        {/* City (Pre-filled) */}
+                        {/* Confirm Password */}
                         <div>
-                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                                City
+                            <label htmlFor="password_confirmation" className="block text-sm font-medium text-gray-700 mb-1">
+                                Confirm password
                             </label>
-                            <input
-                                id="city"
-                                name="city"
-                                type="text"
-                                value="Lapu-Lapu City"
-                                disabled
-                                className="w-full px-3 py-3 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-                            />
-                        </div>
-
-                        {/* Barangay */}
-                        <div>
-                            <label htmlFor="barangay" className="block text-sm font-medium text-gray-700 mb-1">
-                                Barangay (in Lapu-Lapu City)
-                            </label>
-                            <select
-                                id="barangay"
-                                name="barangay"
-                                value={data.barangay}
-                                onChange={(e) => setData('barangay', e.target.value)}
-                                className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                                required
-                            >
-                                <option value="">Select your barangay</option>
-                                {barangays.map((barangay) => (
-                                    <option key={barangay} value={barangay}>
-                                        {barangay}
-                                    </option>
-                                ))}
-                            </select>
-                            <InputError message={errors.barangay} className="mt-1" />
+                            <div className="relative">
+                                <input
+                                    id="password_confirmation"
+                                    name="password_confirmation"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    value={data.password_confirmation}
+                                    onChange={(e) => setData('password_confirmation', e.target.value)}
+                                    placeholder="Confirm your password"
+                                    className="w-full px-3 py-3 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                >
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        {showConfirmPassword ? (
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                        ) : (
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        )}
+                                    </svg>
+                                </button>
+                            </div>
+                            <InputError message={errors.password_confirmation} className="mt-1" />
                         </div>
 
                         {/* Checkboxes */}
@@ -272,7 +241,7 @@ export default function Register({ selectedUserType }) {
                         <div className="text-center">
                             <span className="text-sm text-gray-600">
                                 Already have an account?{' '}
-                                <Link href={route('login')} className="text-blue-600 hover:text-blue-700 font-medium">
+                                <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
                                     Log in
                                 </Link>
                             </span>

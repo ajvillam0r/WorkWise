@@ -30,16 +30,16 @@ class TestPaymentRelease extends Command
         $this->info('Testing Payment Release Functionality...');
 
         // Get all projects
-        $projects = Project::with(['freelancer', 'client', 'job', 'transactions'])->get();
+        $projects = Project::with(['gigWorker', 'employer', 'job', 'transactions'])->get();
 
         $this->info('Found ' . $projects->count() . ' projects:');
 
         foreach ($projects as $project) {
             $this->info("Project ID: {$project->id}");
             $this->info("Job: {$project->job->title}");
-            $this->info("Freelancer: {$project->freelancer->first_name} {$project->freelancer->last_name}");
+            $this->info("Gig Worker: {$project->gigWorker->first_name} {$project->gigWorker->last_name}");
             $this->info("Status: {$project->status}");
-            $this->info("Client Approved: " . ($project->client_approved ? 'Yes' : 'No'));
+            $this->info("Employer Approved: " . ($project->employer_approved ? 'Yes' : 'No'));
             $this->info("Payment Released: " . ($project->payment_released ? 'Yes' : 'No'));
             $this->info("Net Amount: ₱{$project->net_amount}");
 
@@ -66,22 +66,22 @@ class TestPaymentRelease extends Command
             $this->info("---");
         }
 
-        // Now test the wallet calculation for each freelancer
-        $this->info('Testing Freelancer Wallet Calculations...');
+        // Now test the wallet calculation for each gig worker
+        $this->info('Testing Gig Worker Wallet Calculations...');
 
-        $freelancers = \App\Models\User::where('user_type', 'freelancer')->get();
+        $gigWorkers = \App\Models\User::where('user_type', 'gig_worker')->get();
 
-        foreach ($freelancers as $freelancer) {
-            $this->info("Freelancer: {$freelancer->first_name} {$freelancer->last_name}");
+        foreach ($gigWorkers as $gigWorker) {
+            $this->info("Gig Worker: {$gigWorker->first_name} {$gigWorker->last_name}");
 
             // Get completed projects with payment released
-            $completedProjects = Project::where('freelancer_id', $freelancer->id)
+            $completedProjects = Project::where('gig_worker_id', $gigWorker->id)
                 ->where('status', 'completed')
                 ->where('payment_released', true)
                 ->get();
 
             // Get pending payments
-            $pendingPayments = Project::where('freelancer_id', $freelancer->id)
+            $pendingPayments = Project::where('gig_worker_id', $gigWorker->id)
                 ->where('status', 'completed')
                 ->where('payment_released', false)
                 ->get();

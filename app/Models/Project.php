@@ -12,8 +12,8 @@ class Project extends Model
     use HasFactory;
 
     protected $fillable = [
-        'client_id',
-        'freelancer_id',
+        'employer_id',
+        'gig_worker_id',
         'job_id',
         'bid_id',
         'contract_id',
@@ -21,7 +21,7 @@ class Project extends Model
         'started_at',
         'completed_at',
         'completion_notes',
-        'client_approved',
+        'employer_approved',
         'approved_at',
         'payment_released',
         'payment_released_at',
@@ -39,21 +39,37 @@ class Project extends Model
         'payment_released_at' => 'datetime',
         'contract_signed_at' => 'datetime',
         'payment_released' => 'boolean',
-        'client_approved' => 'boolean',
+        'employer_approved' => 'boolean',
         'contract_signed' => 'boolean',
         'agreed_amount' => 'decimal:2',
         'platform_fee' => 'decimal:2',
         'net_amount' => 'decimal:2',
     ];
 
-    public function client(): BelongsTo
+    public function employer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'client_id');
+        return $this->belongsTo(User::class, 'employer_id');
     }
 
+    /**
+     * Get the client (deprecated - use employer)
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'employer_id');
+    }
+
+    public function gigWorker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'gig_worker_id');
+    }
+
+    /**
+     * Get the freelancer (deprecated - use gigWorker)
+     */
     public function freelancer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'freelancer_id');
+        return $this->belongsTo(User::class, 'gig_worker_id');
     }
 
     public function job(): BelongsTo
@@ -84,6 +100,11 @@ class Project extends Model
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
+    }
+
+    public function contractDeadlines(): HasMany
+    {
+        return $this->hasMany(ContractDeadline::class, 'contract_id');
     }
 
     public function isCompleted(): bool
@@ -122,12 +143,12 @@ class Project extends Model
 
     public function getProgressPercentageAttribute(): int
     {
-        if (!$this->milestones) {
+        if (!$this->contractDeadlines) {
             return 0;
         }
 
-        $completed = collect($this->milestones)->where('completed', true)->count();
-        $total = count($this->milestones);
+        $completed = $this->contractDeadlines->where('status', 'completed')->count();
+        $total = $this->contractDeadlines->count();
 
         return $total > 0 ? round(($completed / $total) * 100) : 0;
     }

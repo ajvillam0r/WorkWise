@@ -9,8 +9,13 @@ export default function Dashboard() {
         return <div>Loading...</div>; // Or some other placeholder
     }
 
-    const isFreelancer = user.user_type === 'freelancer';
-    const isClient = user.user_type === 'client';
+    const isGigWorker = user.user_type === 'gig_worker';
+    const isEmployer = user.user_type === 'employer';
+
+    const formatAmount = (value) => {
+        const number = Number(value ?? 0);
+        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
 
     return (
         <AuthenticatedLayout
@@ -30,12 +35,12 @@ export default function Dashboard() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                        {isFreelancer ? 'Find Your Next Gig' : 'Manage Your Projects'}
+                                        {isGigWorker ? 'Find Your Next Gig' : 'Manage Your Projects'}
                                     </h3>
                                     <p className="text-gray-600">
-                                        {isFreelancer
-                                            ? 'Browse available jobs and submit bids to grow your freelance career.'
-                                            : 'Post jobs and find talented freelancers for your projects.'
+                                        {isGigWorker
+                                            ? 'Browse available jobs and submit bids to grow your gig work career.'
+                                            : 'Post jobs and find talented gig workers for your projects.'
                                         }
                                     </p>
                                 </div>
@@ -46,7 +51,7 @@ export default function Dashboard() {
                                     >
                                         Browse Jobs
                                     </Link>
-                                    {isClient && (
+                                    {isEmployer && (
                                         <Link
                                             href={route('jobs.create')}
                                             className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
@@ -73,7 +78,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500">
-                                            {isFreelancer ? 'Active Bids' : 'Active Jobs'}
+                                            {isGigWorker ? 'Active Bids' : 'Active Jobs'}
                                         </div>
                                         <div className="text-2xl font-bold text-gray-900">0</div>
                                     </div>
@@ -94,7 +99,7 @@ export default function Dashboard() {
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500">Escrow Balance</div>
                                         <div className="text-2xl font-bold text-gray-900">
-                                            ₱{user.escrow_balance ? parseFloat(user.escrow_balance).toFixed(2) : '0.00'}
+                                            ₱{user.escrow_balance ? formatAmount(user.escrow_balance) : '0.00'}
                                         </div>
                                         <div className="text-xs text-gray-500 mt-1">
                                             <Link href={route('deposits.index')} className="text-green-600 hover:text-green-700">
@@ -158,15 +163,15 @@ export default function Dashboard() {
                                             </svg>
                                         </div>
                                         <h4 className="font-medium text-gray-900">
-                                            {isFreelancer ? 'My Bids' : 'Manage Bids'}
+                                            {isGigWorker ? 'My Bids' : 'Manage Bids'}
                                         </h4>
                                         <p className="text-sm text-gray-500">
-                                            {isFreelancer ? 'Track your proposals' : 'Review proposals'}
+                                            {isGigWorker ? 'Track your proposals' : 'Review proposals'}
                                         </p>
                                     </div>
                                 </Link>
 
-                                {isClient && (
+                                {isEmployer && (
                                     <Link
                                         href={route('jobs.create')}
                                         className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -178,7 +183,7 @@ export default function Dashboard() {
                                                 </svg>
                                             </div>
                                             <h4 className="font-medium text-gray-900">Post a Job</h4>
-                                            <p className="text-sm text-gray-500">Find freelancers</p>
+                                            <p className="text-sm text-gray-500">Find gig workers</p>
                                         </div>
                                     </Link>
                                 )}

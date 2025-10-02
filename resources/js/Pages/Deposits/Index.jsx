@@ -161,6 +161,11 @@ export default function Deposits({ deposits, stripe_key, currency }) {
         }
     };
 
+    const formatAmount = (value) => {
+        const number = Number(value ?? 0);
+        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     return (
         <AuthenticatedLayout
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight"> Wallet</h2>}
@@ -187,7 +192,7 @@ export default function Deposits({ deposits, stripe_key, currency }) {
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Escrow Balance</h3>
                                     <div className="text-3xl font-bold text-green-600">
-                                        ₱{auth?.user?.escrow_balance ? parseFloat(auth.user.escrow_balance).toFixed(2) : '0.00'}
+                                        ₱{auth?.user?.escrow_balance ? formatAmount(auth.user.escrow_balance) : '0.00'}
                                     </div>
                                     <p className="text-sm text-gray-500 mt-1">Available for project payments</p>
                                 </div>
@@ -232,7 +237,7 @@ export default function Deposits({ deposits, stripe_key, currency }) {
                                                     {new Date(deposit.created_at).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {currency.symbol}{parseFloat(deposit.amount).toFixed(2)}
+                                                    {currency.symbol}{formatAmount(deposit.amount)}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

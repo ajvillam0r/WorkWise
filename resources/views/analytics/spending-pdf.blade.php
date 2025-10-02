@@ -188,7 +188,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Project</th>
-                        <th>Freelancer</th>
+                        <th>Gig Worker</th>
                         <th>Amount</th>
                         <th>Platform Fee</th>
                         <th>Status</th>
@@ -199,7 +199,7 @@
                         <tr>
                             <td>{{ $spending['Date'] }}</td>
                             <td>{{ $spending['Project'] }}</td>
-                            <td>{{ $spending['Freelancer'] }}</td>
+                            <td>{{ $spending['Gig Worker'] }}</td>
                             <td class="amount negative">₱{{ number_format($spending['Amount'], 2) }}</td>
                             <td class="amount">₱{{ number_format($spending['Platform Fee'], 2) }}</td>
                             <td>

@@ -113,7 +113,7 @@ export default function Projects({ projects, period, user_type }) {
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
                             <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                {user_type === 'freelancer' ? 'Your Projects' : 'Your Hired Projects'}
+                                {user_type === 'gig_worker' ? 'Your Projects' : 'Your Hired Projects'}
                             </h3>
                             
                             {projects.data.length > 0 ? (
@@ -125,7 +125,7 @@ export default function Projects({ projects, period, user_type }) {
                                                     Project
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    {user_type === 'freelancer' ? 'Client' : 'Freelancer'}
+                                                    {user_type === 'gig_worker' ? 'Employer' : 'Gig Worker'}
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Amount
@@ -173,9 +173,9 @@ export default function Projects({ projects, period, user_type }) {
                                                             </div>
                                                             <div className="ml-3">
                                                                 <div className="text-sm font-medium text-gray-900">
-                                                                    {user_type === 'freelancer' 
-                                                                        ? `${project.client?.first_name} ${project.client?.last_name}`
-                                                                        : `${project.freelancer?.first_name} ${project.freelancer?.last_name}`
+                                                                    {user_type === 'gig_worker'
+                                                                        ? `${project.employer?.first_name} ${project.employer?.last_name}`
+                                                                        : `${project.gig_worker?.first_name} ${project.gig_worker?.last_name}`
                                                                     }
                                                                 </div>
                                                             </div>

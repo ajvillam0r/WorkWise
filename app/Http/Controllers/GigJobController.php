@@ -16,13 +16,13 @@ class GigJobController extends Controller
     {
         $user = auth()->user();
 
-        if ($user && $user->isClient()) {
-            // For clients, show their own jobs (all statuses)
+        if ($user && $user->isEmployer()) {
+            // For employers, show their own jobs (all statuses)
             $query = GigJob::with(['employer', 'bids'])
                 ->where('employer_id', $user->id)
                 ->latest();
         } else {
-            // For freelancers and guests, show all open jobs
+            // For gig workers and guests, show all open jobs
             $query = GigJob::with(['employer', 'bids'])
                 ->where('status', 'open')
                 ->latest();
@@ -76,9 +76,9 @@ class GigJobController extends Controller
      */
     public function create(): Response
     {
-        // Only clients can create jobs
-        if (!auth()->user()->isClient()) {
-            abort(403, 'Only clients can post jobs.');
+        // Only employers can create jobs
+        if (!auth()->user()->isEmployer()) {
+            abort(403, 'Only employers can post jobs.');
         }
 
         return Inertia::render('Jobs/Create');
@@ -89,9 +89,9 @@ class GigJobController extends Controller
      */
     public function store(Request $request)
     {
-        // Only clients can create jobs
-        if (!auth()->user()->isClient()) {
-            abort(403, 'Only clients can post jobs.');
+        // Only employers can create jobs
+        if (!auth()->user()->isEmployer()) {
+            abort(403, 'Only employers can post jobs.');
         }
 
         $validated = $request->validate([
@@ -115,7 +115,7 @@ class GigJobController extends Controller
         $job = GigJob::create($validated);
 
         return redirect()->route('jobs.show', $job)
-            ->with('success', 'Job posted successfully! Your job is now live and freelancers can start submitting proposals.');
+            ->with('success', 'Job posted successfully! Your job is now live and gig workers can start submitting proposals.');
     }
 
     /**
@@ -123,13 +123,13 @@ class GigJobController extends Controller
      */
     public function show(GigJob $job): Response
     {
-        $job->load(['employer', 'bids.freelancer']);
+        $job->load(['employer', 'bids.gigWorker']);
         $job->budget_display = $job->getBudgetDisplayAttribute();
 
         return Inertia::render('Jobs/Show', [
             'job' => $job,
-            'canBid' => auth()->user()?->isFreelancer() &&
-                       !$job->bids()->where('freelancer_id', auth()->id())->exists(),
+            'canBid' => auth()->user()?->isGigWorker() &&
+                        !$job->bids()->where('gig_worker_id', auth()->id())->exists(),
         ]);
     }
 

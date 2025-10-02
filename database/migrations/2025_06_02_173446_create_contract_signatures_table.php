@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('contract_id')->constrained('contracts')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('full_name');
-            $table->enum('role', ['client', 'freelancer']);
+            $table->enum('role', ['employer', 'gig_worker']);
             
             // Signature metadata for legal defensibility
             $table->string('ip_address');

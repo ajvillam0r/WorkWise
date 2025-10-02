@@ -12,11 +12,11 @@ export default function ClientOnboarding({ user }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('client.onboarding'));
+        post(route('employer.onboarding'));
     };
 
     const handleSkip = () => {
-        post(route('client.onboarding.skip'));
+        post(route('employer.onboarding.skip'));
     };
 
     const workTypes = [
@@ -45,7 +45,7 @@ export default function ClientOnboarding({ user }) {
 
     return (
         <AuthenticatedLayout>
-            <Head title="Client Onboarding" />
+            <Head title="Employer Onboarding" />
 
             <div className="min-h-screen bg-gray-50 py-12">
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -61,10 +61,10 @@ export default function ClientOnboarding({ user }) {
                                     Welcome to WorkWise!
                                 </h1>
                                 <p className="text-lg text-gray-600 mb-2">
-                                    Let's set up your client profile to help you find the perfect talent
+                                    Let's set up your employer profile to help you find the perfect talent
                                 </p>
                                 <p className="text-sm text-gray-500">
-                                    This information helps us recommend the best freelancers for your projects
+                                    This information helps us recommend the best gig workers for your projects
                                 </p>
                             </div>
 
@@ -163,7 +163,7 @@ export default function ClientOnboarding({ user }) {
                                             <div className="mt-2 text-sm text-blue-700">
                                                 <ul className="list-disc list-inside space-y-1">
                                                     <li>You can immediately start posting projects</li>
-                                                    <li>Browse and contact freelancers in Lapu-Lapu City</li>
+                                                    <li>Browse and contact gig workers in Lapu-Lapu City</li>
                                                     <li>Receive proposals from qualified local professionals</li>
                                                     <li>Manage your projects from your dashboard</li>
                                                 </ul>

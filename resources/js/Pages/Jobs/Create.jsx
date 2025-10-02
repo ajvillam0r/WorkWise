@@ -57,7 +57,7 @@ export default function JobCreate() {
                         Post a New Job
                     </h2>
                     <p className="text-sm text-gray-600 mt-1">
-                        Find the perfect freelancer for your project
+                        Find the perfect gig worker for your project
                     </p>
                 </div>
             }
@@ -119,7 +119,7 @@ export default function JobCreate() {
                                         onChange={(e) => setData('description', e.target.value)}
                                         rows={6}
                                         className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Describe your project in detail. Include specific requirements, deliverables, and any important information freelancers should know..."
+                                        placeholder="Describe your project in detail. Include specific requirements, deliverables, and any important information gig workers should know..."
                                         required
                                     />
                                     <p className="mt-1 text-sm text-gray-500">
@@ -285,7 +285,7 @@ export default function JobCreate() {
                                     </div>
                                 </div>
 
-                                {/* Location & Remote */}
+                                {/* Location & Remote
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-4">
                                         Work Location
@@ -335,7 +335,7 @@ export default function JobCreate() {
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                </div> */}
 
                                 {/* Deadline */}
                                 <div>
@@ -383,7 +383,7 @@ export default function JobCreate() {
                         </div>
                     </div>
 
-                    {/* Tips Sidebar */}
+                    {/* Tips Sidebar
                     <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
                         <h3 className="text-lg font-semibold text-blue-900 mb-4">💡 Tips for a Great Job Post</h3>
                         <div className="space-y-3 text-sm text-blue-800">
@@ -401,10 +401,10 @@ export default function JobCreate() {
                             </div>
                             <div className="flex items-start">
                                 <span className="text-blue-500 mr-2">•</span>
-                                <span>Respond promptly to freelancer questions</span>
+                                <span>Respond promptly to gig worker questions</span>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -6,11 +6,19 @@ use App\Models\Contract;
 use App\Models\Project;
 use App\Models\Bid;
 use App\Models\User;
+use App\Services\NotificationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 class ContractService
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     /**
      * Create contract from accepted bid
      */
@@ -23,14 +31,14 @@ class ContractService
             ]);
 
             $job = $bid->job;
-            $client = $job->employer;
-            $freelancer = $bid->freelancer;
+            $employer = $job->employer;
+            $gigWorker = $bid->gigWorker;
 
             \Log::info('Contract parties identified', [
-                'client_id' => $client->id,
-                'client_name' => $client->first_name . ' ' . $client->last_name,
-                'freelancer_id' => $freelancer->id,
-                'freelancer_name' => $freelancer->first_name . ' ' . $freelancer->last_name,
+                'employer_id' => $employer->id,
+                'employer_name' => $employer->first_name . ' ' . $employer->last_name,
+                'gig_worker_id' => $gigWorker->id,
+                'gig_worker_name' => $gigWorker->first_name . ' ' . $gigWorker->last_name,
                 'job_id' => $job->id,
                 'job_title' => $job->title
             ]);
@@ -40,24 +48,28 @@ class ContractService
             $endDate = $startDate->copy()->addDays($bid->estimated_days);
 
             // Default responsibilities
-            $clientResponsibilities = [
+            $employerResponsibilities = [
                 'Provide detailed requirements and feedback promptly.',
                 'Supply all necessary content and materials for the project.',
-                'Approve milestones and release payments as per the agreed schedule.'
+                'Approve milestones and release payments as per the agreed schedule.',
+                'Respond to communications within 48 hours during business days.',
+                'Provide access to necessary tools, accounts, or resources as needed.'
             ];
 
-            $freelancerResponsibilities = [
+            $gigWorkerResponsibilities = [
                 'Complete the tasks as outlined in the scope of work.',
-                'Communicate regularly with the client regarding progress.',
+                'Communicate regularly with the employer regarding progress.',
                 'Deliver work according to the agreed deadlines and quality standards.',
-                'Make revisions based on client feedback within reasonable limits.'
+                'Make revisions based on employer feedback within reasonable limits.',
+                'Maintain confidentiality of all project-related information.',
+                'Use best practices and professional standards in all deliverables.'
             ];
 
             $contractData = [
                 'contract_id' => Contract::generateContractId(),
                 'project_id' => $project->id,
-                'client_id' => $client->id,
-                'freelancer_id' => $freelancer->id,
+                'employer_id' => $employer->id,
+                'gig_worker_id' => $gigWorker->id,
                 'job_id' => $job->id,
                 'bid_id' => $bid->id,
                 'scope_of_work' => $this->generateScopeOfWork($job, $bid),
@@ -65,11 +77,11 @@ class ContractService
                 'contract_type' => 'Fixed-Price Contract',
                 'project_start_date' => $startDate->toDateString(),
                 'project_end_date' => $endDate->toDateString(),
-                'client_responsibilities' => $clientResponsibilities,
-                'freelancer_responsibilities' => $freelancerResponsibilities,
+                'employer_responsibilities' => $employerResponsibilities,
+                'gig_worker_responsibilities' => $gigWorkerResponsibilities,
                 'preferred_communication' => 'Email and WorkWise messaging',
                 'communication_frequency' => 'Weekly updates',
-                'status' => 'pending_client_signature'
+                'status' => 'pending_employer_signature'
             ];
 
             \Log::info('Creating contract with data', [
@@ -113,11 +125,16 @@ class ContractService
      */
     private function generateScopeOfWork($job, $bid): string
     {
-        $scope = "The freelancer, {$bid->freelancer->first_name} {$bid->freelancer->last_name}, agrees to provide the following services for the client, {$job->employer->first_name} {$job->employer->last_name}:\n\n";
-        
+        $gigWorkerName = $bid->gigWorker ? $bid->gigWorker->first_name . ' ' . $bid->gigWorker->last_name : 'the gig worker';
+        $employerName = $job->employer ? $job->employer->first_name . ' ' . $job->employer->last_name : 'the employer';
+        $jobTitle = $job->title ?? 'the project';
+        $jobDescription = $job->description ?? 'No description provided';
+
+        $scope = "The gig worker, {$gigWorkerName}, agrees to provide the following services for the employer, {$employerName}:\n\n";
+
         // Add job description as main scope
-        $scope .= "Project: {$job->title}\n\n";
-        $scope .= "Description: {$job->description}\n\n";
+        $scope .= "Project: {$jobTitle}\n\n";
+        $scope .= "Description: {$jobDescription}\n\n";
         
         // Add specific deliverables if available
         $skills = $job->required_skills;
@@ -157,82 +174,193 @@ class ContractService
     {
         $now = now();
 
-        if ($signerRole === 'client') {
-            // Client signs first
+        if ($signerRole === 'employer') {
+            // Employer signs first
             $contract->update([
-                'client_signed_at' => $now,
-                'status' => 'pending_freelancer_signature'
+                'employer_signed_at' => $now,
+                'status' => 'pending_gig_worker_signature'
             ]);
-        } elseif ($signerRole === 'freelancer') {
-            // Freelancer signs after client
+        } elseif ($signerRole === 'gig_worker') {
+            // Gig worker signs after employer
             $contract->update([
-                'freelancer_signed_at' => $now,
+                'gig_worker_signed_at' => $now,
                 'status' => 'fully_signed',
                 'fully_signed_at' => $now
             ]);
 
             // Update project status to active and mark contract as signed
-            $contract->project->update([
-                'status' => 'active',
-                'contract_signed' => true,
-                'contract_signed_at' => $now,
-                'started_at' => $now
-            ]);
+            if ($contract->project) {
+                $contract->project->update([
+                    'status' => 'active',
+                    'contract_signed' => true,
+                    'contract_signed_at' => $now,
+                    'started_at' => $now
+                ]);
+            }
 
             // Generate final PDF
             $this->generateContractPdf($contract);
+
+            // Send notifications to both parties that contract is fully signed
+            $jobTitle = $contract->job ? $contract->job->title : 'the project';
+
+            // Only send notifications if users exist
+            if ($contract->employer) {
+                $this->notificationService->createContractFullySignedNotification($contract->employer, [
+                    'job_title' => $jobTitle,
+                    'contract_id' => $contract->id,
+                    'project_id' => $contract->project_id
+                ]);
+                // Also notify that payment is now pending until completion
+                $this->notificationService->createEscrowStatusNotification($contract->employer, [
+                    'project_id' => $contract->project_id,
+                    'project_title' => $jobTitle,
+                    'status' => 'payment_pending'
+                ]);
+            }
+
+            if ($contract->gigWorker) {
+                $this->notificationService->createContractFullySignedNotification($contract->gigWorker, [
+                    'job_title' => $jobTitle,
+                    'contract_id' => $contract->id,
+                    'project_id' => $contract->project_id
+                ]);
+                // Also notify that payment is now pending until completion
+                $this->notificationService->createEscrowStatusNotification($contract->gigWorker, [
+                    'project_id' => $contract->project_id,
+                    'project_title' => $jobTitle,
+                    'status' => 'payment_pending'
+                ]);
+            }
         }
     }
 
     /**
-     * Generate contract PDF
+     * Generate contract PDF with enhanced error handling
      */
     public function generateContractPdf(Contract $contract): string
     {
-        $contract->load([
-            'client',
-            'freelancer',
-            'job',
-            'project',
-            'bid',
-            'signatures'
-        ]);
-
-        // Prepare data for PDF
-        $data = [
-            'contract' => $contract,
-            'client' => $contract->client,
-            'freelancer' => $contract->freelancer,
-            'job' => $contract->job,
-            'project' => $contract->project,
-            'bid' => $contract->bid,
-            'clientSignature' => $contract->getSignatureForRole('client'),
-            'freelancerSignature' => $contract->getSignatureForRole('freelancer'),
-            'isFullySigned' => $contract->isFullySigned(),
-            'generatedAt' => now()
-        ];
-
-        // Generate PDF
-        $pdf = Pdf::loadView('contracts.pdf', $data)
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'defaultFont' => 'DejaVu Sans',
-                'isRemoteEnabled' => true,
-                'isHtml5ParserEnabled' => true,
-                'isPhpEnabled' => true
+        try {
+            \Log::info('Starting PDF generation for contract', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_id
             ]);
 
-        // Save PDF
-        $filename = "contracts/contract_{$contract->contract_id}.pdf";
-        Storage::put($filename, $pdf->output());
+            $contract->load([
+                'employer',
+                'gigWorker',
+                'job',
+                'project',
+                'bid',
+                'signatures'
+            ]);
 
-        // Update contract with PDF path
-        $contract->update([
-            'pdf_path' => $filename,
-            'pdf_generated_at' => now()
-        ]);
+            // Validate required relationships
+            if (!$contract->employer || !$contract->gigWorker || !$contract->job) {
+                throw new \Exception('Contract is missing required relationships (employer, gigWorker, or job)');
+            }
 
-        return $filename;
+            // Ensure responsibilities are arrays
+            $employerResponsibilities = $contract->employer_responsibilities ?? [];
+            $gigWorkerResponsibilities = $contract->gig_worker_responsibilities ?? [];
+
+            if (!is_array($employerResponsibilities)) {
+                $employerResponsibilities = [];
+            }
+            if (!is_array($gigWorkerResponsibilities)) {
+                $gigWorkerResponsibilities = [];
+            }
+
+            // Prepare data for PDF with safe defaults
+            $data = [
+                'contract' => $contract,
+                'employer' => $contract->employer,
+                'gigWorker' => $contract->gigWorker,
+                'job' => $contract->job,
+                'project' => $contract->project,
+                'bid' => $contract->bid,
+                'employerSignature' => $contract->getSignatureForRole('employer'),
+                'gigWorkerSignature' => $contract->getSignatureForRole('gig_worker'),
+                'isFullySigned' => $contract->isFullySigned(),
+                'generatedAt' => now(),
+                'employerResponsibilities' => $employerResponsibilities,
+                'gigWorkerResponsibilities' => $gigWorkerResponsibilities
+            ];
+
+            \Log::info('PDF data prepared', [
+                'contract_id' => $contract->id,
+                'has_employer' => !is_null($contract->employer),
+                'has_gig_worker' => !is_null($contract->gigWorker),
+                'has_job' => !is_null($contract->job),
+                'employer_responsibilities_count' => count($employerResponsibilities),
+                'gig_worker_responsibilities_count' => count($gigWorkerResponsibilities)
+            ]);
+
+            // Generate PDF with error handling
+            $pdf = Pdf::loadView('contracts.pdf', $data)
+                ->setPaper('a4', 'portrait')
+                ->setOptions([
+                    'defaultFont' => 'DejaVu Sans',
+                    'isRemoteEnabled' => false, // Disable for security
+                    'isHtml5ParserEnabled' => true,
+                    'isPhpEnabled' => false, // Disable for security
+                    'debugKeepTemp' => false,
+                    'debugPng' => false,
+                    'debugCss' => false,
+                    'debugLayout' => false,
+                    'debugLayoutLines' => false,
+                    'debugLayoutBlocks' => false,
+                    'debugLayoutInline' => false,
+                    'debugLayoutPaddingBox' => false
+                ]);
+
+            // Ensure contracts directory exists
+            if (!Storage::exists('contracts')) {
+                Storage::makeDirectory('contracts');
+            }
+
+            // Save PDF
+            $filename = "contracts/contract_{$contract->contract_id}.pdf";
+            $pdfOutput = $pdf->output();
+            
+            if (empty($pdfOutput)) {
+                throw new \Exception('PDF generation produced empty output');
+            }
+
+            Storage::put($filename, $pdfOutput);
+
+            // Verify file was saved
+            if (!Storage::exists($filename)) {
+                throw new \Exception('PDF file was not saved successfully');
+            }
+
+            // Update contract with PDF path
+            $contract->update([
+                'pdf_path' => $filename,
+                'pdf_generated_at' => now()
+            ]);
+
+            \Log::info('PDF generated successfully', [
+                'contract_id' => $contract->id,
+                'filename' => $filename,
+                'file_size' => Storage::size($filename)
+            ]);
+
+            return $filename;
+
+        } catch (\Exception $e) {
+            \Log::error('PDF generation failed', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Re-throw with more context
+            throw new \Exception('Failed to generate contract PDF: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -245,30 +373,33 @@ class ContractService
 
         switch ($type) {
             case 'contract_ready':
-                // Notify freelancer that contract is ready for signing
-                $message = "🎉 Great news! {$contract->client->first_name} {$contract->client->last_name} has accepted your bid for \"{$contract->job->title}\"!\n\n" .
+                // Notify gig worker that contract is ready for signing
+                $employerName = $contract->employer ? $contract->employer->first_name . ' ' . $contract->employer->last_name : 'the employer';
+                $message = "🎉 Great news! {$employerName} has accepted your bid for \"{$contract->job->title}\"!\n\n" .
                           " Project Amount: ₱{$contract->total_payment}\n" .
                           "📋 Contract ID: {$contract->contract_id}\n\n" .
                           "Please review and sign the contract to begin work. You can access it from your Contracts dashboard.";
-                $senderId = $contract->client_id;
+                $senderId = $contract->employer_id;
                 break;
 
-            case 'awaiting_client_signature':
-                // Notify client that freelancer has signed
-                $message = "✅ {$contract->freelancer->first_name} {$contract->freelancer->last_name} has signed the contract for \"{$contract->job->title}\"!\n\n" .
+            case 'awaiting_employer_signature':
+                // Notify employer that gig worker has signed
+                $gigWorkerName = $contract->gigWorker ? $contract->gigWorker->first_name . ' ' . $contract->gigWorker->last_name : 'the gig worker';
+                $message = "✅ {$gigWorkerName} has signed the contract for \"{$contract->job->title}\"!\n\n" .
                           "📋 Contract ID: {$contract->contract_id}\n" .
                           " Project Amount: ₱{$contract->total_payment}\n\n" .
                           "Please review and sign the contract to officially begin the project.";
-                $senderId = $contract->freelancer_id;
+                $senderId = $contract->gig_worker_id;
                 break;
 
             case 'contract_fully_signed':
                 // Notify both parties that contract is fully signed
-                $message = "🚀 The contract for \"{$contract->job->title}\" is now fully signed!\n\n" .
+                $jobTitle = $contract->job ? $contract->job->title : 'the project';
+                $message = "🚀 The contract for \"{$jobTitle}\" is now fully signed!\n\n" .
                           "📋 Contract ID: {$contract->contract_id}\n" .
                           " Project Amount: ₱{$contract->total_payment}\n\n" .
                           "Work can now officially begin. Good luck with your project!";
-                $senderId = $user->id === $contract->client_id ? $contract->freelancer_id : $contract->client_id;
+                $senderId = $user->id === $contract->employer_id ? $contract->gig_worker_id : $contract->employer_id;
                 break;
         }
 
@@ -307,8 +438,8 @@ class ContractService
     public function getContractSummary(User $user): array
     {
         $query = Contract::where(function ($q) use ($user) {
-            $q->where('client_id', $user->id)
-              ->orWhere('freelancer_id', $user->id);
+            $q->where('employer_id', $user->id)
+              ->orWhere('gig_worker_id', $user->id);
         });
 
         return [

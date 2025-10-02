@@ -15,11 +15,11 @@ class ClientMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || auth()->user()->user_type !== 'client') {
+        if (!auth()->check() || auth()->user()->user_type !== 'employer') {
             if ($request->wantsJson()) {
-                return response()->json(['error' => 'Only clients can access this functionality.'], 403);
+                return response()->json(['error' => 'Only employers can access this functionality.'], 403);
             }
-            return redirect()->route('dashboard')->with('error', 'Only clients can access this functionality.');
+            return redirect()->route('dashboard')->with('error', 'Only employers can access this functionality.');
         }
 
         return $next($request);

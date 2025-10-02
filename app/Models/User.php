@@ -47,6 +47,7 @@ class User extends Authenticatable
         'stripe_account_details',
         'stripe_onboarded_at',
         'escrow_balance',
+        'is_admin',
     ];
 
     /**
@@ -76,6 +77,7 @@ class User extends Authenticatable
             'stripe_account_details' => 'array',
             'stripe_onboarded_at' => 'datetime',
             'escrow_balance' => 'decimal:2',
+            'is_admin' => 'boolean',
         ];
     }
 
@@ -96,7 +98,15 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is a client
+     * Check if user is an employer
+     */
+    public function isEmployer(): bool
+    {
+        return $this->user_type === 'employer';
+    }
+
+    /**
+     * Check if user is a client (deprecated - use isEmployer)
      */
     public function isClient(): bool
     {
@@ -104,15 +114,31 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is a freelancer
+     * Check if user is a gig worker
      */
-    public function isFreelancer(): bool
+    public function isGigWorker(): bool
     {
-        return $this->user_type === 'freelancer';
+        return $this->user_type === 'gig_worker';
     }
 
     /**
-     * Jobs posted by this client
+     * Check if user is a freelancer (deprecated - use isGigWorker)
+     */
+    public function isFreelancer(): bool
+    {
+        return $this->user_type === 'gig_worker';
+    }
+
+    /**
+     * Check if user is an admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->is_admin || $this->user_type === 'admin';
+    }
+
+    /**
+     * Jobs posted by this employer
      */
     public function postedJobs(): HasMany
     {
@@ -120,22 +146,38 @@ class User extends Authenticatable
     }
 
     /**
-     * Bids made by this freelancer
+     * Bids made by this gig worker
      */
     public function bids(): HasMany
     {
-        return $this->hasMany(Bid::class, 'freelancer_id');
+        return $this->hasMany(Bid::class, 'gig_worker_id');
     }
 
     // Project relationships
-    public function clientProjects(): HasMany
+    public function employerProjects(): HasMany
     {
-        return $this->hasMany(Project::class, 'client_id');
+        return $this->hasMany(Project::class, 'employer_id');
     }
 
+    public function gigWorkerProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'gig_worker_id');
+    }
+
+    /**
+     * Get client projects (deprecated - use employerProjects)
+     */
+    public function clientProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'employer_id');
+    }
+
+    /**
+     * Get freelancer projects (deprecated - use gigWorkerProjects)
+     */
     public function freelancerProjects(): HasMany
     {
-        return $this->hasMany(Project::class, 'freelancer_id');
+        return $this->hasMany(Project::class, 'gig_worker_id');
     }
 
     // Review relationships
@@ -191,7 +233,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Get total earnings for freelancer
+     * Get total earnings for gig worker
      */
     public function getTotalEarningsAttribute(): float
     {
@@ -202,14 +244,14 @@ class User extends Authenticatable
     }
 
     /**
-     * Get completion rate for freelancer
+     * Get completion rate for gig worker
      */
     public function getCompletionRateAttribute(): float
     {
-        $totalProjects = $this->freelancerProjects()->count();
+        $totalProjects = $this->gigWorkerProjects()->count();
         if ($totalProjects === 0) return 0.0;
 
-        $completedProjects = $this->freelancerProjects()
+        $completedProjects = $this->gigWorkerProjects()
             ->where('status', 'completed')
             ->count();
 

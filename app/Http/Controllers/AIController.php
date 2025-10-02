@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GigJob;
 use App\Services\AIJobMatchingService;
+use App\Services\MatchService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -11,7 +12,9 @@ use Inertia\Response;
 class AIController extends Controller
 {
     public function __construct(
-        private AIJobMatchingService $aiService
+        private AIJobMatchingService $aiService,
+        private MatchService $matchService,
+        private AIService $aiServiceDirect
     ) {}
 
     /**
@@ -22,30 +25,34 @@ class AIController extends Controller
         $user = auth()->user();
 
         if ($user->isFreelancer()) {
-            $recommendations = $this->aiService->getJobRecommendations($user);
+            $recommendations = $this->matchService->getRecommendedJobs($user);
 
-            return Inertia::render('AI/FreelancerRecommendations', [
+            return Inertia::render('AI/Recommendations', [
                 'recommendations' => $recommendations,
-                'user' => $user
+                'userType' => 'freelancer'
             ]);
         } else {
-            // For clients, show general AI insights
-            $insights = [
-                'market_trends' => $this->getMarketTrends(),
-                'pricing_insights' => $this->getPricingInsights(),
-                'skill_demand' => $this->getSkillDemand(),
-                'hiring_tips' => $this->getHiringTips()
-            ];
+            // For clients, get freelancer matches for their jobs
+            $jobs = $user->postedJobs()->where('status', 'open')->get();
+            $recommendations = [];
 
-            return Inertia::render('AI/ClientInsights', [
-                'insights' => $insights,
-                'user' => $user
+            foreach ($jobs as $job) {
+                $matches = $this->matchService->getJobMatches($job);
+                $recommendations[$job->id] = [
+                    'job' => $job,
+                    'matches' => $matches
+                ];
+            }
+
+            return Inertia::render('AI/Recommendations', [
+                'recommendations' => $recommendations,
+                'userType' => 'client'
             ]);
         }
     }
 
     /**
-     * Get matching freelancers for a job
+     * Get matching freelancers for a job with AI enhancement
      */
     public function matchingFreelancers(GigJob $job)
     {
@@ -54,13 +61,9 @@ class AIController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $matches = $this->aiService->findMatchingFreelancers($job, 20);
+        $result = $this->aiService->getAIMatchingFreelancers($job);
 
-        return response()->json([
-            'matches' => $matches,
-            'total_matches' => $matches->count(),
-            'job' => $job
-        ]);
+        return response()->json($result);
     }
 
     /**
@@ -74,11 +77,11 @@ class AIController extends Controller
             abort(403, 'Only freelancers can access job suggestions');
         }
 
-        $suggestions = $this->aiService->findMatchingJobs($user, 15);
+        $suggestions = $this->matchService->getRecommendedJobs($user, 15);
 
         return response()->json([
             'suggestions' => $suggestions,
-            'total_suggestions' => $suggestions->count()
+            'total_suggestions' => count($suggestions)
         ]);
     }
 
@@ -383,5 +386,55 @@ class AIController extends Controller
             'location_preference' => 'Local (Lapu-Lapu City)',
             'skill_preferences' => ['Web Development', 'Design', 'Marketing']
         ];
+    }
+
+    /**
+     * Get AI-powered skill recommendations for freelancer
+     */
+    public function skillRecommendations()
+    {
+        $user = auth()->user();
+
+        if (!$user->isFreelancer()) {
+            abort(403, 'Only freelancers can access skill recommendations');
+        }
+
+        $recommendations = $this->aiService->getAISkillRecommendations($user);
+
+        return response()->json([
+            'success' => $recommendations['success'],
+            'recommendations' => $recommendations['recommendations'],
+            'error' => $recommendations['error'] ?? null,
+            'ai_service_available' => $this->aiServiceDirect->isAvailable()
+        ]);
+    }
+
+    /**
+     * Get AI-enhanced job suggestions for freelancer
+     */
+    public function enhancedJobSuggestions()
+    {
+        $user = auth()->user();
+
+        if (!$user->isFreelancer()) {
+            abort(403, 'Only freelancers can access job suggestions');
+        }
+
+        $suggestions = $this->aiService->getAIJobRecommendations($user);
+
+        return response()->json($suggestions);
+    }
+
+    /**
+     * Get AI service status and configuration
+     */
+    public function aiServiceStatus()
+    {
+        return response()->json([
+            'available' => $this->aiServiceDirect->isAvailable(),
+            'config' => $this->aiServiceDirect->getConfig(),
+            'api_key_configured' => !empty(config('services.openrouter.api_key')) || !empty(env('META_LLAMA_L4_SCOUT_FREE')),
+            'model' => config('services.openrouter.model') ?: env('OPENROUTER_MODEL', 'meta-llama/llama-4-scout:free')
+        ]);
     }
 }

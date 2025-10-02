@@ -172,7 +172,7 @@ export default function PaymentShow({ project, testCards, stripeKey }) {
                         Payment for: {project.job.title}
                     </h2>
                     <p className="text-sm text-gray-600 mt-1">
-                        Secure escrow payment with {project.freelancer.first_name} {project.freelancer.last_name}
+                        Secure escrow payment with {project.gig_worker.first_name} {project.gig_worker.last_name}
                     </p>
                 </div>
             }
@@ -260,7 +260,7 @@ export default function PaymentShow({ project, testCards, stripeKey }) {
                                         <span className="font-semibold">₱{(project.agreed_amount * 0.05).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">Freelancer Receives</span>
+                                        <span className="text-gray-600">Gig Worker Receives</span>
                                         <span className="font-semibold text-green-600">
                                             ₱{(project.agreed_amount * 0.95).toFixed(2)}
                                         </span>
@@ -278,9 +278,9 @@ export default function PaymentShow({ project, testCards, stripeKey }) {
                                     <h4 className="font-medium mb-3">Project Details</h4>
                                     <dl className="space-y-2 text-sm">
                                         <div className="flex justify-between">
-                                            <dt className="text-gray-600">Freelancer</dt>
+                                            <dt className="text-gray-600">Gig Worker</dt>
                                             <dd className="font-medium">
-                                                {project.freelancer.first_name} {project.freelancer.last_name}
+                                                {project.gig_worker.first_name} {project.gig_worker.last_name}
                                             </dd>
                                         </div>
                                         <div className="flex justify-between">
@@ -308,7 +308,7 @@ export default function PaymentShow({ project, testCards, stripeKey }) {
                                         </div>
                                         <div className="flex items-start">
                                             <span className="text-blue-500 mr-2">2.</span>
-                                            <span>Freelancer completes the work</span>
+                                            <span>Gig Worker completes the work</span>
                                         </div>
                                         <div className="flex items-start">
                                             <span className="text-blue-500 mr-2">3.</span>
@@ -316,7 +316,7 @@ export default function PaymentShow({ project, testCards, stripeKey }) {
                                         </div>
                                         <div className="flex items-start">
                                             <span className="text-blue-500 mr-2">4.</span>
-                                            <span>Payment is released to freelancer</span>
+                                            <span>Payment is released to gig worker</span>
                                         </div>
                                     </div>
                                 </div>

@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\Project;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
@@ -201,5 +204,311 @@ class ReportController extends Controller
         ];
 
         return response()->json($insights);
+    }
+
+    /**
+     * Display transaction reports for the authenticated user
+     */
+    public function transactions(Request $request): Response
+    {
+        $user = auth()->user();
+        $filters = $request->only(['date_from', 'date_to', 'type', 'status']);
+
+        try {
+            // Build query based on user type
+            if ($user->isAdmin()) {
+                $query = Transaction::query();
+            } elseif ($user->isGigWorker()) {
+                $query = Transaction::where('payee_id', $user->id);
+            } else {
+                $query = Transaction::where('payer_id', $user->id);
+            }
+
+            // Apply filters
+            if (!empty($filters['date_from'])) {
+                $query->where('created_at', '>=', $filters['date_from']);
+            }
+
+            if (!empty($filters['date_to'])) {
+                $query->where('created_at', '<=', $filters['date_to']);
+            }
+
+            if (!empty($filters['type'])) {
+                $query->where('type', $filters['type']);
+            }
+
+            if (!empty($filters['status'])) {
+                $query->where('status', $filters['status']);
+            }
+
+            $transactions = $query->with(['project.job', 'payer', 'payee'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(20);
+
+            $summary = $this->calculateTransactionSummary($query);
+
+            return Inertia::render('Reports/TransactionReports', [
+                'transactions' => $transactions,
+                'summary' => $summary,
+                'filters' => $filters,
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Transaction reports error: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'filters' => $filters,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return Inertia::render('Reports/TransactionReports', [
+                'transactions' => ['data' => []],
+                'summary' => [
+                    'total_volume' => 0,
+                    'total_transactions' => 0,
+                    'success_rate' => 0,
+                    'average_amount' => 0,
+                    'total_fees' => 0,
+                    'net_amount' => 0
+                ],
+                'filters' => $filters,
+                'user' => $user,
+                'error' => 'Unable to load transaction data. Please try again.'
+            ]);
+        }
+    }
+
+    /**
+     * Export transaction reports
+     */
+    public function exportTransactions(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $format = $request->get('format', 'pdf');
+            $filters = $request->only(['date_from', 'date_to', 'type', 'status']);
+
+            // Build query based on user type
+            if ($user->isAdmin()) {
+                $query = Transaction::query();
+            } elseif ($user->isGigWorker()) {
+                $query = Transaction::where('payee_id', $user->id);
+            } else {
+                $query = Transaction::where('payer_id', $user->id);
+            }
+
+            // Apply filters
+            if (!empty($filters['date_from'])) {
+                $query->where('created_at', '>=', $filters['date_from']);
+            }
+
+            if (!empty($filters['date_to'])) {
+                $query->where('created_at', '<=', $filters['date_to']);
+            }
+
+            if (!empty($filters['type'])) {
+                $query->where('type', $filters['type']);
+            }
+
+            if (!empty($filters['status'])) {
+                $query->where('status', $filters['status']);
+            }
+
+            $transactions = $query->with(['project.job', 'payer', 'payee'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            if ($format === 'pdf') {
+                return $this->generateTransactionPdf($transactions, $user, $filters);
+            } elseif ($format === 'excel') {
+                return $this->generateTransactionExcel($transactions, $user);
+            }
+
+            return response()->json(['error' => 'Unsupported format'], 400);
+        } catch (\Exception $e) {
+            \Log::error('Transaction export error: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'format' => $format,
+                'filters' => $filters
+            ]);
+
+            return response()->json(['error' => 'Export failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Calculate transaction summary statistics
+     */
+    private function calculateTransactionSummary($query)
+    {
+        try {
+            $baseQuery = clone $query;
+
+            return [
+                'total_volume' => (float) $baseQuery->sum('amount'),
+                'total_transactions' => $baseQuery->count(),
+                'success_rate' => $this->calculateSuccessRate($baseQuery),
+                'average_amount' => (float) $baseQuery->avg('amount'),
+                'total_fees' => (float) $baseQuery->sum('platform_fee'),
+                'net_amount' => (float) $baseQuery->sum('net_amount')
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Summary calculation error: ' . $e->getMessage());
+            return [
+                'total_volume' => 0,
+                'total_transactions' => 0,
+                'success_rate' => 0,
+                'average_amount' => 0,
+                'total_fees' => 0,
+                'net_amount' => 0
+            ];
+        }
+    }
+
+    /**
+     * Calculate transaction success rate
+     */
+    private function calculateSuccessRate($query)
+    {
+        try {
+            $baseQuery = clone $query;
+            $total = $baseQuery->count();
+
+            if ($total === 0) return 0;
+
+            $successful = (clone $query)->where('status', 'completed')->count();
+
+            return round(($successful / $total) * 100, 1);
+        } catch (\Exception $e) {
+            \Log::error('Success rate calculation error: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Generate PDF report for transactions
+     */
+    private function generateTransactionPdf($transactions, $user, $filters)
+    {
+        try {
+            $summary = $this->calculateTransactionSummary(
+                $this->buildTransactionQuery($user, $filters)
+            );
+
+            $data = $transactions->map(function ($transaction) use ($user) {
+                return [
+                    'Date' => $transaction->created_at->format('Y-m-d H:i:s'),
+                    'Type' => ucfirst($transaction->type),
+                    'Description' => $transaction->description ?? ucfirst($transaction->type) . ' transaction',
+                    'Amount' => $transaction->amount,
+                    'Platform_Fee' => $transaction->platform_fee ?? 0,
+                    'Net_Amount' => $transaction->net_amount ?? $transaction->amount,
+                    'Status' => ucfirst($transaction->status),
+                    'Project' => $transaction->project?->job?->title ?? 'N/A',
+                    'Counterparty' => $this->getCounterpartyName($transaction, $user)
+                ];
+            });
+
+            $pdf = Pdf::loadView('reports.transaction-report', [
+                'data' => $data,
+                'user' => $user,
+                'summary' => $summary,
+                'filters' => $filters,
+                'generatedAt' => now()
+            ])->setPaper('a4', 'landscape');
+
+            $filename = 'transaction_report_' . $user->id . '_' . now()->format('Y-m-d_H-i-s');
+
+            return $pdf->download($filename . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('PDF generation error: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'transaction_count' => $transactions->count()
+            ]);
+
+            return response()->json(['error' => 'PDF generation failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate Excel report for transactions
+     */
+    private function generateTransactionExcel($transactions, $user)
+    {
+        $data = $transactions->map(function ($transaction) {
+            return [
+                'Date' => $transaction->created_at->format('Y-m-d H:i:s'),
+                'Type' => ucfirst($transaction->type),
+                'Description' => $transaction->description ?? ucfirst($transaction->type) . ' transaction',
+                'Amount' => $transaction->amount,
+                'Platform_Fee' => $transaction->platform_fee ?? 0,
+                'Net_Amount' => $transaction->net_amount ?? $transaction->amount,
+                'Status' => ucfirst($transaction->status),
+                'Project' => $transaction->project?->job?->title ?? 'N/A',
+                'Counterparty' => $this->getCounterpartyName($transaction, $user)
+            ];
+        });
+
+        $filename = 'transaction_report_' . $user->id . '_' . now()->format('Y-m-d_H-i-s');
+
+        return response()->json($data, 200, [
+            'Content-Disposition' => "attachment; filename=\"{$filename}.json\"",
+        ]);
+    }
+
+    /**
+     * Build transaction query based on user type and filters
+     */
+    private function buildTransactionQuery($user, $filters)
+    {
+        try {
+            if ($user->isAdmin()) {
+                $query = Transaction::query();
+            } elseif ($user->isGigWorker()) {
+                $query = Transaction::where('payee_id', $user->id);
+            } else {
+                $query = Transaction::where('payer_id', $user->id);
+            }
+
+            // Apply filters
+            if (!empty($filters['date_from'])) {
+                $query->where('created_at', '>=', $filters['date_from']);
+            }
+
+            if (!empty($filters['date_to'])) {
+                $query->where('created_at', '<=', $filters['date_to']);
+            }
+
+            if (!empty($filters['type'])) {
+                $query->where('type', $filters['type']);
+            }
+
+            if (!empty($filters['status'])) {
+                $query->where('status', $filters['status']);
+            }
+
+            return $query;
+        } catch (\Exception $e) {
+            \Log::error('Query building error: ' . $e->getMessage());
+            return Transaction::query();
+        }
+    }
+
+    /**
+     * Get counterparty name for transaction
+     */
+    private function getCounterpartyName($transaction, $user)
+    {
+        try {
+            if ($user->isAdmin()) {
+                return ($transaction->payer?->full_name ?? 'N/A') . ' → ' . ($transaction->payee?->full_name ?? 'N/A');
+            } elseif ($user->isGigWorker()) {
+                return $transaction->payer?->full_name ?? 'N/A';
+            } else {
+                return $transaction->payee?->full_name ?? 'N/A';
+            }
+        } catch (\Exception $e) {
+            \Log::error('Counterparty name error: ' . $e->getMessage());
+            return 'N/A';
+        }
     }
 }

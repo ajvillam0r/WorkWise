@@ -191,7 +191,7 @@ export default function FreelancerDashboard({ overview, monthly_earnings, recent
                                                             {project.job?.title || 'Untitled Project'}
                                                         </h4>
                                                         <p className="text-sm text-gray-600">
-                                                            Client: {project.client?.first_name} {project.client?.last_name}
+                                                            Employer: {project.employer?.first_name} {project.employer?.last_name}
                                                         </p>
                                                         <p className="text-sm text-gray-500">
                                                             Status: <span className="capitalize">{project.status}</span>

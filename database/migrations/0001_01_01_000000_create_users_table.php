@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('barangay');
+            $table->string('barangay')->nullable();
             $table->enum('user_type', ['freelancer', 'client'])->default('freelancer');
 
             // Profile completion tracking

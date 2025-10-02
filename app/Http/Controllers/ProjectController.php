@@ -18,14 +18,14 @@ class ProjectController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->isClient()) {
-            $projects = Project::where('client_id', $user->id)
-                ->with(['job', 'freelancer', 'transactions'])
+        if ($user->isEmployer()) {
+            $projects = Project::where('employer_id', $user->id)
+                ->with(['job', 'gigWorker', 'transactions'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
         } else {
-            $projects = Project::where('freelancer_id', $user->id)
-                ->with(['job', 'client', 'transactions'])
+            $projects = Project::where('gig_worker_id', $user->id)
+                ->with(['job', 'employer', 'transactions'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
         }
@@ -43,14 +43,14 @@ class ProjectController extends Controller
         $user = auth()->user();
 
         // Check if user is authorized to view this project
-        if ($project->client_id !== $user->id && $project->freelancer_id !== $user->id) {
+        if ($project->employer_id !== $user->id && $project->gig_worker_id !== $user->id) {
             abort(403);
         }
 
         $project->load([
             'job',
-            'client',
-            'freelancer',
+            'employer',
+            'gigWorker',
             'transactions',
             'messages' => function ($query) {
                 $query->orderBy('created_at', 'desc')->limit(10);
@@ -59,7 +59,7 @@ class ProjectController extends Controller
 
         return Inertia::render('Projects/Show', [
             'project' => $project,
-            'isClient' => $user->isClient(),
+            'isEmployer' => $user->isEmployer(),
             'hasPayment' => $project->transactions()->where('type', 'escrow')->where('status', 'completed')->exists(),
             'canReview' => $project->isCompleted() && !$project->reviews()->where('reviewer_id', $user->id)->exists()
         ]);
@@ -70,9 +70,9 @@ class ProjectController extends Controller
      */
     public function complete(Request $request, Project $project)
     {
-        // Ensure user is the freelancer
-        if ($project->freelancer_id !== auth()->id()) {
-            return back()->with('error', 'Only the freelancer can mark a project as complete.');
+        // Ensure user is the gig worker
+        if ($project->gig_worker_id !== auth()->id()) {
+            return back()->with('error', 'Only the gig worker can mark a project as complete.');
         }
 
         // Validate request
@@ -97,7 +97,7 @@ class ProjectController extends Controller
                 'completion_notes' => $validated['completion_notes']
             ]);
 
-            return back()->with('success', 'Project marked as complete! The client will be notified to review and approve your work.');
+            return back()->with('success', 'Project marked as complete! The employer will be notified to review and approve your work.');
 
         } catch (\Exception $e) {
             \Log::error('Failed to complete project', [
@@ -114,9 +114,9 @@ class ProjectController extends Controller
      */
     public function approve(Project $project)
     {
-        // Only client can approve
-        if ($project->client_id !== auth()->id()) {
-            return back()->with('error', 'Only the client can approve project completion.');
+        // Only employer can approve
+        if ($project->employer_id !== auth()->id()) {
+            return back()->with('error', 'Only the employer can approve project completion.');
         }
 
         if (!$project->isCompleted()) {
@@ -125,7 +125,7 @@ class ProjectController extends Controller
 
         try {
             $project->update([
-                'client_approved' => true,
+                'employer_approved' => true,
                 'approved_at' => now()
             ]);
 
@@ -139,7 +139,7 @@ class ProjectController extends Controller
             ]);
 
             if ($paymentResult['success']) {
-                return back()->with('success', 'Project approved and payment automatically released to freelancer!');
+                return back()->with('success', 'Project approved and payment automatically released to gig worker!');
             } else {
                 \Log::warning('Project approved but payment release failed', [
                     'project_id' => $project->id,
@@ -161,8 +161,8 @@ class ProjectController extends Controller
      */
     public function requestRevision(Request $request, Project $project)
     {
-        // Only client can request revision
-        if ($project->client_id !== auth()->id()) {
+        // Only employer can request revision
+        if ($project->employer_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
@@ -184,7 +184,7 @@ class ProjectController extends Controller
             'milestones' => $milestones
         ]);
 
-        return back()->with('success', 'Revision requested. The freelancer has been notified.');
+        return back()->with('success', 'Revision requested. The gig worker has been notified.');
     }
 
     /**
@@ -192,8 +192,8 @@ class ProjectController extends Controller
      */
     public function cancel(Request $request, Project $project)
     {
-        // Only client can cancel, and only if no payment released
-        if ($project->client_id !== auth()->id()) {
+        // Only employer can cancel, and only if no payment released
+        if ($project->employer_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
@@ -219,7 +219,7 @@ class ProjectController extends Controller
     public function review(Request $request, Project $project)
     {
         // Ensure user is involved in this project
-        if ($project->client_id !== auth()->id() && $project->freelancer_id !== auth()->id()) {
+        if ($project->employer_id !== auth()->id() && $project->gig_worker_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
@@ -243,9 +243,9 @@ class ProjectController extends Controller
         ]);
 
         // Determine who is being reviewed
-        $revieweeId = auth()->id() === $project->client_id
-            ? $project->freelancer_id
-            : $project->client_id;
+        $revieweeId = auth()->id() === $project->employer_id
+            ? $project->gig_worker_id
+            : $project->employer_id;
 
         Review::create([
             'project_id' => $project->id,

@@ -48,7 +48,7 @@ export default function FreelancerOnboarding({ user }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('freelancer.onboarding'));
+        post(route('gig-worker.onboarding'));
     };
 
     const nextStep = () => {
@@ -67,11 +67,11 @@ export default function FreelancerOnboarding({ user }) {
         <AuthenticatedLayout
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Complete Your Freelancer Profile
+                    Complete Your Gig Worker Profile
                 </h2>
             }
         >
-            <Head title="Freelancer Onboarding" />
+            <Head title="Gig Worker Onboarding" />
 
             <div className="py-12">
                 <div className="mx-auto max-w-3xl sm:px-6 lg:px-8">
@@ -104,7 +104,7 @@ export default function FreelancerOnboarding({ user }) {
                                                 Tell us about yourself
                                             </h3>
                                             <p className="text-gray-600">
-                                                This information will help clients understand your expertise
+                                                This information will help employers understand your expertise
                                             </p>
                                         </div>
 
@@ -191,7 +191,7 @@ export default function FreelancerOnboarding({ user }) {
                                                 Your Skills & Languages
                                             </h3>
                                             <p className="text-gray-600">
-                                                Add your top skills and languages to help clients find you
+                                                Add your top skills and languages to help employers find you
                                             </p>
                                         </div>
 

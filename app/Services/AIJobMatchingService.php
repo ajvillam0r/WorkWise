@@ -9,6 +9,12 @@ use Illuminate\Support\Collection;
 
 class AIJobMatchingService
 {
+    protected AIService $aiService;
+
+    public function __construct(AIService $aiService)
+    {
+        $this->aiService = $aiService;
+    }
     /**
      * Find matching freelancers for a job using AI-like algorithm
      */
@@ -26,7 +32,7 @@ class AIJobMatchingService
                 'match_reasons' => $this->getMatchReasons($job, $freelancer, $score)
             ];
         })
-        ->filter(fn($match) => $match['match_score'] > 0.3) // Only show good matches
+        ->filter(fn($match) => $match['match_score'] > 0.1) // Show more matches (10% threshold)
         ->sortByDesc('match_score')
         ->take($limit)
         ->values();
@@ -54,7 +60,7 @@ class AIJobMatchingService
                 'competition_level' => $this->calculateCompetitionLevel($job)
             ];
         })
-        ->filter(fn($match) => $match['match_score'] > 0.3)
+        ->filter(fn($match) => $match['match_score'] > 0.1) // Show more matches (10% threshold)
         ->sortByDesc('match_score')
         ->take($limit)
         ->values();
@@ -261,11 +267,19 @@ class AIJobMatchingService
     }
 
     /**
-     * Get human-readable match reasons
+     * Get human-readable match reasons with AI enhancement
      */
     private function getMatchReasons(GigJob $job, User $freelancer, float $score): array
     {
         $reasons = [];
+
+        // Try to get AI-powered explanation first
+        if ($this->aiService->isAvailable()) {
+            $aiExplanation = $this->getAIExplanation($job, $freelancer, $score);
+            if ($aiExplanation) {
+                $reasons[] = "🤖 AI Analysis: " . $aiExplanation;
+            }
+        }
 
         // Skills match with details (Primary factor)
         $skillsMatch = $this->calculateSkillsMatch($job->required_skills, $freelancer->skills ?? []);
@@ -274,38 +288,94 @@ class AIJobMatchingService
         $matchingSkills = array_intersect($requiredSkills, $freelancerSkills);
 
         if ($skillsMatch > 0.8) {
-            $reasons[] = "Excellent skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
+            $reasons[] = "✅ Excellent skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
         } elseif ($skillsMatch > 0.5) {
-            $reasons[] = "Good skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
+            $reasons[] = "✅ Good skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
         } elseif ($skillsMatch > 0.2) {
-            $reasons[] = "Partial skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
+            $reasons[] = "⚠️ Partial skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
         } elseif ($skillsMatch > 0) {
-            $reasons[] = "Some skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
+            $reasons[] = "⚠️ Some skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
         } else {
-            $reasons[] = "No direct skills match - consider learning: " . implode(', ', array_slice($job->required_skills, 0, 3));
+            $reasons[] = "❌ No direct skills match - consider learning: " . implode(', ', array_slice($job->required_skills, 0, 3));
         }
 
         // Experience level details (Secondary factor)
         $experienceMatch = $this->calculateExperienceMatch($job->experience_level, $freelancer);
         if ($experienceMatch > 0.8) {
-            $reasons[] = "Perfect experience level match ({$freelancer->experience_level} = {$job->experience_level})";
+            $reasons[] = "🎯 Perfect experience level match ({$freelancer->experience_level} = {$job->experience_level})";
         } elseif ($experienceMatch > 0.5) {
-            $reasons[] = "Good experience level match ({$freelancer->experience_level} ≈ {$job->experience_level})";
+            $reasons[] = "🎯 Good experience level match ({$freelancer->experience_level} ≈ {$job->experience_level})";
         } elseif ($freelancer->experience_level) {
-            $reasons[] = "Experience level: {$freelancer->experience_level} (required: {$job->experience_level})";
+            $reasons[] = "📊 Experience level: {$freelancer->experience_level} (required: {$job->experience_level})";
         } else {
-            $reasons[] = "Experience level not specified in your profile";
+            $reasons[] = "📋 Experience level not specified in profile";
         }
 
-        // Remove all other factors (budget, location, reputation, availability)
-        // Focus only on skills and experience level
+        // Add success prediction if AI is available
+        if ($this->aiService->isAvailable()) {
+            $prediction = $this->getAISuccessPrediction($job, $freelancer);
+            if ($prediction && $prediction['success']) {
+                $probability = $prediction['prediction']['probability'];
+                $reasons[] = "🔮 AI Success Prediction: {$probability}% chance of successful project completion";
+            }
+        }
 
         // If no reasons found, provide basic info
         if (empty($reasons)) {
-            $reasons[] = "Limited match - consider updating your skills and experience level";
+            $reasons[] = "📝 Limited match - consider updating your skills and experience level";
         }
 
         return $reasons;
+    }
+
+    /**
+     * Get AI-powered explanation for match
+     */
+    private function getAIExplanation(GigJob $job, User $freelancer, float $score): ?string
+    {
+        $jobData = [
+            'id' => $job->id,
+            'title' => $job->title,
+            'description' => $job->description,
+            'required_skills' => $job->required_skills,
+            'experience_level' => $job->experience_level,
+            'budget_range' => $job->budget_min && $job->budget_max ?
+                "₱{$job->budget_min} - ₱{$job->budget_max}" : 'Budget not specified'
+        ];
+
+        $freelancerData = [
+            'id' => $freelancer->id,
+            'name' => $freelancer->first_name . ' ' . $freelancer->last_name,
+            'skills' => $freelancer->skills ?? [],
+            'experience_level' => $freelancer->experience_level,
+            'bio' => $freelancer->bio
+        ];
+
+        return $this->aiService->generateMatchExplanation($jobData, $freelancerData, $score);
+    }
+
+    /**
+     * Get AI-powered success prediction
+     */
+    private function getAISuccessPrediction(GigJob $job, User $freelancer): ?array
+    {
+        $jobData = [
+            'id' => $job->id,
+            'title' => $job->title,
+            'required_skills' => $job->required_skills,
+            'experience_level' => $job->experience_level,
+            'budget_range' => $job->budget_min && $job->budget_max ?
+                "₱{$job->budget_min} - ₱{$job->budget_max}" : 'Budget not specified'
+        ];
+
+        $freelancerData = [
+            'id' => $freelancer->id,
+            'name' => $freelancer->first_name . ' ' . $freelancer->last_name,
+            'skills' => $freelancer->skills ?? [],
+            'experience_level' => $freelancer->experience_level
+        ];
+
+        return $this->aiService->generateSuccessPrediction($jobData, $freelancerData);
     }
 
     /**
@@ -369,5 +439,102 @@ class AIJobMatchingService
         }
 
         return $suggestions;
+    }
+
+    /**
+     * Get AI-powered skill recommendations for freelancer
+     */
+    public function getAISkillRecommendations(User $freelancer): array
+    {
+        if (!$this->aiService->isAvailable()) {
+            return [
+                'success' => false,
+                'recommendations' => [],
+                'error' => 'AI service not available'
+            ];
+        }
+
+        $freelancerData = [
+            'id' => $freelancer->id,
+            'name' => $freelancer->first_name . ' ' . $freelancer->last_name,
+            'skills' => $freelancer->skills ?? [],
+            'experience_level' => $freelancer->experience_level,
+            'bio' => $freelancer->bio
+        ];
+
+        $marketTrends = [
+            'high_demand' => $this->getTopSkillsInDemand(),
+            'emerging' => [
+                'AI/Machine Learning',
+                'Blockchain Development',
+                'Mobile App Security',
+                'Voice User Interface',
+                'AR/VR Development'
+            ]
+        ];
+
+        return $this->aiService->generateSkillRecommendations($freelancerData, $marketTrends);
+    }
+
+    /**
+     * Get AI-powered job recommendations with enhanced insights
+     */
+    public function getAIJobRecommendations(User $freelancer): array
+    {
+        $matches = $this->findMatchingJobs($freelancer, 10);
+
+        $enhancedMatches = $matches->map(function ($match) use ($freelancer) {
+            // Add AI explanation if available
+            if ($this->aiService->isAvailable()) {
+                $aiExplanation = $this->getAIExplanation($match['job'], $freelancer, $match['match_score']);
+                $match['ai_explanation'] = $aiExplanation;
+
+                $prediction = $this->getAISuccessPrediction($match['job'], $freelancer);
+                $match['success_prediction'] = $prediction;
+            }
+
+            return $match;
+        });
+
+        return [
+            'recommended_jobs' => $enhancedMatches->toArray(),
+            'insights' => [
+                'total_matches' => $matches->count(),
+                'avg_match_score' => $matches->avg('match_score'),
+                'top_skills_in_demand' => $this->getTopSkillsInDemand(),
+                'suggested_improvements' => $this->getSuggestedImprovements($freelancer),
+                'ai_service_available' => $this->aiService->isAvailable(),
+                'ai_service_config' => $this->aiService->getConfig()
+            ]
+        ];
+    }
+
+    /**
+     * Get AI-powered freelancer recommendations for a job
+     */
+    public function getAIMatchingFreelancers(GigJob $job): array
+    {
+        $matches = $this->findMatchingFreelancers($job, 20);
+
+        $enhancedMatches = $matches->map(function ($match) use ($job) {
+            // Add AI explanation if available
+            if ($this->aiService->isAvailable()) {
+                $aiExplanation = $this->getAIExplanation($job, $match['freelancer'], $match['match_score']);
+                $match['ai_explanation'] = $aiExplanation;
+
+                $prediction = $this->getAISuccessPrediction($job, $match['freelancer']);
+                $match['success_prediction'] = $prediction;
+            }
+
+            return $match;
+        });
+
+        return [
+            'matches' => $enhancedMatches->toArray(),
+            'total_matches' => $matches->count(),
+            'job' => $job,
+            'ai_service_available' => $this->aiService->isAvailable(),
+            'ai_service_config' => $this->aiService->getConfig()
+        ];
     }
 }

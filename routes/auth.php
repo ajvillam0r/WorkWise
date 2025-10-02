@@ -18,7 +18,9 @@ Route::middleware('guest')->group(function () {
         ->name('role.selection');
 
     Route::post('join', [RoleSelectionController::class, 'store'])
+        ->withoutMiddleware(['csrf'])
         ->name('role.store');
+
 
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
@@ -65,3 +67,15 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 });
+
+// Redirect authenticated users who try to access login (avoid shadowing GET /login)
+Route::middleware('auth')->get('login-direct', function () {
+    $user = auth()->user();
+    if ($user && $user->isAdmin()) {
+        return redirect()->route('admin.dashboard');
+    }
+    if ($user && $user->user_type === 'gig_worker') {
+        return redirect()->route('jobs.index');
+    }
+    return redirect()->route('dashboard');
+})->name('login.direct');

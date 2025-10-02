@@ -46,7 +46,7 @@ export default function ClientPerformance() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
                                 <div className="bg-gray-50 p-6 rounded-lg">
                                     <UserGroupIcon className="h-8 w-8 text-blue-500 mx-auto mb-3" />
-                                    <h4 className="font-medium text-gray-900 mb-2">Freelancer Analytics</h4>
+                                    <h4 className="font-medium text-gray-900 mb-2">Gig Worker Analytics</h4>
                                     <p className="text-sm text-gray-600">
                                         Analyze freelancer performance and identify top talent
                                     </p>

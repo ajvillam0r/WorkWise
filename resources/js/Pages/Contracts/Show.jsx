@@ -34,8 +34,8 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
 
     const getStatusBadge = (status) => {
         const statusConfig = {
-            'pending_freelancer_signature': { color: 'bg-yellow-100 text-yellow-800', text: 'Pending Freelancer Signature' },
-            'pending_client_signature': { color: 'bg-blue-100 text-blue-800', text: 'Pending Client Signature' },
+            'pending_gig_worker_signature': { color: 'bg-yellow-100 text-yellow-800', text: 'Pending Gig Worker Signature' },
+            'pending_employer_signature': { color: 'bg-blue-100 text-blue-800', text: 'Pending Employer Signature' },
             'fully_signed': { color: 'bg-green-100 text-green-800', text: 'Fully Signed' },
             'cancelled': { color: 'bg-red-100 text-red-800', text: 'Cancelled' }
         };
@@ -66,8 +66,8 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
         });
     };
 
-    const clientSignature = contract.signatures?.find(sig => sig.role === 'client');
-    const freelancerSignature = contract.signatures?.find(sig => sig.role === 'freelancer');
+    const employerSignature = contract.signatures?.find(sig => sig.role === 'employer');
+    const gigWorkerSignature = contract.signatures?.find(sig => sig.role === 'gig_worker');
 
     return (
         <AuthenticatedLayout
@@ -106,11 +106,11 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
                                         </Link>
                                     )}
 
-                                    {/* Show message for freelancers waiting for client signature */}
-                                    {userRole === 'freelancer' && !clientSignature && contract.status !== 'fully_signed' && contract.status !== 'cancelled' && (
+                                    {/* Show message for gig workers waiting for employer signature */}
+                                    {userRole === 'gig_worker' && !employerSignature && contract.status !== 'fully_signed' && contract.status !== 'cancelled' && (
                                         <div className="inline-flex items-center px-4 py-2 bg-yellow-100 border border-yellow-300 rounded-md">
                                             <span className="text-sm text-yellow-800">
-                                                Waiting for client to sign first
+                                                Waiting for employer to sign first
                                             </span>
                                         </div>
                                     )}
@@ -132,7 +132,7 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
                                     </Link>
                                 </div>
 
-                                {userRole === 'client' && contract.status !== 'fully_signed' && contract.status !== 'cancelled' && (
+                                {userRole === 'employer' && contract.status !== 'fully_signed' && contract.status !== 'cancelled' && (
                                     <button
                                         onClick={() => setShowCancelModal(true)}
                                         className="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:bg-red-700 active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150"
@@ -154,22 +154,22 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="bg-gray-50 p-4 rounded-lg">
-                                            <h4 className="font-medium text-gray-700 mb-3">CLIENT</h4>
+                                            <h4 className="font-medium text-gray-700 mb-3">EMPLOYER</h4>
                                             <div className="space-y-2 text-sm">
-                                                <div><span className="font-medium">Name:</span> {contract.client.first_name} {contract.client.last_name}</div>
-                                                <div><span className="font-medium">Email:</span> {contract.client.email}</div>
-                                                <div><span className="font-medium">Phone:</span> {contract.client.phone || 'Not provided'}</div>
-                                                <div><span className="font-medium">Location:</span> {contract.client.location || contract.client.barangay || 'Not provided'}</div>
+                                                <div><span className="font-medium">Name:</span> {contract.employer?.first_name} {contract.employer?.last_name}</div>
+                                                <div><span className="font-medium">Email:</span> {contract.employer?.email}</div>
+                                                <div><span className="font-medium">Phone:</span> {contract.employer?.phone || 'Not provided'}</div>
+                                                <div><span className="font-medium">Location:</span> {contract.employer?.location || contract.employer?.barangay || 'Not provided'}</div>
                                             </div>
                                         </div>
 
                                         <div className="bg-gray-50 p-4 rounded-lg">
-                                            <h4 className="font-medium text-gray-700 mb-3">FREELANCER</h4>
+                                            <h4 className="font-medium text-gray-700 mb-3">GIG WORKER</h4>
                                             <div className="space-y-2 text-sm">
-                                                <div><span className="font-medium">Name:</span> {contract.freelancer.first_name} {contract.freelancer.last_name}</div>
-                                                <div><span className="font-medium">Email:</span> {contract.freelancer.email}</div>
-                                                <div><span className="font-medium">Phone:</span> {contract.freelancer.phone || 'Not provided'}</div>
-                                                <div><span className="font-medium">Location:</span> {contract.freelancer.location || contract.freelancer.barangay || 'Not provided'}</div>
+                                                <div><span className="font-medium">Name:</span> {contract.gigWorker?.first_name} {contract.gigWorker?.last_name}</div>
+                                                <div><span className="font-medium">Email:</span> {contract.gigWorker?.email}</div>
+                                                <div><span className="font-medium">Phone:</span> {contract.gigWorker?.phone || 'Not provided'}</div>
+                                                <div><span className="font-medium">Location:</span> {contract.gigWorker?.location || contract.gigWorker?.barangay || 'Not provided'}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -223,18 +223,18 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <h4 className="font-medium text-gray-700 mb-3">Client Responsibilities</h4>
+                                            <h4 className="font-medium text-gray-700 mb-3">Employer Responsibilities</h4>
                                             <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                                                {contract.client_responsibilities?.map((responsibility, index) => (
+                                                {contract.employer_responsibilities?.map((responsibility, index) => (
                                                     <li key={index}>{responsibility}</li>
                                                 ))}
                                             </ul>
                                         </div>
 
                                         <div>
-                                            <h4 className="font-medium text-gray-700 mb-3">Freelancer Responsibilities</h4>
+                                            <h4 className="font-medium text-gray-700 mb-3">Gig Worker Responsibilities</h4>
                                             <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                                                {contract.freelancer_responsibilities?.map((responsibility, index) => (
+                                                {contract.gig_worker_responsibilities?.map((responsibility, index) => (
                                                     <li key={index}>{responsibility}</li>
                                                 ))}
                                             </ul>
@@ -252,10 +252,10 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Signature Status</h3>
                                     
                                     <div className="space-y-4">
-                                        {/* Client signs first */}
+                                        {/* Employer signs first */}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-gray-700">1. Client</span>
-                                            {clientSignature ? (
+                                            <span className="text-sm font-medium text-gray-700">1. Employer</span>
+                                            {employerSignature ? (
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                     Signed
                                                 </span>
@@ -266,20 +266,20 @@ export default function Show({ auth, contract, userRole, canSign, nextSigner, ha
                                             )}
                                         </div>
 
-                                        {/* Freelancer signs second */}
+                                        {/* Gig Worker signs second */}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium text-gray-700">2. Freelancer</span>
-                                            {freelancerSignature ? (
+                                            <span className="text-sm font-medium text-gray-700">2. Gig Worker</span>
+                                            {gigWorkerSignature ? (
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                     Signed
                                                 </span>
-                                            ) : clientSignature ? (
+                                            ) : employerSignature ? (
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                                     Pending
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                    Waiting for client
+                                                    Waiting for employer
                                                 </span>
                                             )}
                                         </div>

@@ -22,12 +22,17 @@ export default function FreelancerWallet({
 
     const handleWithdrawal = (e) => {
         e.preventDefault();
-        post('/freelancer/wallet/withdraw', {
+        post('/gig-worker/wallet/withdraw', {
             onSuccess: () => {
                 reset();
                 setShowWithdrawalModal(false);
             }
         });
+    };
+
+    const formatAmount = (value) => {
+        const number = Number(value ?? 0);
+        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     const getStatusBadge = (status) => {
@@ -66,7 +71,7 @@ export default function FreelancerWallet({
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Total Earnings</p>
                                     <p className="text-2xl font-bold text-green-600">
-                                        {currency.symbol}{parseFloat(totalEarnings).toFixed(2)}
+                                        {currency.symbol}{formatAmount(totalEarnings)}
                                     </p>
                                 </div>
                             </div>
@@ -83,7 +88,7 @@ export default function FreelancerWallet({
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Pending Payments</p>
                                     <p className="text-2xl font-bold text-yellow-600">
-                                        {currency.symbol}{parseFloat(pendingEarnings).toFixed(2)}
+                                        {currency.symbol}{formatAmount(pendingEarnings)}
                                     </p>
                                 </div>
                             </div>
@@ -101,7 +106,7 @@ export default function FreelancerWallet({
                                     <div>
                                         <p className="text-sm font-medium text-gray-600">Available Balance</p>
                                         <p className="text-2xl font-bold text-blue-600">
-                                            {currency.symbol}{parseFloat(availableBalance).toFixed(2)}
+                                            {currency.symbol}{formatAmount(availableBalance)}
                                         </p>
                                     </div>
                                 </div>
@@ -120,23 +125,33 @@ export default function FreelancerWallet({
                     {pendingPayments.length > 0 && (
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
                             <div className="p-6">
-                                <h3 className="text-lg font-medium mb-4">⏳ Awaiting Payment Release</h3>
+                                <h3 className="text-lg font-medium mb-4">⏳ Pending Payments (Escrowed or Awaiting Release)</h3>
                                 <div className="space-y-4">
                                     {pendingPayments.map((project) => (
                                         <div key={project.id} className="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h4 className="font-medium text-gray-900">{project.job.title}</h4>
-                                                    <p className="text-sm text-gray-600">Client: {project.client.first_name} {project.client.last_name}</p>
-                                                    <p className="text-sm text-gray-500">Completed {formatDistanceToNow(new Date(project.completed_at))} ago</p>
+                                                    <p className="text-sm text-gray-600">Employer: {project.employer.first_name} {project.employer.last_name}</p>
+                                                    {project.status === 'completed' ? (
+                                                        <p className="text-sm text-gray-500">Completed {formatDistanceToNow(new Date(project.completed_at))} ago</p>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500">Started {formatDistanceToNow(new Date(project.started_at))} ago</p>
+                                                    )}
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-lg font-bold text-yellow-600">
-                                                        {currency.symbol}{parseFloat(project.net_amount).toFixed(2)}
+                                                        {currency.symbol}{formatAmount(project.net_amount)}
                                                     </p>
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                        Awaiting Release
-                                                    </span>
+                                                    {project.status === 'completed' ? (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                            Awaiting Release
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                            In Progress (Escrowed)
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -159,7 +174,7 @@ export default function FreelancerWallet({
                                                     Project
                                                 </th>
                                                 <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Client
+                                                    Employer
                                                 </th>
                                                 <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Amount
@@ -179,7 +194,7 @@ export default function FreelancerWallet({
                                                         {transaction.payer?.first_name} {transaction.payer?.last_name}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                                        {currency.symbol}{parseFloat(transaction.net_amount).toFixed(2)}
+                                                        {currency.symbol}{formatAmount(transaction.net_amount)}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         {new Date(transaction.processed_at).toLocaleDateString()}

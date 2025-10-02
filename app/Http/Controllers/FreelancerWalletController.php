@@ -17,18 +17,24 @@ class FreelancerWalletController extends Controller
     {
         $user = auth()->user();
         
-        // Get freelancer's earnings from completed projects
-        $completedProjects = Project::where('freelancer_id', $user->id)
+        // Get gig worker's earnings from completed projects
+        $completedProjects = Project::where('gig_worker_id', $user->id)
             ->where('status', 'completed')
             ->where('payment_released', true)
-            ->with(['job', 'client'])
+            ->with(['job', 'employer'])
             ->get();
 
-        // Get pending payments (completed projects awaiting payment release)
-        $pendingPayments = Project::where('freelancer_id', $user->id)
-            ->where('status', 'completed')
-            ->where('payment_released', false)
-            ->with(['job', 'client'])
+        // Get pending payments: only projects with fully signed contract, either active or completed awaiting release
+        $pendingPayments = Project::where('gig_worker_id', $user->id)
+            ->where('contract_signed', true)
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhere(function ($q) {
+                        $q->where('status', 'completed')
+                          ->where('payment_released', false);
+                    });
+            })
+            ->with(['job', 'employer'])
             ->get();
 
         // Get transaction history (payments received)
@@ -42,7 +48,7 @@ class FreelancerWalletController extends Controller
         // Calculate total earnings
         $totalEarnings = $completedProjects->sum('net_amount');
         
-        // Calculate pending earnings
+        // Calculate pending earnings (sum of active escrow + completed awaiting release)
         $pendingEarnings = $pendingPayments->sum('net_amount');
 
         // Calculate available balance (for future withdrawal feature)

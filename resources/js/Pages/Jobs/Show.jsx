@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SuccessModal from '@/Components/SuccessModal';
+import MessagesModal from '@/Components/MessagesModal';
 import { formatDistanceToNow } from 'date-fns';
 
 // Confirmation Modal Component
@@ -85,6 +86,8 @@ export default function JobShow({ job, canBid }) {
     const [showBidForm, setShowBidForm] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState(null);
+    const [showMessagesModal, setShowMessagesModal] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState(null);
 
     // Helper function to safely parse required_skills
     const parseSkills = (skills) => {
@@ -213,14 +216,24 @@ export default function JobShow({ job, canBid }) {
         }
     };
 
-    const isClient = auth.user.user_type === 'client';
-    const isJobOwner = isClient && job.employer_id === auth.user.id;
+    const handleContactEmployer = (userId) => {
+        setSelectedUserId(userId);
+        setShowMessagesModal(true);
+    };
+
+    const isEmployer = auth.user.user_type === 'employer';
+    const isJobOwner = isEmployer && job.employer_id === auth.user.id;
+
+    const formatAmount = (value) => {
+        const number = Number(value ?? 0);
+        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
 
     const getBudgetDisplay = () => {
         if (job.budget_type === 'fixed') {
-            return `₱${job.budget_min} - ₱${job.budget_max}`;
+            return `₱${formatAmount(job.budget_min)} - ₱${formatAmount(job.budget_max)}`;
         }
-        return `₱${job.budget_min} - ₱${job.budget_max}/hr`;
+        return `₱${formatAmount(job.budget_min)} - ₱${formatAmount(job.budget_max)}/hr`;
     };
 
     const getExperienceBadge = (level) => {
@@ -243,6 +256,15 @@ export default function JobShow({ job, canBid }) {
     };
 
     const getUserAvatar = (user) => {
+        // Check if user exists and has required properties
+        if (!user || !user.first_name || !user.last_name) {
+            return (
+                <div className="h-12 w-12 rounded-full bg-gray-400 flex items-center justify-center text-white text-lg font-semibold">
+                    ?
+                </div>
+            );
+        }
+
         if (user.profile_photo) {
             return (
                 <img
@@ -327,7 +349,7 @@ export default function JobShow({ job, canBid }) {
                                 <div className="p-6">
                                     <h3 className="text-lg font-semibold mb-4">Required Skills</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {parseSkills(job.required_skills).map((skill, index) => (
+                                        {parseSkills(job?.required_skills || []).map((skill, index) => (
                                             <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                                 {skill}
                                             </span>
@@ -337,7 +359,7 @@ export default function JobShow({ job, canBid }) {
                             </div>
 
                             {/* Proposals Section */}
-                            {job.bids && job.bids.length > 0 && (isJobOwner || !isClient) && (
+                            {job.bids && Array.isArray(job.bids) && job.bids.length > 0 && (isJobOwner || !isEmployer) && (
                                 <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                     <div className="p-6">
                                         <h3 className="text-lg font-semibold mb-4">
@@ -348,26 +370,29 @@ export default function JobShow({ job, canBid }) {
                                                 <div key={bid.id} className="border border-gray-200 rounded-lg p-4">
                                                     <div className="flex items-start justify-between mb-3">
                                                         <div className="flex items-center space-x-3">
-                                                            {getUserAvatar(bid.freelancer)}
+                                                            {getUserAvatar(bid.gig_worker)}
                                                             <div>
                                                                 <h4 className="font-medium text-gray-900">
-                                                                    {bid.freelancer.first_name} {bid.freelancer.last_name}
+                                                                    {bid.gig_worker ? 
+                                                                        `${bid.gig_worker.first_name} ${bid.gig_worker.last_name}` : 
+                                                                        'Unknown User'
+                                                                    }
                                                                 </h4>
                                                                 <p className="text-sm text-gray-600">
-                                                                    {bid.freelancer.professional_title || 'Freelancer'}
+                                                                    {bid.gig_worker?.professional_title || 'Gig Worker'}
                                                                 </p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="text-lg font-semibold text-green-600">
-                                                                ₱{bid.bid_amount}
+                                                                ₱{formatAmount(bid.bid_amount)}
                                                             </div>
                                                             <div className="text-sm text-gray-600">
                                                                 {bid.estimated_days} days
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <p className="text-gray-700 mb-3">
+                                                    <p className="text-gray-700 mb-3 break-all">
                                                         {bid.proposal_message}
                                                     </p>
                                                     <div className="flex items-center justify-between">
@@ -424,7 +449,7 @@ export default function JobShow({ job, canBid }) {
                             )}
 
                             {/* Submit Proposal Form */}
-                            {canBid && !isClient && (
+                            {canBid && !isEmployer && (
                                 <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                     <div className="p-6">
                                         {!showBidForm ? (
@@ -579,10 +604,10 @@ export default function JobShow({ job, canBid }) {
                                 </div>
                             </div>
 
-                            {/* Client Information */}
+                            {/* Employer Information */}
                             <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                 <div className="p-6">
-                                    <h3 className="text-lg font-semibold mb-4">About the Client</h3>
+                                    <h3 className="text-lg font-semibold mb-4">About the Employer</h3>
                                     <div className="flex items-center space-x-3 mb-4">
                                         {getUserAvatar(job.employer)}
                                         <div>
@@ -590,7 +615,7 @@ export default function JobShow({ job, canBid }) {
                                                 {job.employer.first_name} {job.employer.last_name}
                                             </h4>
                                             <p className="text-sm text-gray-600">
-                                                {job.employer.professional_title || 'Client'}
+                                                {job.employer.professional_title || 'Employer'}
                                             </p>
                                         </div>
                                     </div>
@@ -613,25 +638,25 @@ export default function JobShow({ job, canBid }) {
                                             </span>
                                         </div>
                                     </div>
-                                    {!isClient && (
+                                    {!isEmployer && (
                                         <div className="mt-4 pt-4 border-t border-gray-200">
-                                            <Link
-                                                href={`/messages/${job.employer.id}`}
+                                            <button
+                                                onClick={() => handleContactEmployer(job.employer.id)}
                                                 className="w-full inline-flex justify-center items-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                             >
-                                                 Contact Client
-                                            </Link>
+                                                  Contact Employer
+                                            </button>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Similar Jobs */}
+                            {/* Similar Jobs
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                                 <h3 className="text-lg font-semibold text-blue-900 mb-4">💡 Similar Opportunities</h3>
                                 <div className="space-y-3">
                                     <Link href="/jobs" className="block text-sm text-blue-800 hover:text-blue-900">
-                                        → Browse more {job.required_skills && job.required_skills[0]} jobs
+                                        → Browse more {job?.required_skills && Array.isArray(job.required_skills) && job.required_skills.length > 0 ? job.required_skills[0] : 'similar'} jobs
                                     </Link>
                                     <Link href={route('ai.recommendations')} className="block text-sm text-blue-800 hover:text-blue-900">
                                         → Get AI-powered job recommendations
@@ -640,7 +665,7 @@ export default function JobShow({ job, canBid }) {
                                         → View your active projects
                                     </Link>
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                 </div>
@@ -664,6 +689,13 @@ export default function JobShow({ job, canBid }) {
                 onClose={() => setSuccessModal({ isOpen: false, message: '' })}
                 message={successModal.message}
                 duration={1000}
+            />
+
+            {/* Messages Modal */}
+            <MessagesModal
+                isOpen={showMessagesModal}
+                onClose={() => setShowMessagesModal(false)}
+                initialUserId={selectedUserId}
             />
         </AuthenticatedLayout>
     );

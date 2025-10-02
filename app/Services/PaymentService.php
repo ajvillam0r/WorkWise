@@ -41,7 +41,7 @@ class PaymentService
             $paymentIntent = $this->stripe->paymentIntents->create([
                 'amount' => $this->convertToStripeAmount($project->agreed_amount),
                 'currency' => config('services.stripe.currency', 'php'),
-                'customer' => $project->client->stripe_customer_id,
+                'customer' => $project->employer->stripe_customer_id,
                 'metadata' => [
                     'project_id' => $project->id,
                     'type' => 'escrow',
@@ -55,8 +55,8 @@ class PaymentService
             // Create transaction record
             Transaction::create([
                 'project_id' => $project->id,
-                'payer_id' => $project->client_id,
-                'payee_id' => $project->freelancer_id,
+                'payer_id' => $project->employer_id,
+                'payee_id' => $project->gig_worker_id,
                 'amount' => $project->agreed_amount,
                 'platform_fee' => $project->platform_fee,
                 'net_amount' => $project->net_amount,
@@ -147,15 +147,15 @@ class PaymentService
                 ];
             }
 
-            // For demo purposes, skip Stripe transfer if freelancer doesn't have stripe_account_id
+            // For demo purposes, skip Stripe transfer if gig worker doesn't have stripe_account_id
             $transferId = 'demo_transfer_' . time();
 
-            if ($project->freelancer->stripe_account_id && config('services.stripe.secret')) {
-                // Create transfer to freelancer's connected account
+            if ($project->gigWorker->stripe_account_id && config('services.stripe.secret')) {
+                // Create transfer to gig worker's connected account
                 $transfer = $this->stripe->transfers->create([
                     'amount' => $this->convertToStripeAmount($project->net_amount),
                     'currency' => config('services.stripe.currency', 'php'),
-                    'destination' => $project->freelancer->stripe_account_id,
+                    'destination' => $project->gigWorker->stripe_account_id,
                     'source_transaction' => $escrowTransaction->stripe_charge_id,
                     'metadata' => [
                         'project_id' => $project->id,
@@ -165,15 +165,15 @@ class PaymentService
                 $transferId = $transfer->id;
             }
 
-            // Add payment to freelancer's balance
-            $freelancer = $project->freelancer;
-            $freelancer->increment('escrow_balance', $project->net_amount);
+            // Add payment to gig worker's earnings balance
+            $gigWorker = $project->gigWorker;
+            $gigWorker->increment('escrow_balance', $project->net_amount);
 
             // Create release transaction record
             Transaction::create([
                 'project_id' => $project->id,
-                'payer_id' => $project->client_id,
-                'payee_id' => $project->freelancer_id,
+                'payer_id' => $project->employer_id,
+                'payee_id' => $project->gig_worker_id,
                 'amount' => $project->net_amount,
                 'platform_fee' => 0,
                 'net_amount' => $project->net_amount,
@@ -190,11 +190,39 @@ class PaymentService
                 'payment_released_at' => now()
             ]);
 
+            // Notify both parties that payment has been released
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $project->loadMissing(['employer', 'gigWorker', 'job']);
+                $jobTitle = $project->job ? $project->job->title : 'the project';
+
+                if ($project->employer) {
+                    $notificationService->createEscrowStatusNotification($project->employer, [
+                        'project_id' => $project->id,
+                        'project_title' => $jobTitle,
+                        'status' => 'payment_released'
+                    ]);
+                }
+
+                if ($project->gigWorker) {
+                    $notificationService->createEscrowStatusNotification($project->gigWorker, [
+                        'project_id' => $project->id,
+                        'project_title' => $jobTitle,
+                        'status' => 'payment_released'
+                    ]);
+                }
+            } catch (\Throwable $notifyError) {
+                \Log::warning('Failed to send payment release notifications', [
+                    'project_id' => $project->id,
+                    'error' => $notifyError->getMessage()
+                ]);
+            }
+
             \Log::info('Payment released successfully', [
                 'project_id' => $project->id,
-                'freelancer_id' => $freelancer->id,
+                'gig_worker_id' => $gigWorker->id,
                 'amount' => $project->net_amount,
-                'new_balance' => $freelancer->fresh()->escrow_balance
+                'new_balance' => $gigWorker->fresh()->escrow_balance
             ]);
 
             return ['success' => true];
@@ -242,8 +270,8 @@ class PaymentService
             // Create refund transaction record
             Transaction::create([
                 'project_id' => $project->id,
-                'payer_id' => $project->freelancer_id,
-                'payee_id' => $project->client_id,
+                'payer_id' => $project->gig_worker_id,
+                'payee_id' => $project->employer_id,
                 'amount' => $project->agreed_amount,
                 'platform_fee' => 0,
                 'net_amount' => $project->agreed_amount,

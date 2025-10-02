@@ -188,7 +188,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Project</th>
-                        <th>Client</th>
+                        <th>Employer</th>
                         <th>Amount</th>
                         <th>Platform Fee</th>
                         <th>Net Amount</th>
@@ -200,7 +200,7 @@
                         <tr>
                             <td>{{ $earning['Date'] }}</td>
                             <td>{{ $earning['Project'] }}</td>
-                            <td>{{ $earning['Client'] }}</td>
+                            <td>{{ $earning['Employer'] }}</td>
                             <td class="amount positive">₱{{ number_format($earning['Amount'], 2) }}</td>
                             <td class="amount">₱{{ number_format($earning['Platform Fee'], 2) }}</td>
                             <td class="amount positive">₱{{ number_format($earning['Net Amount'], 2) }}</td>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bid;
 use App\Models\GigJob;
 use App\Services\ContractService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,10 +16,14 @@ use App\Models\Transaction;
 class BidController extends Controller
 {
     protected ContractService $contractService;
+    protected NotificationService $notificationService;
 
-    public function __construct(ContractService $contractService)
-    {
+    public function __construct(
+        ContractService $contractService,
+        NotificationService $notificationService
+    ) {
         $this->contractService = $contractService;
+        $this->notificationService = $notificationService;
     }
     /**
      * Display a listing of the resource.
@@ -27,15 +32,15 @@ class BidController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->isFreelancer()) {
-            // Show freelancer's bids
+        if ($user->user_type === 'gig_worker') {
+            // Show gig worker's bids
             $bids = Bid::with(['job.employer'])
-                ->where('freelancer_id', $user->id)
+                ->where('gig_worker_id', $user->id)
                 ->latest()
                 ->paginate(10);
         } else {
             // Show bids on employer's jobs
-            $bids = Bid::with(['job', 'freelancer'])
+            $bids = Bid::with(['job', 'gigWorker'])
                 ->whereHas('job', function ($query) use ($user) {
                     $query->where('employer_id', $user->id);
                 })
@@ -67,21 +72,21 @@ class BidController extends Controller
             return back()->withErrors(['job' => 'This job is no longer accepting bids.']);
         }
 
-        // Check if user is a freelancer
-        if (!auth()->user()->isFreelancer()) {
-            return back()->withErrors(['user' => 'Only freelancers can submit bids.']);
+        // Check if user is a gig worker
+        if (auth()->user()->user_type !== 'gig_worker') {
+            return back()->withErrors(['user' => 'Only gig workers can submit bids.']);
         }
 
-        // Check if freelancer already bid on this job
+        // Check if gig worker already bid on this job
         $existingBid = Bid::where('job_id', $job->id)
-            ->where('freelancer_id', auth()->id())
+            ->where('gig_worker_id', auth()->id())
             ->first();
 
         if ($existingBid) {
             return back()->withErrors(['bid' => 'You have already submitted a bid for this job.']);
         }
 
-        $validated['freelancer_id'] = auth()->id();
+        $validated['gig_worker_id'] = auth()->id();
 
         Bid::create($validated);
 
@@ -94,11 +99,11 @@ class BidController extends Controller
      */
     public function show(Bid $bid): Response
     {
-        $bid->load(['job.employer', 'freelancer']);
+        $bid->load(['job.employer', 'gigWorker']);
 
         // Check if user can view this bid
         $user = auth()->user();
-        if ($bid->freelancer_id !== $user->id && $bid->job->employer_id !== $user->id) {
+        if ($bid->gig_worker_id !== $user->id && $bid->job->employer_id !== $user->id) {
             abort(403);
         }
 
@@ -137,10 +142,26 @@ class BidController extends Controller
                     throw new \Exception('Insufficient escrow balance.');
                 }
 
-                // Reject other bids
-                Bid::where('job_id', $bid->job_id)
+                // Reject other bids and notify bidders
+                $rejectedBids = Bid::where('job_id', $bid->job_id)
                     ->where('id', '!=', $bid->id)
-                    ->update(['status' => 'rejected']);
+                    ->where('status', 'pending')
+                    ->get();
+
+                foreach ($rejectedBids as $rejectedBid) {
+                    $rejectedBid->update(['status' => 'rejected']);
+
+                    // Notify rejected bidders
+                    $this->notificationService->createBidStatusNotification(
+                        $rejectedBid->gigWorker,
+                        'rejected',
+                        [
+                            'job_id' => $bid->job_id,
+                            'job_title' => $bid->job->title,
+                            'contract_id' => null
+                        ]
+                    );
+                }
 
                 // Update job status
                 $bid->job->update(['status' => 'in_progress']);
@@ -152,8 +173,8 @@ class BidController extends Controller
                 // Create project
                 $project = Project::create([
                     'job_id' => $bid->job_id,
-                    'client_id' => $bid->job->employer_id,
-                    'freelancer_id' => $bid->freelancer_id,
+                    'employer_id' => $bid->job->employer_id,
+                    'gig_worker_id' => $bid->gig_worker_id,
                     'bid_id' => $bid->id,
                     'agreed_amount' => $bid->bid_amount,
                     'platform_fee' => $platformFee,
@@ -162,14 +183,14 @@ class BidController extends Controller
                     'started_at' => now(),
                 ]);
 
-                // Deduct from client balance
+                // Deduct from employer balance
                 $client->decrement('escrow_balance', $bid->bid_amount);
 
                 // Create transaction record
                 Transaction::create([
                     'project_id' => $project->id,
                     'payer_id' => $client->id,
-                    'payee_id' => $bid->freelancer_id,
+                    'payee_id' => $bid->gig_worker_id,
                     'amount' => $bid->bid_amount,
                     'platform_fee' => $platformFee,
                     'net_amount' => $netAmount,
@@ -183,6 +204,39 @@ class BidController extends Controller
 
                 // Create contract
                 $contract = $this->contractService->createContractFromBid($project, $bid);
+
+                // Send notifications to both gig worker and employer
+                $this->notificationService->createContractSigningNotification($bid->gigWorker, [
+                    'job_title' => $bid->job->title,
+                    'contract_id' => $contract->id,
+                    'project_id' => $project->id
+                ]);
+
+                $this->notificationService->createContractSigningNotification($client, [
+                    'job_title' => $bid->job->title,
+                    'contract_id' => $contract->id,
+                    'project_id' => $project->id
+                ]);
+
+                // Send messaging capability notifications to both parties
+                $employerName = $client->first_name . ' ' . $client->last_name;
+                $gigWorkerName = $bid->gigWorker->first_name . ' ' . $bid->gigWorker->last_name;
+
+                $this->notificationService->createBidAcceptedMessagingNotification($bid->gigWorker, [
+                    'job_title' => $bid->job->title,
+                    'other_user_name' => $employerName,
+                    'other_user_id' => $client->id,
+                    'project_id' => $project->id,
+                    'bid_id' => $bid->id
+                ]);
+
+                $this->notificationService->createBidAcceptedMessagingNotification($client, [
+                    'job_title' => $bid->job->title,
+                    'other_user_name' => $gigWorkerName,
+                    'other_user_id' => $bid->gig_worker_id,
+                    'project_id' => $project->id,
+                    'bid_id' => $bid->id
+                ]);
 
                 // Update bid status
                 $bid->update([
@@ -219,12 +273,39 @@ class BidController extends Controller
     }
 
     /**
+     * Update the specified resource in storage (for gig workers).
+     */
+    public function updateStatus(Request $request, Bid $bid)
+    {
+        // Only gig worker can update their own bid
+        if ($bid->gig_worker_id !== auth()->id()) {
+            abort(403);
+        }
+
+        // Can only update pending bids
+        if (!$bid->isPending()) {
+            return back()->withErrors(['bid' => 'You can only update pending bids.']);
+        }
+
+        // Validate request
+        $request->validate([
+            'bid_amount' => 'required|numeric|min:0',
+            'proposal_message' => 'required|string|min:50',
+            'estimated_days' => 'required|integer|min:1',
+        ]);
+
+        $bid->update($request->only(['bid_amount', 'proposal_message', 'estimated_days']));
+
+        return back()->with('success', 'Bid updated successfully!');
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Bid $bid)
     {
-        // Only freelancer can withdraw their own bid
-        if ($bid->freelancer_id !== auth()->id()) {
+        // Only gig worker can withdraw their own bid
+        if ($bid->gig_worker_id !== auth()->id()) {
             abort(403);
         }
 

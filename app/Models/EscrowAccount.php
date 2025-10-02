@@ -13,8 +13,8 @@ class EscrowAccount extends Model
 
     protected $fillable = [
         'project_id',
-        'client_id',
-        'freelancer_id',
+        'employer_id',
+        'gig_worker_id',
         'total_amount',
         'platform_fee',
         'available_amount',
@@ -53,11 +53,19 @@ class EscrowAccount extends Model
     }
 
     /**
-     * Get the client user
+     * Get the employer user
+     */
+    public function employer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'employer_id');
+    }
+
+    /**
+     * Get the client user (deprecated - use employer)
      */
     public function client(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'client_id');
+        return $this->belongsTo(User::class, 'employer_id');
     }
 
     /**

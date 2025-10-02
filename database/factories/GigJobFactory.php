@@ -20,7 +20,7 @@ class GigJobFactory extends Factory
         $skills = ['PHP', 'Laravel', 'React', 'JavaScript', 'Python', 'Java', 'Node.js', 'Vue.js', 'Angular', 'CSS'];
 
         return [
-            'employer_id' => User::factory()->create(['user_type' => 'client'])->id,
+            'employer_id' => User::factory()->create(['user_type' => 'employer'])->id,
             'title' => fake()->jobTitle(),
             'description' => fake()->paragraphs(3, true),
             'required_skills' => fake()->randomElements($skills, fake()->numberBetween(2, 5)),

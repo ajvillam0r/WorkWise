@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('escrow_accounts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('project_id')->constrained()->onDelete('cascade');
-            $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('freelancer_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('employer_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('gig_worker_id')->constrained('users')->onDelete('cascade');
             $table->decimal('total_amount', 10, 2);
             $table->decimal('platform_fee', 10, 2);
             $table->decimal('available_amount', 10, 2);

@@ -69,9 +69,13 @@ const CheckoutForm = ({ amount, clientSecret, currency, onSuccess, onCancel }) =
             <div className="bg-gray-50 p-4 rounded-md">
                 <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-700">Amount:</span>
-                    <span className="text-lg font-bold text-gray-900">
+                    {/* <span className="text-lg font-bold text-gray-900">
                         {currency.symbol}{parseFloat(amount).toFixed(2)}
+                    </span> */}
+                    <span className="text-lg font-bold text-gray-900">
+                      ₱{parseFloat(amount).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
+
                 </div>
             </div>
 
@@ -103,7 +107,11 @@ const CheckoutForm = ({ amount, clientSecret, currency, onSuccess, onCancel }) =
                     disabled={!stripe || processing}
                     className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
                 >
-                    {processing ? 'Processing...' : `Pay ${currency.symbol}${parseFloat(amount).toFixed(2)}`}
+                    {/* {processing ? 'Processing...' : `Pay ${currency.symbol}${parseFloat(amount).toFixed(2)}`} */}
+                    {processing 
+                          ? 'Processing...' 
+                          : `Pay ${currency.symbol}${parseFloat(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+
                 </button>
             </div>
         </form>

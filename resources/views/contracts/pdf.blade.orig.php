@@ -5,16 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkWise Contract - {{ $contract->contract_id }}</title>
     <style>
-        /* Removed external font import for better PDF compatibility */
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap');
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
-            font-family: 'DejaVu Sans', 'Times New Roman', serif;
-            font-size: 22px;
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 12px;
             line-height: 1.4;
             color: #333;
             background-color: #f5f5f5;
@@ -30,7 +31,7 @@
         .header {
             background: #4ade80;
             color: white;
-            padding: .0001px;
+            padding: 20px;
             text-align: center;
             position: relative;
         }
@@ -51,11 +52,11 @@
         
         .company-info {
             text-align: right;
-            font-size: 21px;
+            font-size: 11px;
         }
         
         .contract-title {
-            font-size: 56px;
+            font-size: 36px;
             font-weight: bold;
             color: #4ade80;
             text-align: center;
@@ -79,7 +80,7 @@
         }
         
         .section-title {
-            font-size: 34px;
+            font-size: 24px;
             font-weight: bold;
             color: #8b5a3c;
             margin-bottom: 15px;
@@ -96,7 +97,7 @@
         }
         
         .party-title {
-            font-size: 24px;
+            font-size: 14px;
             font-weight: bold;
             color: #8b5a3c;
             margin-bottom: 10px;
@@ -185,10 +186,9 @@
         }
         
         .signature-line {
-            font-family: 'Times New Roman', serif;
-            font-style: italic;
-            font-size: 34px;
-            font-weight: normal;
+            font-family: 'Dancing Script', cursive;
+            font-size: 24px;
+            font-weight: 400;
             border-bottom: 2px solid #333;
             padding: 10px 0;
             margin: 10px 0;
@@ -212,29 +212,29 @@
             margin-top: 40px;
             padding: 20px;
             background: #f9f9f9;
-            
-            font-size: 20px;
+            border-left: 4px solid #4ade80;
+            font-size: 10px;
             font-style: italic;
         }
         
         .disclaimer-title {
             font-weight: bold;
-            
+            color: #4ade80;
+            margin-bottom: 10px;
         }
         
         .page-number {
             position: fixed;
             bottom: 20px;
             right: 40px;
-            font-size: 20px;
+            font-size: 10px;
             color: #666;
         }
         
         .footer-bar {
-            
+            background: #4ade80;
             height: 10px;
-            
-            
+            position: fixed;
             bottom: 0;
             left: 0;
             right: 0;

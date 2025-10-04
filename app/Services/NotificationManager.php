@@ -80,7 +80,7 @@ class NotificationManager
             'title' => '💬 New Message',
             'message' => "New message from {$messageData['sender_name']}: {$messageData['message_preview']}",
             'data' => $messageData,
-            'action_url' => route('messages.conversation', $messageData['sender_id']),
+            'action_url' => null, // Don't set action_url to prevent redirect, use MiniChat instead
             'icon' => 'chat-bubble-left'
         ]);
     }

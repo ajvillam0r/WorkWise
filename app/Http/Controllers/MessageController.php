@@ -132,6 +132,10 @@ class MessageController extends Controller
 
         // Send notification to receiver about new message
         $notificationService = new \App\Services\NotificationService();
+        $senderName = $message->sender->first_name && $message->sender->last_name
+            ? "{$message->sender->first_name} {$message->sender->last_name}"
+            : $message->sender->name;
+            
         $notificationService->create([
             'user_id' => $request->receiver_id,
             'type' => 'new_message',
@@ -141,11 +145,13 @@ class MessageController extends Controller
                 : "💬 {$message->sender->first_name}: {$message->message}",
             'data' => [
                 'sender_id' => $message->sender_id,
+                'sender_name' => $senderName,
+                'sender_avatar' => $message->sender->avatar ?? null,
                 'message_id' => $message->id,
                 'message_type' => $message->type,
                 'attachment_name' => $message->attachment_name
             ],
-            'action_url' => route('messages.conversation', ['user' => $message->sender_id]),
+            'action_url' => null, // Don't set action_url to prevent redirect
             'icon' => 'comments'
         ]);
 

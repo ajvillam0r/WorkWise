@@ -289,13 +289,13 @@ class ContractController extends Controller
             $contract->refresh();
         }
 
-        // Use Storage facade to get the correct path
-        if (!$contract->pdf_path || !Storage::exists($contract->pdf_path)) {
+        // Use Storage facade to get the correct path from public disk
+        if (!$contract->pdf_path || !Storage::disk('public')->exists($contract->pdf_path)) {
             abort(404, 'Contract PDF not found');
         }
 
         return response()->download(
-            Storage::path($contract->pdf_path),
+            Storage::disk('public')->path($contract->pdf_path),
             "WorkWise_Contract_{$contract->contract_id}.pdf"
         );
     }

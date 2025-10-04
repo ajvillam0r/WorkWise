@@ -6,6 +6,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIRecommendationController;
+use App\Http\Controllers\Api\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +27,9 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Project Status Routes
     Route::post('/projects/{project}/complete', [ProjectController::class, 'complete']);
+    
+    // User Routes
+    Route::get('/users/{id}', [UserController::class, 'show']);
 });
 
 // Stripe webhook

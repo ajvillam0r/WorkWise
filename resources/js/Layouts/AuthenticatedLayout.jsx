@@ -1,8 +1,8 @@
 "use client";
 import Dropdown from '@/Components/Dropdown';
-import MessagesModal from '@/Components/MessagesModal';
+import MiniChatModal from '@/Components/MiniChatModal';
 import { Link, usePage } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 // Font Awesome icons for notifications
@@ -49,10 +49,11 @@ export default function AuthenticatedLayout({ header, children }) {
     const [lastNotificationCheck, setLastNotificationCheck] = useState(Date.now());
     const [lastMessageCheck, setLastMessageCheck] = useState(Date.now());
 
-    // Messages modal state
-    const [showMessagesModal, setShowMessagesModal] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState(null);
+    // Messages modal removed; use MiniChatModal for all messaging
     const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+
+    // Mini chat ref for controlling it from notifications
+    const miniChatRef = useRef(null);
 
     // Fetch notifications
     const fetchNotifications = async () => {
@@ -108,9 +109,32 @@ export default function AuthenticatedLayout({ header, children }) {
         if (!notification.is_read) {
             markAsRead(notification.id);
         }
-        if (notification.action_url) {
+        
+        // Handle message-related notifications with MiniChat
+        if (notification.type === 'bid_accepted_messaging') {
+            const targetUserId = notification.data?.message_target_user_id;
+            const userName = notification.data?.target_user_name;
+            const userAvatar = notification.data?.target_user_avatar;
+            
+            if (targetUserId && miniChatRef.current) {
+                miniChatRef.current.openConversation(targetUserId, userName, userAvatar);
+                miniChatRef.current.expandChat();
+            }
+        } else if (notification.type === 'new_message' || notification.type === 'message_received') {
+            // Handle regular message notifications - open MiniChat instead of redirecting
+            const senderId = notification.data?.sender_id;
+            const senderName = notification.data?.sender_name || 'User';
+            const senderAvatar = notification.data?.sender_avatar;
+            
+            if (senderId && miniChatRef.current) {
+                miniChatRef.current.openConversation(senderId, senderName, senderAvatar);
+                miniChatRef.current.expandChat();
+            }
+        } else if (notification.action_url) {
+            // For other notification types, use the action URL
             window.location.href = notification.action_url;
         }
+        
         setShowingNotificationsDropdown(false);
     };
 
@@ -123,15 +147,21 @@ export default function AuthenticatedLayout({ header, children }) {
             markAsRead(notification.id);
         }
 
-        // Get the target user ID from notification data
+        // Get the target user info from notification data
         const targetUserId = notification.data?.message_target_user_id;
-        if (targetUserId) {
-            // Redirect to messages conversation
-            window.location.href = `/messages/conversation/${targetUserId}`;
+        const userName = notification.data?.target_user_name;
+        const userAvatar = notification.data?.target_user_avatar;
+        
+        if (targetUserId && miniChatRef.current) {
+            // Open mini chat modal with the conversation
+            miniChatRef.current.openConversation(targetUserId, userName, userAvatar);
+            miniChatRef.current.expandChat();
         }
 
         setShowingNotificationsDropdown(false);
     };
+
+    // Removed Quick Chat helpers; MiniChat widget is always visible
 
     // Handle notification button click
     const handleNotificationButtonClick = (e) => {
@@ -161,12 +191,14 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     };
 
-    // Handle messages button click
+    // Handle messages button click - expand MiniChat
     const handleMessagesButtonClick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Messages button clicked, opening modal');
-        setShowMessagesModal(true);
+        console.log('Messages button clicked, expanding MiniChat');
+        if (miniChatRef.current) {
+            miniChatRef.current.expandChat();
+        }
     };
 
     // Close dropdown when clicking outside
@@ -440,7 +472,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
 
                             {/* Messages Button */}
-                            <div className="relative">
+                            {/* <div className="relative">
                                 <button
                                     onClick={handleMessagesButtonClick}
                                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative"
@@ -454,7 +486,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </span>
                                     )}
                                 </button>
-                            </div>
+                            </div> */}
 
                             {/* User Dropdown */}
                             <div className="relative">
@@ -636,11 +668,13 @@ export default function AuthenticatedLayout({ header, children }) {
 
             <main className="flex-1">{children}</main>
 
-            {/* Messages Modal */}
-            <MessagesModal
-                isOpen={showMessagesModal}
-                onClose={() => setShowMessagesModal(false)}
-                initialUserId={selectedUserId}
+            {/* Messages Page Modal removed; MiniChatModal handles messaging */}
+
+            {/* Mini Chat Modal - always present */}
+            <MiniChatModal
+                ref={miniChatRef}
+                isOpen={true}
+                unreadCount={messagesUnreadCount}
             />
         </div>
     );

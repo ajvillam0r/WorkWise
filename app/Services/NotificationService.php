@@ -228,7 +228,7 @@ class NotificationService
             'title' => '💬 New Message',
             'message' => "New message from {$messageData['sender_name']}",
             'data' => $messageData,
-            'action_url' => route('messages.conversation', $messageData['sender_id']),
+            'action_url' => null, // Don't set action_url to prevent redirect, use MiniChat instead
             'icon' => 'chat-bubble-left'
         ]);
     }
@@ -250,7 +250,7 @@ class NotificationService
                 'show_message_button' => true,
                 'message_target_user_id' => $bidData['other_user_id']
             ]),
-            'action_url' => route('messages.conversation', $bidData['other_user_id']),
+            'action_url' => null, // Don't set action_url to prevent redirect, use MiniChat instead
             'icon' => 'chat-bubble-left'
         ]);
     }

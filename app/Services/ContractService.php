@@ -296,7 +296,7 @@ class ContractService
                 'gig_worker_responsibilities_count' => count($gigWorkerResponsibilities)
             ]);
 
-            // Generate PDF with error handling
+            // Generate PDF with enhanced options for better styling
             $pdf = Pdf::loadView('contracts.pdf', $data)
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
@@ -304,6 +304,11 @@ class ContractService
                     'isRemoteEnabled' => false, // Disable for security
                     'isHtml5ParserEnabled' => true,
                     'isPhpEnabled' => false, // Disable for security
+                    'fontDir' => storage_path('app/fonts'), // Custom fonts directory
+                    'fontCache' => storage_path('app/fonts/cache'),
+                    'dpi' => 150, // Higher DPI for better quality
+                    'defaultPaperSize' => 'a4',
+                    'orientation' => 'portrait',
                     'debugKeepTemp' => false,
                     'debugPng' => false,
                     'debugCss' => false,
@@ -311,26 +316,32 @@ class ContractService
                     'debugLayoutLines' => false,
                     'debugLayoutBlocks' => false,
                     'debugLayoutInline' => false,
-                    'debugLayoutPaddingBox' => false
+                    'debugLayoutPaddingBox' => false,
+                    // Additional options for better font rendering
+                    'tempDir' => storage_path('app/temp'),
+                    'chroot' => storage_path('app'),
+                    'enable_css_float' => true,
+                    'enable_html5_parser' => true
                 ]);
 
-            // Ensure contracts directory exists
-            if (!Storage::exists('contracts')) {
-                Storage::makeDirectory('contracts');
+            // Use public disk for contracts so they can be downloaded
+            // Ensure contracts directory exists in public storage
+            if (!Storage::disk('public')->exists('contracts')) {
+                Storage::disk('public')->makeDirectory('contracts');
             }
 
-            // Save PDF
+            // Save PDF to public disk
             $filename = "contracts/contract_{$contract->contract_id}.pdf";
             $pdfOutput = $pdf->output();
-            
+
             if (empty($pdfOutput)) {
                 throw new \Exception('PDF generation produced empty output');
             }
 
-            Storage::put($filename, $pdfOutput);
+            Storage::disk('public')->put($filename, $pdfOutput);
 
             // Verify file was saved
-            if (!Storage::exists($filename)) {
+            if (!Storage::disk('public')->exists($filename)) {
                 throw new \Exception('PDF file was not saved successfully');
             }
 
@@ -343,7 +354,7 @@ class ContractService
             \Log::info('PDF generated successfully', [
                 'contract_id' => $contract->id,
                 'filename' => $filename,
-                'file_size' => Storage::size($filename)
+                'file_size' => Storage::disk('public')->size($filename)
             ]);
 
             return $filename;
@@ -429,6 +440,40 @@ class ContractService
                 ]);
                 // Don't fail the whole process for notification failure
             }
+        }
+    }
+
+    /**
+     * Regenerate contract PDF with improved settings
+     */
+    public function regenerateContractPdf(Contract $contract): string
+    {
+        try {
+            \Log::info('Regenerating PDF for contract', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_id
+            ]);
+
+            // Delete existing PDF if exists
+            if ($contract->pdf_path && Storage::disk('public')->exists($contract->pdf_path)) {
+                Storage::disk('public')->delete($contract->pdf_path);
+                \Log::info('Deleted existing PDF', [
+                    'contract_id' => $contract->id,
+                    'old_path' => $contract->pdf_path
+                ]);
+            }
+
+            // Generate new PDF with improved settings
+            return $this->generateContractPdf($contract);
+
+        } catch (\Exception $e) {
+            \Log::error('PDF regeneration failed', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw new \Exception('Failed to regenerate contract PDF: ' . $e->getMessage(), 0, $e);
         }
     }
 

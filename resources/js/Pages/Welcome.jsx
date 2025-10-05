@@ -6,14 +6,22 @@ export default function Welcome({ auth }) {
         // Neural Network Animation
         const nnCanvas = document.getElementById('neural-network-canvas');
         const nnCtx = nnCanvas?.getContext('2d');
+        if (!nnCtx) {
+            console.warn('Neural network canvas context not available');
+        }
         let nnWidth = nnCanvas?.width || window.innerWidth;
         let nnHeight = nnCanvas?.height || document.documentElement.scrollHeight;
 
         // Particle Animation
         const particleCanvas = document.getElementById('particle-canvas');
         const particleCtx = particleCanvas?.getContext('2d');
-        particleCanvas.width = window.innerWidth;
-        particleCanvas.height = window.innerHeight;
+        if (!particleCtx) {
+            console.warn('Particle canvas context not available');
+        }
+        if (particleCanvas) {
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+        }
 
         let mouse = { x: null, y: null, radius: 150 };
 
@@ -27,14 +35,18 @@ export default function Welcome({ auth }) {
             mouse.y = null;
         });
 
-        window.addEventListener('resize', () => {
-            nnWidth = nnCanvas.width = window.innerWidth;
-            nnHeight = nnCanvas.height = document.documentElement.scrollHeight;
-            particleCanvas.width = window.innerWidth;
-            particleCanvas.height = window.innerHeight;
+        const handleResize = () => {
+            nnWidth = nnCanvas ? nnCanvas.width = window.innerWidth : window.innerWidth;
+            nnHeight = nnCanvas ? nnCanvas.height = document.documentElement.scrollHeight : document.documentElement.scrollHeight;
+            if (particleCanvas) {
+                particleCanvas.width = window.innerWidth;
+                particleCanvas.height = window.innerHeight;
+            }
             initNeuralNetwork();
             initParticles();
-        });
+        };
+
+        window.addEventListener('resize', handleResize);
 
         const nodeColor = 'rgba(59, 130, 246, 0.7)';
         const lineColor = 'rgba(59, 130, 246, 0.15)';
@@ -66,27 +78,36 @@ export default function Welcome({ auth }) {
 
         function initNeuralNetwork() {
             nodes = [];
-            const nodeCount = Math.floor((nnWidth * nnHeight) / 30000);
+            // Limit node count for better performance - max 50 nodes
+            const maxNodes = 50;
+            const nodeCount = Math.min(maxNodes, Math.floor((nnWidth * nnHeight) / 30000));
             for (let i = 0; i < nodeCount; i++) {
                 nodes.push(new Node(Math.random() * nnWidth, Math.random() * nnHeight, Math.random() * 1.5 + 1));
             }
         }
 
         function connectNodes() {
-            if (!nnCtx) return;
+            if (!nnCtx || nodes.length === 0) return;
             let maxDistance = 180;
+            // Limit connections for better performance - only connect nearby nodes
             for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
+                // Only connect to next few nodes to avoid O(n²) complexity
+                for (let j = i + 1; j < Math.min(i + 8, nodes.length); j++) {
                     const dx = nodes[i].x - nodes[j].x;
                     const dy = nodes[i].y - nodes[j].y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     if (distance < maxDistance) {
-                        nnCtx.beginPath();
-                        nnCtx.moveTo(nodes[i].x, nodes[i].y);
-                        nnCtx.lineTo(nodes[j].x, nodes[j].y);
-                        nnCtx.strokeStyle = lineColor;
-                        nnCtx.lineWidth = 0.8 - (distance / maxDistance);
-                        nnCtx.stroke();
+                        try {
+                            nnCtx.beginPath();
+                            nnCtx.moveTo(nodes[i].x, nodes[i].y);
+                            nnCtx.lineTo(nodes[j].x, nodes[j].y);
+                            nnCtx.strokeStyle = lineColor;
+                            nnCtx.lineWidth = Math.max(0.1, 0.8 - (distance / maxDistance));
+                            nnCtx.stroke();
+                        } catch (error) {
+                            // Skip this connection if canvas context is invalid
+                            break;
+                        }
                     }
                 }
             }
@@ -140,10 +161,18 @@ export default function Welcome({ auth }) {
 
         function initParticles() {
             particlesArray = [];
+            // Limit total particles for better performance
+            const maxParticles = 100;
             const interactiveElements = document.querySelectorAll('a[href], button');
+
             interactiveElements.forEach(el => {
+                if (particlesArray.length >= maxParticles) return;
+
                 const rect = el.getBoundingClientRect();
-                for (let i = 0; i < 15; i++) {
+                // Reduce particles per element from 15 to 3 for better performance
+                const particlesPerElement = Math.min(3, Math.floor((maxParticles - particlesArray.length) / Math.max(1, interactiveElements.length)));
+
+                for (let i = 0; i < particlesPerElement && particlesArray.length < maxParticles; i++) {
                     let size = (Math.random() * 1.5) + 0.5;
                     let x = rect.left + Math.random() * rect.width;
                     let y = rect.top + Math.random() * rect.height;
@@ -155,29 +184,73 @@ export default function Welcome({ auth }) {
         }
 
         function animate() {
-            if (nnCtx) {
-                nnCtx.clearRect(0, 0, nnWidth, nnHeight);
-                nodes.forEach(node => {
-                    node.update();
-                    node.draw();
-                });
-                connectNodes();
-            }
-
-            if (particleCtx) {
-                particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
-                for (let i = 0; i < particlesArray.length; i++) {
-                    particlesArray[i].update();
-                    particlesArray[i].draw();
+            try {
+                if (nnCtx && nnCanvas && !nnCanvas.hasAttribute('data-error')) {
+                    nnCtx.clearRect(0, 0, nnWidth, nnHeight);
+                    nodes.forEach(node => {
+                        node.update();
+                        node.draw();
+                    });
+                    connectNodes();
                 }
-            }
 
-            requestAnimationFrame(animate);
+                if (particleCtx && particleCanvas && !particleCanvas.hasAttribute('data-error')) {
+                    particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+                    for (let i = 0; i < particlesArray.length; i++) {
+                        particlesArray[i].update();
+                        particlesArray[i].draw();
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            } catch (error) {
+                console.error('Animation error:', error);
+                // Mark canvases with error to prevent further animation attempts
+                if (nnCanvas) nnCanvas.setAttribute('data-error', 'true');
+                if (particleCanvas) particleCanvas.setAttribute('data-error', 'true');
+                return;
+            }
         }
+
+        // Performance monitoring
+        let frameCount = 0;
+        let lastTime = performance.now();
+        let animationEnabled = true;
+
+        const performanceCheck = () => {
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) { // Check every second
+                const fps = frameCount / ((currentTime - lastTime) / 1000);
+                if (fps < 15 && frameCount > 10) { // If FPS drops below 15 after 10 frames
+                    console.warn('Low FPS detected, disabling animations for performance');
+                    animationEnabled = false;
+                    if (nnCanvas) nnCanvas.setAttribute('data-error', 'performance');
+                    if (particleCanvas) particleCanvas.setAttribute('data-error', 'performance');
+                }
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+        };
+
+        const monitoredAnimate = () => {
+            if (animationEnabled) {
+                try {
+                    performanceCheck();
+                    animate();
+                } catch (error) {
+                    console.error('Animation error:', error);
+                    animationEnabled = false;
+                }
+            } else {
+                // Still call requestAnimationFrame to keep the loop alive for re-enabling
+                requestAnimationFrame(monitoredAnimate);
+            }
+        };
 
         initNeuralNetwork();
         initParticles();
-        animate();
+        monitoredAnimate();
 
         // Intersection Observer for animations
         const observer = new IntersectionObserver((entries) => {
@@ -194,6 +267,16 @@ export default function Welcome({ auth }) {
 
         return () => {
             observer.disconnect();
+            // Clean up event listeners
+            window.removeEventListener('mousemove', (event) => {
+                mouse.x = event.x;
+                mouse.y = event.y;
+            });
+            window.removeEventListener('mouseout', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+            window.removeEventListener('resize', handleResize);
         };
     }, []);
 

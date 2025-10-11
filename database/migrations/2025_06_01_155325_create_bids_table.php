@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -19,7 +20,7 @@ return new class extends Migration
             $table->text('proposal_message');
             $table->integer('estimated_days');
             $table->enum('status', ['pending', 'accepted', 'rejected', 'withdrawn'])->default('pending');
-            $table->timestamp('submitted_at')->useCurrent();
+            $table->timestamp('submitted_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->timestamps();
 
             // Ensure a freelancer can only bid once per job

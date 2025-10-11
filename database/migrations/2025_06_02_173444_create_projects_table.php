@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -22,7 +21,7 @@ return new class extends Migration
             $table->decimal('platform_fee', 10, 2)->default(0);
             $table->decimal('net_amount', 10, 2);
             $table->enum('status', ['active', 'completed', 'cancelled', 'disputed']);
-            $table->timestamp('started_at')->default(DB::raw('CURRENT_TIMESTAMP'));
+            $table->timestamp('started_at')->useCurrent();
             $table->timestamp('completed_at')->nullable();
             $table->text('completion_notes')->nullable();
             $table->boolean('employer_approved')->default(false);

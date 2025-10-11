@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -55,7 +54,7 @@ return new class extends Migration
             $table->json('common_typos');
             $table->string('device_type'); // desktop, mobile, tablet
             $table->integer('sample_count')->default(1);
-            $table->timestamp('last_updated')->default(DB::raw('CURRENT_TIMESTAMP'));
+            $table->timestamp('last_updated')->useCurrent();
             $table->timestamps();
 
             $table->unique(['user_id', 'device_type']);

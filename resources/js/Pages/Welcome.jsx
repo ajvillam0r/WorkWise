@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 
 export default function Welcome({ auth }) {
     useEffect(() => {
-<<<<<<< HEAD
         // Neural Network Animation
         const nnCanvas = document.getElementById('neural-network-canvas');
         const nnCtx = nnCanvas?.getContext('2d');
@@ -253,8 +252,6 @@ export default function Welcome({ auth }) {
         initParticles();
         monitoredAnimate();
 
-=======
->>>>>>> 2de1fde (Web Design Partial Fix)
         // Intersection Observer for animations
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {

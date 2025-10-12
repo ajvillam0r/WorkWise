@@ -10,6 +10,7 @@ export default function Register({ selectedUserType }) {
         password: '',
         password_confirmation: '',
         user_type: selectedUserType || 'gig_worker',
+        barangay: '',
         terms_agreed: false,
         marketing_emails: false,
     });

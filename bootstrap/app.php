@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Add essential web middleware for CSRF, sessions, etc.
         $middleware->web(prepend: [
+            \App\Http\Middleware\TrustProxies::class,
             \Illuminate\Cookie\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,

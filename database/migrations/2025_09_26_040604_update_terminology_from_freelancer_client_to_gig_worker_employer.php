@@ -12,16 +12,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Step 1: Update data in users table first
+        // Step 1: Change user_type enum to string to allow new values (PostgreSQL doesn't easily allow enum modification)
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('user_type', 50)->default('gig_worker')->change();
+        });
+
+        // Step 2: Update data in users table
         DB::table('users')->where('user_type', 'freelancer')->update(['user_type' => 'gig_worker']);
         DB::table('users')->where('user_type', 'client')->update(['user_type' => 'employer']);
 
-        // Step 2: Rename freelancer_id to gig_worker_id in bids table
+        // Step 3: Rename freelancer_id to gig_worker_id in bids table
         Schema::table('bids', function (Blueprint $table) {
             $table->renameColumn('freelancer_id', 'gig_worker_id');
         });
 
-        // Step 3: Update foreign key constraint for bids table
+        // Step 4: Update foreign key constraint for bids table
         Schema::table('bids', function (Blueprint $table) {
             $table->dropForeign(['freelancer_id']);
             $table->foreign('gig_worker_id')->references('id')->on('users')->onDelete('cascade');
@@ -52,5 +57,11 @@ return new class extends Migration
         // Step 3: Update data back in users table
         DB::table('users')->where('user_type', 'gig_worker')->update(['user_type' => 'freelancer']);
         DB::table('users')->where('user_type', 'employer')->update(['user_type' => 'client']);
+
+        // Step 4: Change user_type back to enum
+        Schema::table('users', function (Blueprint $table) {
+            DB::statement("ALTER TABLE users ALTER COLUMN user_type TYPE VARCHAR(255)");
+            DB::statement("ALTER TABLE users ALTER COLUMN user_type SET DEFAULT 'freelancer'");
+        });
     }
 };

@@ -21,3 +21,8 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Documentation with sensitive info
+START_HERE_FIX_500.md
+CRITICAL_ISSUES_FOUND.md
+QUICK_FIX_COMMANDS.md

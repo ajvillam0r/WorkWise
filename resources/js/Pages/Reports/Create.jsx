@@ -44,6 +44,18 @@ export default function CreateReport({ reportedUser, project, reportTypes }) {
     };
 
     const getUserAvatar = (user) => {
+        // Check for Cloudinary profile picture first
+        if (user.profile_picture) {
+            return (
+                <img
+                    src={user.profile_picture}
+                    alt={`${user.first_name} ${user.last_name}`}
+                    className="h-16 w-16 rounded-full object-cover"
+                />
+            );
+        }
+        
+        // Fallback to legacy profile photo
         if (user.profile_photo) {
             return (
                 <img

@@ -26,6 +26,18 @@ const StatusBadge = ({ status }) => {
 
 // User Avatar Component
 const UserAvatar = ({ user, size = "w-10 h-10" }) => {
+    // Check for Cloudinary profile picture first
+    if (user.profile_picture) {
+        return (
+            <img
+                src={user.profile_picture}
+                alt={`${user.first_name} ${user.last_name}`}
+                className={`${size} rounded-full object-cover`}
+            />
+        );
+    }
+    
+    // Fallback to legacy profile photo
     if (user.profile_photo) {
         return (
             <img

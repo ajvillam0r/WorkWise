@@ -368,7 +368,7 @@ export default function UsersIndex({ users, filters }) {
                                                     <div className="flex-shrink-0 h-10 w-10">
                                                         <img
                                                             className="h-10 w-10 rounded-full"
-                                                            src={user.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name + ' ' + user.last_name)}&color=7F9CF5&background=EBF4FF`}
+                                                            src={user.profile_picture || user.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name + ' ' + user.last_name)}&color=7F9CF5&background=EBF4FF`}
                                                             alt=""
                                                         />
                                                     </div>

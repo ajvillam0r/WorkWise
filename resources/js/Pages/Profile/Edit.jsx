@@ -22,6 +22,7 @@ export default function Edit({ mustVerifyEmail, status }) {
         location: user.location || '',
         barangay: user.barangay || '',
         profile_photo: null,
+        profile_picture: null,
 
         // Freelancer fields
         professional_title: user.professional_title || '',
@@ -45,7 +46,7 @@ export default function Edit({ mustVerifyEmail, status }) {
         Object.keys(data).forEach(key => {
             if (key === 'skills' || key === 'languages') {
                 formData.append(key, JSON.stringify(data[key]));
-            } else if (key === 'profile_photo' && data[key]) {
+            } else if ((key === 'profile_photo' || key === 'profile_picture') && data[key]) {
                 formData.append(key, data[key]);
             } else {
                 formData.append(key, data[key] || '');
@@ -91,6 +92,18 @@ export default function Edit({ mustVerifyEmail, status }) {
     ];
 
     const getUserAvatar = () => {
+        // Check for Cloudinary profile picture first
+        if (user.profile_picture) {
+            return (
+                <img
+                    src={user.profile_picture}
+                    alt={`${user.first_name} ${user.last_name}`}
+                    className="h-24 w-24 rounded-full object-cover"
+                />
+            );
+        }
+        
+        // Fallback to legacy profile photo
         if (user.profile_photo) {
             return (
                 <img
@@ -223,24 +236,49 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                 {/* Profile Photo Upload */}
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-4">
-                                                        Profile Photo
+                                                        Profile Picture
                                                     </label>
                                                     <div className="flex items-center space-x-6">
                                                         <div className="flex-shrink-0">
                                                             {getUserAvatar()}
                                                         </div>
                                                         <div className="flex-1">
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                onChange={(e) => setData('profile_photo', e.target.files[0])}
-                                                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                            />
-                                                            <p className="mt-2 text-xs text-gray-500">
-                                                                JPG, PNG or GIF. Max size 2MB. Recommended: 400x400px
-                                                            </p>
+                                                            <div className="space-y-4">
+                                                                {/* Cloudinary Upload (Recommended) */}
+                                                                <div>
+                                                                    <label className="block text-xs font-medium text-blue-700 mb-2">
+                                                                        🌟 Recommended: High-Quality Upload
+                                                                    </label>
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        onChange={(e) => setData('profile_picture', e.target.files[0])}
+                                                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                                                    />
+                                                                    <p className="mt-1 text-xs text-blue-600">
+                                                                        JPG, PNG or GIF. Max size 5MB. Auto-optimized for best quality.
+                                                                    </p>
+                                                                </div>
+                                                                
+                                                                {/* Legacy Upload */}
+                                                                <div className="pt-2 border-t border-gray-200">
+                                                                    <label className="block text-xs font-medium text-gray-600 mb-2">
+                                                                        Legacy Upload (Basic)
+                                                                    </label>
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        onChange={(e) => setData('profile_photo', e.target.files[0])}
+                                                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                                                    />
+                                                                    <p className="mt-1 text-xs text-gray-500">
+                                                                        JPG, PNG or GIF. Max size 2MB. Basic storage.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    {errors.profile_picture && <p className="mt-2 text-sm text-red-600">{errors.profile_picture}</p>}
                                                     {errors.profile_photo && <p className="mt-2 text-sm text-red-600">{errors.profile_photo}</p>}
                                                 </div>
 

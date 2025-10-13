@@ -872,7 +872,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                                                 {/* User Avatar */}
                                                                 <div className="flex-shrink-0 relative">
                                                                     <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm transition-all duration-200 group-hover:scale-105">
-                                                                        {conversation.user.profile_photo ? (
+                                                                        {conversation.user.profile_picture ? (
+                                                                            <img
+                                                                                src={conversation.user.profile_picture}
+                                                                                alt={`${conversation.user.first_name} ${conversation.user.last_name}`}
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                        ) : conversation.user.profile_photo ? (
                                                                             <img
                                                                                 src={`/storage/${conversation.user.profile_photo}`}
                                                                                 alt={`${conversation.user.first_name} ${conversation.user.last_name}`}

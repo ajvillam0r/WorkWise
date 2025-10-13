@@ -33,6 +33,7 @@ class User extends Authenticatable
         'location',
         'phone',
         'profile_photo',
+        'profile_picture',
         'professional_title',
         'hourly_rate',
         'experience_level',

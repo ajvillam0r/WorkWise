@@ -12,10 +12,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop the old enum check constraints to allow flexibility
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_user_type_check");
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_profile_status_check");
-        DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_experience_level_check");
+        // SQLite doesn't have named constraints like PostgreSQL
+        // The constraints were already handled by the previous migration
+        // This migration is essentially a no-op for SQLite
+        // Just log that we're skipping constraint drops for SQLite
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_user_type_check");
+            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_profile_status_check");
+            DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_experience_level_check");
+        }
     }
 
     /**

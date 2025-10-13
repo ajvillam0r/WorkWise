@@ -35,6 +35,7 @@ class ProfileUpdateRequest extends FormRequest
             'location' => ['nullable', 'string', 'max:255'],
             'barangay' => ['nullable', 'string', 'max:255'],
             'profile_photo' => ['nullable', 'image', 'max:2048'], // 2MB max
+            'profile_picture' => ['nullable', 'image', 'max:5120'], // 5MB max for Cloudinary
         ];
 
         if ($isFreelancer) {

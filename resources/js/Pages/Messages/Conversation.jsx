@@ -38,6 +38,23 @@ const UserAvatar = ({ user, size = 'w-8 h-8', showOnline = false }) => {
         'w-16 h-16': 'w-16 h-16 text-lg'
     };
 
+    // Check for Cloudinary profile picture first
+    if (user.profile_picture) {
+        return (
+            <div className="relative">
+                <img
+                    src={user.profile_picture}
+                    alt={`${user.first_name} ${user.last_name}`}
+                    className={`${size} rounded-full object-cover ring-2 ring-white shadow-sm`}
+                />
+                {showOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
+                )}
+            </div>
+        );
+    }
+
+    // Fallback to legacy profile photo
     if (user.profile_photo) {
         return (
             <div className="relative">

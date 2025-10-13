@@ -125,7 +125,13 @@ export default function StartConversationModal({ isOpen, onClose, users = [] }) 
                                                         >
                                                             <div className="flex items-center space-x-4">
                                                                 <div className="flex-shrink-0">
-                                                                    {user.profile_photo ? (
+                                                                    {user.profile_picture ? (
+                                                                        <img
+                                                                            src={user.profile_picture}
+                                                                            alt={`${user.first_name} ${user.last_name}`}
+                                                                            className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-sm"
+                                                                        />
+                                                                    ) : user.profile_photo ? (
                                                                         <img
                                                                             src={`/storage/${user.profile_photo}`}
                                                                             alt={`${user.first_name} ${user.last_name}`}
@@ -169,7 +175,13 @@ export default function StartConversationModal({ isOpen, onClose, users = [] }) 
                                         <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                                             <div className="flex items-center space-x-4">
                                                 <div className="flex-shrink-0">
-                                                    {selectedUser.profile_photo ? (
+                                                    {selectedUser.profile_picture ? (
+                                                        <img
+                                                            src={selectedUser.profile_picture}
+                                                            alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
+                                                            className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-sm"
+                                                        />
+                                                    ) : selectedUser.profile_photo ? (
                                                         <img
                                                             src={`/storage/${selectedUser.profile_photo}`}
                                                             alt={`${selectedUser.first_name} ${selectedUser.last_name}`}

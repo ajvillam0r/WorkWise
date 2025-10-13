@@ -160,6 +160,17 @@ const MiniChatModal = forwardRef(({ isOpen = true, unreadCount = 0, targetUserId
 
     // Get user avatar
     const getUserAvatar = (user, size = 'w-8 h-8') => {
+        // Check for Cloudinary profile picture first
+        if (user?.profile_picture) {
+            return (
+                <div 
+                    className={`bg-center bg-no-repeat aspect-square bg-cover rounded-full ${size} shrink-0`}
+                    style={{ backgroundImage: `url(${user.profile_picture})` }}
+                />
+            );
+        }
+        
+        // Fallback to legacy avatar
         if (user?.avatar) {
             return (
                 <div 
@@ -168,6 +179,7 @@ const MiniChatModal = forwardRef(({ isOpen = true, unreadCount = 0, targetUserId
                 />
             );
         }
+        
         const displayName = user?.first_name ? `${user.first_name} ${user.last_name}` : (user?.name || 'U');
         return (
             <div className={`bg-blue-600 rounded-full ${size} flex items-center justify-center text-white text-sm font-medium shrink-0`}>

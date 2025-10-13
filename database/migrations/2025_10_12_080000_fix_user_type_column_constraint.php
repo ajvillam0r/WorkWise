@@ -14,8 +14,10 @@ return new class extends Migration
     {
         // Change user_type from enum to string to allow gig_worker and employer values
         // This fixes the registration 500 error
-        DB::statement("ALTER TABLE users ALTER COLUMN user_type TYPE VARCHAR(50)");
-        DB::statement("ALTER TABLE users ALTER COLUMN user_type SET DEFAULT 'gig_worker'");
+        // SQLite doesn't support ALTER COLUMN TYPE, so we use Laravel's schema builder
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('user_type', 50)->default('gig_worker')->change();
+        });
     }
 
     /**
@@ -25,6 +27,8 @@ return new class extends Migration
     {
         // Note: Reverting to enum would require recreating the enum type
         // For now, we'll just keep it as varchar even on rollback
-        DB::statement("ALTER TABLE users ALTER COLUMN user_type TYPE VARCHAR(50)");
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('user_type', 50)->default('freelancer')->change();
+        });
     }
 };

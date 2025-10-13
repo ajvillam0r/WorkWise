@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Services\CloudinaryService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,12 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    protected $cloudinaryService;
+
+    public function __construct(CloudinaryService $cloudinaryService)
+    {
+        $this->cloudinaryService = $cloudinaryService;
+    }
     /**
      * Display the user's profile form.
      */
@@ -33,7 +40,33 @@ class ProfileController extends Controller
         $user = $request->user();
         $validated = $request->validated();
 
-        // Handle profile photo upload
+        // Handle profile picture upload to Cloudinary
+        if ($request->hasFile('profile_picture')) {
+            // Delete old profile picture from Cloudinary if exists
+            if ($user->profile_picture) {
+                $publicId = $this->cloudinaryService->extractPublicId($user->profile_picture);
+                if ($publicId) {
+                    $this->cloudinaryService->deleteImage($publicId);
+                }
+            }
+
+            // Upload new profile picture to Cloudinary
+            $uploadResult = $this->cloudinaryService->uploadProfilePicture(
+                $request->file('profile_picture'), 
+                $user->id
+            );
+
+            if ($uploadResult) {
+                $validated['profile_picture'] = $uploadResult['secure_url'];
+            } else {
+                return Redirect::route('profile.edit')->with('error', 'Failed to upload profile picture. Please try again.');
+            }
+        } else {
+            // Remove profile_picture from validated data if no file uploaded
+            unset($validated['profile_picture']);
+        }
+
+        // Handle legacy profile photo upload (keep for backward compatibility)
         if ($request->hasFile('profile_photo')) {
             // Delete old profile photo if exists
             if ($user->profile_photo) {

@@ -132,17 +132,64 @@ class DebugController extends Controller
             // Mock authentication
             auth()->login($gigWorker);
 
-            // Test the dashboard controller
+            // Test each method individually to isolate the error
             $controller = new \App\Http\Controllers\GigWorkerDashboardController();
-            $request = new Request();
+            $reflection = new \ReflectionClass($controller);
+            $results = [];
             
-            $response = $controller->index($request);
+            $methods = [
+                'getGigWorkerStats',
+                'getActiveContracts', 
+                'getJobInvites',
+                'getEarningsSummary',
+                'getAIRecommendations',
+                'getRecentActivity',
+                'getSkillsProgress',
+                'getUpcomingDeadlines'
+            ];
+            
+            foreach ($methods as $methodName) {
+                try {
+                    $method = $reflection->getMethod($methodName);
+                    $method->setAccessible(true);
+                    $result = $method->invoke($controller, $gigWorker);
+                    $results[$methodName] = [
+                        'status' => 'success',
+                        'data_type' => gettype($result),
+                        'data_count' => is_array($result) ? count($result) : (is_object($result) ? get_class($result) : 'scalar')
+                    ];
+                } catch (\Exception $e) {
+                    $results[$methodName] = [
+                        'status' => 'error',
+                        'error' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ];
+                }
+            }
+            
+            // Now test the full index method
+            try {
+                $request = new Request();
+                $response = $controller->index($request);
+                $results['full_index'] = [
+                    'status' => 'success',
+                    'response_type' => get_class($response)
+                ];
+            } catch (\Exception $e) {
+                $results['full_index'] = [
+                    'status' => 'error',
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => explode("\n", $e->getTraceAsString())
+                ];
+            }
             
             return response()->json([
                 'success' => true,
-                'message' => 'Dashboard controller executed successfully',
                 'user' => $gigWorker->name,
-                'response_type' => get_class($response)
+                'method_results' => $results
             ]);
             
         } catch (\Exception $e) {
@@ -150,7 +197,7 @@ class DebugController extends Controller
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => explode("\n", $e->getTraceAsString())
             ], 500);
         }
     }

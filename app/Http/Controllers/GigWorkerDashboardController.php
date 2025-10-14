@@ -385,26 +385,37 @@ class GigWorkerDashboardController extends Controller
      */
     private function getUpcomingDeadlines($user)
     {
-        $upcomingProjects = Project::where('gig_worker_id', $user->id)
-            ->where('status', 'active')
-            ->whereNotNull('deadline')
-            ->where('deadline', '>', Carbon::now())
-            ->orderBy('deadline', 'asc')
-            ->with(['job', 'employer'])
+        // Get deadlines from contract_deadlines table
+        $upcomingDeadlines = DB::table('contract_deadlines')
+            ->join('projects', 'contract_deadlines.contract_id', '=', 'projects.id')
+            ->join('gig_jobs', 'projects.job_id', '=', 'gig_jobs.id')
+            ->join('users', 'projects.employer_id', '=', 'users.id')
+            ->where('projects.gig_worker_id', $user->id)
+            ->where('contract_deadlines.status', 'pending')
+            ->where('contract_deadlines.due_date', '>', Carbon::now()->toDateString())
+            ->orderBy('contract_deadlines.due_date', 'asc')
+            ->select(
+                'projects.id as project_id',
+                'gig_jobs.title as project_title',
+                'users.name as client_name',
+                'contract_deadlines.due_date',
+                'contract_deadlines.milestone_name'
+            )
             ->limit(5)
             ->get();
 
-        return $upcomingProjects->map(function ($project) {
-            $deadline = Carbon::parse($project->deadline);
-            $daysLeft = Carbon::now()->diffInDays($deadline, false);
+        return $upcomingDeadlines->map(function ($deadline) {
+            $dueDate = Carbon::parse($deadline->due_date);
+            $daysLeft = Carbon::now()->diffInDays($dueDate, false);
             
             return [
-                'id' => $project->id,
-                'projectTitle' => $project->job->title ?? 'Untitled Project',
-                'clientName' => $project->employer->name ?? 'Unknown Client',
+                'id' => $deadline->project_id,
+                'projectTitle' => $deadline->project_title ?? 'Untitled Project',
+                'clientName' => $deadline->client_name ?? 'Unknown Client',
                 'daysLeft' => max(0, $daysLeft),
-                'completionPercentage' => $project->completion_percentage ?? 0,
-                'deadline' => $deadline->toDateString()
+                'completionPercentage' => 0, // Default since we don't have this in contract_deadlines
+                'deadline' => $dueDate->toDateString(),
+                'milestone' => $deadline->milestone_name
             ];
         })->toArray();
     }

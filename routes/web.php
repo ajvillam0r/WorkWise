@@ -29,6 +29,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\GigWorkerDashboardController;
 use App\Http\Controllers\Api\GigWorkerController;
+use App\Http\Controllers\DebugController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -526,5 +527,9 @@ Route::prefix('api/gig-workers')->group(function () {
     Route::get('/stats/overview', [GigWorkerController::class, 'getStats']);
     Route::get('/{id}', [GigWorkerController::class, 'show']);
 });
+
+// Debug routes for Railway diagnosis
+Route::get('/debug/railway', [DebugController::class, 'railwayDiagnosis']);
+Route::get('/debug/gig-worker-dashboard', [DebugController::class, 'testGigWorkerDashboard']);
 
 require __DIR__.'/auth.php';

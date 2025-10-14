@@ -115,8 +115,8 @@ class GigWorkerDashboardController extends Controller
      */
     private function getActiveContracts($user)
     {
-        return Project::where('gig_worker_id', $user->id)
-            ->whereIn('status', ['active', 'in_progress'])
+        return $user->gigWorkerProjects()
+            ->whereIn('status', ['active', 'pending_contract'])
             ->with(['job', 'employer'])
             ->latest()
             ->limit(5)

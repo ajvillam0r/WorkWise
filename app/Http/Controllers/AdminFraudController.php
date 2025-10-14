@@ -520,11 +520,19 @@ class AdminFraudController extends Controller
      */
     private function getTemporalPatterns(): array
     {
-        return FraudDetectionCase::selectRaw('
-                HOUR(detected_at) as hour,
+        $driver = DB::connection()->getDriverName();
+        $hourExtract = $driver === 'pgsql' 
+            ? "EXTRACT(HOUR FROM detected_at)" 
+            : "HOUR(detected_at)";
+        $dayName = $driver === 'pgsql' 
+            ? "TO_CHAR(detected_at, 'Day')" 
+            : "DAYNAME(detected_at)";
+
+        return FraudDetectionCase::selectRaw("
+                {$hourExtract} as hour,
                 COUNT(*) as cases,
-                DAYNAME(detected_at) as day_name
-            ')
+                {$dayName} as day_name
+            ")
             ->where('detected_at', '>=', now()->subDays(7))
             ->groupBy('hour', 'day_name')
             ->orderBy('hour')

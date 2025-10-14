@@ -169,6 +169,11 @@ class ReportController extends Controller
      */
     public function fraudInsights()
     {
+        $driver = DB::connection()->getDriverName();
+        $hourExtract = $driver === 'pgsql' 
+            ? "EXTRACT(HOUR FROM created_at)" 
+            : "HOUR(created_at)";
+
         // AI-powered fraud detection insights
         $insights = [
             'high_risk_users' => User::whereHas('reportsReceived', function($query) {
@@ -188,7 +193,7 @@ class ReportController extends Controller
                     ->limit(5)
                     ->get(),
 
-                'time_patterns' => Report::selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
+                'time_patterns' => Report::selectRaw("{$hourExtract} as hour, COUNT(*) as count")
                     ->groupBy('hour')
                     ->orderBy('hour')
                     ->get()

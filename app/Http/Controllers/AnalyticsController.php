@@ -611,8 +611,15 @@ class AnalyticsController extends Controller
                 'year' => "strftime('%Y', created_at)",
                 'date_diff' => "julianday(completed_at) - julianday(started_at)"
             ];
+        } elseif ($driver === 'pgsql') {
+            // PostgreSQL
+            return [
+                'month' => 'EXTRACT(MONTH FROM created_at)',
+                'year' => 'EXTRACT(YEAR FROM created_at)',
+                'date_diff' => 'EXTRACT(EPOCH FROM (completed_at - started_at))/86400'
+            ];
         } else {
-            // MySQL/PostgreSQL
+            // MySQL
             return [
                 'month' => 'MONTH(created_at)',
                 'year' => 'YEAR(created_at)',

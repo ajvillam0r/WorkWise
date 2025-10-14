@@ -79,12 +79,17 @@ class AdminAnalyticsController extends Controller
         $period = $request->get('period', '12months');
         $months = $period === '12months' ? 12 : ($period === '6months' ? 6 : 3);
 
-        $userGrowth = User::selectRaw('
-                DATE_FORMAT(created_at, "%Y-%m") as month,
+        $driver = DB::connection()->getDriverName();
+        $monthFormat = $driver === 'pgsql' 
+            ? "TO_CHAR(created_at, 'YYYY-MM')" 
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+
+        $userGrowth = User::selectRaw("
+                {$monthFormat} as month,
                 COUNT(*) as count,
-                SUM(CASE WHEN user_type = "freelancer" THEN 1 ELSE 0 END) as freelancers,
-                SUM(CASE WHEN user_type = "client" THEN 1 ELSE 0 END) as clients
-            ')
+                SUM(CASE WHEN user_type = 'freelancer' THEN 1 ELSE 0 END) as freelancers,
+                SUM(CASE WHEN user_type = 'client' THEN 1 ELSE 0 END) as clients
+            ")
             ->where('created_at', '>=', Carbon::now()->subMonths($months))
             ->groupBy('month')
             ->orderBy('month')
@@ -118,12 +123,17 @@ class AdminAnalyticsController extends Controller
         $period = $request->get('period', '12months');
         $months = $period === '12months' ? 12 : ($period === '6months' ? 6 : 3);
 
-        $revenue = Transaction::selectRaw('
-                DATE_FORMAT(created_at, "%Y-%m") as month,
-                SUM(CASE WHEN type = "release" AND status = "completed" THEN platform_fee ELSE 0 END) as revenue,
-                SUM(CASE WHEN type = "release" AND status = "completed" THEN amount ELSE 0 END) as total_volume,
-                COUNT(CASE WHEN type = "release" AND status = "completed" THEN 1 END) as transaction_count
-            ')
+        $driver = DB::connection()->getDriverName();
+        $monthFormat = $driver === 'pgsql' 
+            ? "TO_CHAR(created_at, 'YYYY-MM')" 
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+
+        $revenue = Transaction::selectRaw("
+                {$monthFormat} as month,
+                SUM(CASE WHEN type = 'release' AND status = 'completed' THEN platform_fee ELSE 0 END) as revenue,
+                SUM(CASE WHEN type = 'release' AND status = 'completed' THEN amount ELSE 0 END) as total_volume,
+                COUNT(CASE WHEN type = 'release' AND status = 'completed' THEN 1 END) as transaction_count
+            ")
             ->where('created_at', '>=', Carbon::now()->subMonths($months))
             ->groupBy('month')
             ->orderBy('month')
@@ -156,13 +166,22 @@ class AdminAnalyticsController extends Controller
         $period = $request->get('period', '12months');
         $months = $period === '12months' ? 12 : ($period === '6months' ? 6 : 3);
 
-        $projectTrends = Project::selectRaw('
-                DATE_FORMAT(created_at, "%Y-%m") as month,
+        $driver = DB::connection()->getDriverName();
+        $monthFormat = $driver === 'pgsql' 
+            ? "TO_CHAR(created_at, 'YYYY-MM')" 
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+            
+        $dateDiff = $driver === 'pgsql' 
+            ? "EXTRACT(EPOCH FROM (completed_at - started_at))/86400" 
+            : "TIMESTAMPDIFF(DAY, started_at, completed_at)";
+
+        $projectTrends = Project::selectRaw("
+                {$monthFormat} as month,
                 COUNT(*) as total_projects,
-                SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_projects,
-                SUM(CASE WHEN status = "cancelled" THEN 1 ELSE 0 END) as cancelled_projects,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_projects,
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_projects,
                 AVG(CASE WHEN agreed_amount IS NOT NULL THEN agreed_amount ELSE 0 END) as avg_value
-            ')
+            ")
             ->where('created_at', '>=', Carbon::now()->subMonths($months))
             ->groupBy('month')
             ->orderBy('month')
@@ -174,7 +193,7 @@ class AdminAnalyticsController extends Controller
                 (Project::where('status', 'completed')->count() / Project::count()) * 100 : 0,
             'average_duration' => Project::whereNotNull('completed_at')
                 ->whereNotNull('started_at')
-                ->selectRaw('AVG(TIMESTAMPDIFF(DAY, started_at, completed_at)) as avg_duration')
+                ->selectRaw("AVG({$dateDiff}) as avg_duration")
                 ->value('avg_duration') ?? 0,
             'average_value' => Project::avg('agreed_amount') ?? 0,
             'by_status' => Project::selectRaw('status, COUNT(*) as count')

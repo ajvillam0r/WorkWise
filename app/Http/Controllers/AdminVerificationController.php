@@ -212,29 +212,38 @@ class AdminVerificationController extends Controller
      */
     public function analytics(): Response
     {
+        $driver = DB::connection()->getDriverName();
+        $monthFormat = $driver === 'pgsql' 
+            ? "TO_CHAR(created_at, 'YYYY-MM')" 
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+            
+        $hourDiff = $driver === 'pgsql' 
+            ? "EXTRACT(EPOCH FROM (verified_at - created_at))/3600" 
+            : "TIMESTAMPDIFF(HOUR, created_at, verified_at)";
+
         $analytics = [
-            'verification_trends' => UserVerification::selectRaw('
-                    DATE_FORMAT(created_at, "%Y-%m") as month,
+            'verification_trends' => UserVerification::selectRaw("
+                    {$monthFormat} as month,
                     COUNT(*) as total,
-                    SUM(CASE WHEN status = "approved" THEN 1 ELSE 0 END) as approved,
-                    SUM(CASE WHEN status = "rejected" THEN 1 ELSE 0 END) as rejected
-                ')
+                    SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+                ")
                 ->groupBy('month')
                 ->orderBy('month', 'desc')
                 ->limit(12)
                 ->get(),
 
-            'by_verification_type' => UserVerification::selectRaw('
+            'by_verification_type' => UserVerification::selectRaw("
                     verification_type,
                     COUNT(*) as total,
-                    SUM(CASE WHEN status = "approved" THEN 1 ELSE 0 END) as approved,
-                    SUM(CASE WHEN status = "rejected" THEN 1 ELSE 0 END) as rejected
-                ')
+                    SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+                ")
                 ->groupBy('verification_type')
                 ->get(),
 
             'average_processing_time' => UserVerification::whereNotNull('verified_at')
-                ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, verified_at)) as avg_hours')
+                ->selectRaw("AVG({$hourDiff}) as avg_hours")
                 ->value('avg_hours') ?? 0,
 
             'pending_by_type' => UserVerification::where('status', 'pending')

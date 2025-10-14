@@ -126,9 +126,20 @@ class AdminReportController extends Controller
      */
     public function fraudAnalytics(): Response
     {
+        $driver = DB::connection()->getDriverName();
+        
+        // Database-specific date formatting
+        $monthFormat = $driver === 'pgsql' 
+            ? "TO_CHAR(created_at, 'YYYY-MM')" 
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+            
+        $hourExtract = $driver === 'pgsql' 
+            ? "EXTRACT(HOUR FROM created_at)" 
+            : "HOUR(created_at)";
+
         $analytics = [
             'fraud_reports_by_month' => Report::where('type', 'fraud')
-                ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, COUNT(*) as count')
+                ->selectRaw("{$monthFormat} as month, COUNT(*) as count")
                 ->groupBy('month')
                 ->orderBy('month', 'desc')
                 ->limit(12)
@@ -155,7 +166,7 @@ class AdminReportController extends Controller
                     ->get(),
 
                 'by_time' => Report::where('type', 'fraud')
-                    ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
+                    ->selectRaw("{$hourExtract} as hour, COUNT(*) as count")
                     ->groupBy('hour')
                     ->orderBy('hour')
                     ->get(),

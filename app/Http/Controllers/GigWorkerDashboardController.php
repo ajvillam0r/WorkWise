@@ -204,7 +204,7 @@ class GigWorkerDashboardController extends Controller
             ->sum('net_amount');
 
         $pendingEarnings = Project::where('gig_worker_id', $user->id)
-            ->whereIn('status', ['active', 'in_progress', 'completed'])
+            ->whereIn('status', ['active', 'completed'])
             ->where('payment_released', false)
             ->sum('agreed_amount');
 
@@ -386,7 +386,7 @@ class GigWorkerDashboardController extends Controller
     private function getUpcomingDeadlines($user)
     {
         $upcomingProjects = Project::where('gig_worker_id', $user->id)
-            ->where('status', 'in_progress')
+            ->where('status', 'active')
             ->whereNotNull('deadline')
             ->where('deadline', '>', Carbon::now())
             ->orderBy('deadline', 'asc')

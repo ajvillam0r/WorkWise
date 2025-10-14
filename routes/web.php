@@ -31,6 +31,7 @@ use App\Http\Controllers\GigWorkerDashboardController;
 use App\Http\Controllers\Api\GigWorkerController;
 use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
+use App\Http\Controllers\SimpleTestController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -533,5 +534,7 @@ Route::prefix('api/gig-workers')->group(function () {
 Route::get('/debug/railway', [DebugController::class, 'railwayDiagnosis']);
 Route::get('/debug/gig-worker-dashboard', [DebugController::class, 'testGigWorkerDashboard']);
 Route::get('/debug/error-log', [ErrorLogController::class, 'captureGigWorkerError']);
+Route::get('/debug/simple-test', [SimpleTestController::class, 'basicTest']);
+Route::get('/debug/test-model', [SimpleTestController::class, 'testGigWorkerModel']);
 
 require __DIR__.'/auth.php';

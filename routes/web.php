@@ -125,6 +125,7 @@ Route::get('/gig-worker/invitations', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('gig-worker.invitations');
 
+<<<<<<< HEAD
 // Browse Freelancers Route
 Route::get('/freelancers', function () {
     // Get basic stats for the page
@@ -140,8 +141,17 @@ Route::get('/freelancers', function () {
         'stats' => [
             'total_gig_workers' => $totalFreelancers
         ]
+=======
+// Browse Gig Workers Route
+Route::get('/gig-workers', function () {
+    return Inertia::render('BrowseGigWorkers', [
+        'auth' => [
+            'user' => Auth::user()
+        ],
+        'gigWorkers' => []
+>>>>>>> 10a3ee3 (Clients to Employers & Freelancers to Gig Workers)
     ]);
-})->middleware(['auth', 'verified'])->name('browse.freelancers');
+})->middleware(['auth', 'verified'])->name('browse.gig-workers');
 
 // Employer Dashboard Route
 Route::get('/employer/dashboard', [EmployerDashboardController::class, 'index'])

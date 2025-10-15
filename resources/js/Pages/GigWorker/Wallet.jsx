@@ -12,7 +12,7 @@ import {
     EyeIcon
 } from '@heroicons/react/24/outline';
 
-export default function FreelancerWallet({ 
+export default function GigWorkerWallet({ 
     totalEarnings, 
     pendingEarnings, 
     availableBalance, 

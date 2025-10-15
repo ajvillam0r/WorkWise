@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\GigWorkerController;
 use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\SimpleTestController;
+use App\Http\Controllers\FreelancerController;
 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -123,11 +124,19 @@ Route::get('/gig-worker/invitations', function () {
 
 // Browse Freelancers Route
 Route::get('/freelancers', function () {
+    // Get basic stats for the page
+    $totalFreelancers = \App\Models\User::where('user_type', 'gig_worker')
+        ->where('profile_completed', true)
+        ->where('profile_status', 'approved')
+        ->count();
+    
     return Inertia::render('BrowseFreelancers', [
         'auth' => [
             'user' => Auth::user()
         ],
-        'freelancers' => []
+        'stats' => [
+            'total_gig_workers' => $totalFreelancers
+        ]
     ]);
 })->middleware(['auth', 'verified'])->name('browse.freelancers');
 
@@ -418,6 +427,40 @@ Route::match(['GET', 'POST'], '/api/ai/test-connection', [AIRecommendationContro
 
 // System-wide unique skills endpoint for filters
 Route::middleware(['auth'])->get('/api/ai-recommendation/skills', [AIRecommendationController::class, 'allSkills'])->name('ai.skills');
+
+// Freelancer Profile Routes
+Route::middleware(['auth'])->group(function () {
+    // Public freelancer profile (for employers to view)
+    Route::get('/freelancer/{freelancer}', [FreelancerController::class, 'show'])->name('freelancer.profile.show');
+    
+    // Freelancer dashboard (for freelancers to manage their profile)
+    Route::get('/freelancer/dashboard', [FreelancerController::class, 'dashboard'])->name('freelancer.profile.dashboard');
+    
+    // Profile management
+    Route::patch('/freelancer/profile', [FreelancerController::class, 'updateProfile'])->name('freelancer.profile.update');
+    Route::post('/freelancer/avatar', [FreelancerController::class, 'uploadAvatar'])->name('freelancer.avatar.upload');
+    
+    // Experience management
+    Route::post('/freelancer/experience', [FreelancerController::class, 'storeExperience'])->name('freelancer.experience.store');
+    Route::patch('/freelancer/experience/{experience}', [FreelancerController::class, 'updateExperience'])->name('freelancer.experience.update');
+    Route::delete('/freelancer/experience/{experience}', [FreelancerController::class, 'destroyExperience'])->name('freelancer.experience.destroy');
+    
+    // Education management
+    Route::post('/freelancer/education', [FreelancerController::class, 'storeEducation'])->name('freelancer.education.store');
+    Route::patch('/freelancer/education/{education}', [FreelancerController::class, 'updateEducation'])->name('freelancer.education.update');
+    Route::delete('/freelancer/education/{education}', [FreelancerController::class, 'destroyEducation'])->name('freelancer.education.destroy');
+    
+    // Skills management
+    Route::post('/freelancer/skill', [FreelancerController::class, 'storeSkill'])->name('freelancer.skill.store');
+    Route::patch('/freelancer/skill/{skill}', [FreelancerController::class, 'updateSkill'])->name('freelancer.skill.update');
+    Route::delete('/freelancer/skill/{skill}', [FreelancerController::class, 'destroySkill'])->name('freelancer.skill.destroy');
+    
+    // Portfolio management
+    Route::get('/freelancer/portfolios', [FreelancerController::class, 'getPortfolios'])->name('freelancer.portfolios.index');
+    Route::post('/freelancer/portfolio', [FreelancerController::class, 'storePortfolio'])->name('freelancer.portfolio.store');
+    Route::patch('/freelancer/portfolio/{portfolio}', [FreelancerController::class, 'updatePortfolio'])->name('freelancer.portfolio.update');
+    Route::delete('/freelancer/portfolio/{portfolio}', [FreelancerController::class, 'deletePortfolio'])->name('freelancer.portfolio.destroy');
+});
 
 // Admin routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {

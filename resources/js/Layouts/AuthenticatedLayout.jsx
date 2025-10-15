@@ -554,7 +554,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Post a Job
                                         </Link>
                                         <Link
-                                            href="/freelancers"
+                                            href="/s"
                                             className={`text-sm font-medium transition-colors ${
                                                 window.route.current('freelancers.*')
                                                     ? 'text-blue-600'

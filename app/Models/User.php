@@ -269,4 +269,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(Deposit::class);
     }
+
+    /**
+     * Get the freelancer profile for this user
+     */
+    public function freelancerProfile()
+    {
+        return $this->hasOne(Freelancer::class);
+    }
+
+    /**
+     * Get the freelancer profile (alias for backward compatibility)
+     */
+    public function freelancer()
+    {
+        return $this->freelancerProfile();
+    }
 }

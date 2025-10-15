@@ -97,7 +97,7 @@ class ProjectController extends Controller
                 'completion_notes' => $validated['completion_notes']
             ]);
 
-            return back()->with('success', 'Project marked as complete! The employer will be notified to review and approve your work.');
+            return back()->with('success', 'Project marked as complete! The employer will be notified to review and approve your work. Once approved, you can leave a review for this project.');
 
         } catch (\Exception $e) {
             \Log::error('Failed to complete project', [
@@ -139,13 +139,13 @@ class ProjectController extends Controller
             ]);
 
             if ($paymentResult['success']) {
-                return back()->with('success', 'Project approved and payment automatically released to gig worker!');
+                return back()->with('success', 'Project approved and payment automatically released to gig worker! You can now leave a review for this project.');
             } else {
                 \Log::warning('Project approved but payment release failed', [
                     'project_id' => $project->id,
                     'payment_error' => $paymentResult['error'] ?? 'Unknown error'
                 ]);
-                return back()->with('success', 'Project approved! Payment release is being processed.');
+                return back()->with('success', 'Project approved! Payment release is being processed. You can now leave a review for this project.');
             }
         } catch (\Exception $e) {
             \Log::error('Failed to approve project', [

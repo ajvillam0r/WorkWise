@@ -49,4 +49,25 @@ return [
         'allowed_formats' => ['jpg', 'jpeg', 'png', 'webp'],
         'max_file_size' => 5000000, // 5MB in bytes
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Portfolio Image Settings
+    |--------------------------------------------------------------------------
+    |
+    | Settings specific to portfolio image uploads
+    |
+    */
+    'portfolio_images' => [
+        'folder' => 'workwise/portfolio_images',
+        'transformation' => [
+            'width' => 800,
+            'height' => 600,
+            'crop' => 'fill',
+            'quality' => 'auto',
+            'format' => 'auto'
+        ],
+        'allowed_formats' => ['jpg', 'jpeg', 'png', 'webp'],
+        'max_file_size' => 10000000, // 10MB in bytes
+    ],
 ];

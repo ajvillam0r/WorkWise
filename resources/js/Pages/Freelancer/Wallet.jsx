@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatDistanceToNow } from 'date-fns';
+import { 
+    BanknotesIcon, 
+    ClockIcon, 
+    TrendingUpIcon, 
+    ArrowDownTrayIcon,
+    ChartBarIcon,
+    CalendarIcon,
+    EyeIcon
+} from '@heroicons/react/24/outline';
 
 export default function FreelancerWallet({ 
     totalEarnings, 
@@ -14,6 +23,7 @@ export default function FreelancerWallet({
 }) {
     const { flash } = usePage().props;
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+    const [selectedPeriod, setSelectedPeriod] = useState('all');
     
     const { data, setData, post, processing, errors, reset } = useForm({
         amount: '',
@@ -44,84 +54,204 @@ export default function FreelancerWallet({
         return badges[status] || 'bg-gray-100 text-gray-800';
     };
 
+    // Calculate earnings statistics
+    const earningsStats = {
+        thisMonth: completedProjects.filter(p => {
+            const completedDate = new Date(p.completed_at);
+            const now = new Date();
+            return completedDate.getMonth() === now.getMonth() && 
+                   completedDate.getFullYear() === now.getFullYear();
+        }).reduce((sum, p) => sum + parseFloat(p.net_amount), 0),
+        
+        lastMonth: completedProjects.filter(p => {
+            const completedDate = new Date(p.completed_at);
+            const lastMonth = new Date();
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+            return completedDate.getMonth() === lastMonth.getMonth() && 
+                   completedDate.getFullYear() === lastMonth.getFullYear();
+        }).reduce((sum, p) => sum + parseFloat(p.net_amount), 0),
+        
+        averagePerProject: completedProjects.length > 0 ? 
+            totalEarnings / completedProjects.length : 0
+    };
+
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight"> My Earnings</h2>}
+            header={
+                <div className="flex items-center justify-between">
+                    <h2 className="font-semibold text-xl text-gray-800 leading-tight flex items-center">
+                        <BanknotesIcon className="h-6 w-6 mr-2 text-green-600" />
+                        My Earnings Dashboard
+                    </h2>
+                    <div className="flex items-center space-x-4">
+                        <select
+                            value={selectedPeriod}
+                            onChange={(e) => setSelectedPeriod(e.target.value)}
+                            className="border-gray-300 rounded-md shadow-sm text-sm"
+                        >
+                            <option value="all">All Time</option>
+                            <option value="year">This Year</option>
+                            <option value="month">This Month</option>
+                            <option value="week">This Week</option>
+                        </select>
+                        <button
+                            onClick={() => setShowWithdrawalModal(true)}
+                            disabled={availableBalance <= 0}
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-md shadow-sm"
+                        >
+                            <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                            Withdraw
+                        </button>
+                    </div>
+                </div>
+            }
         >
-            <Head title="My Earnings" />
+            <Head title="My Earnings Dashboard" />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet" />
 
-            <div className="relative py-12 bg-white overflow-hidden">
+            <div className="relative py-12 bg-gradient-to-br from-blue-50 via-white to-green-50 min-h-screen">
                 {/* Animated Background Shapes */}
-                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {flash?.success && (
-                        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-                            {flash.success}
+                        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-sm">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                {flash.success}
+                            </div>
                         </div>
                     )}
 
-                    {/* Earnings Overview */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {/* Main Earnings Overview */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         {/* Total Earnings */}
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
-                            <div className="flex items-center">
-                                <div className="p-3 rounded-full bg-green-100 mr-4">
-                                    <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
-                                    </svg>
-                                </div>
+                        <div className="bg-white/80 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300">
+                            <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                                    <p className="text-2xl font-bold text-green-600">
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Total Earnings</p>
+                                    <p className="text-3xl font-bold text-green-600">
                                         {currency.symbol}{formatAmount(totalEarnings)}
                                     </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        From {completedProjects.length} projects
+                                    </p>
+                                </div>
+                                <div className="p-3 rounded-full bg-green-100">
+                                    <TrendingUpIcon className="w-8 h-8 text-green-600" />
                                 </div>
                             </div>
                         </div>
 
                         {/* Pending Payments */}
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
-                            <div className="flex items-center">
-                                <div className="p-3 rounded-full bg-yellow-100 mr-4">
-                                    <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
-                                    </svg>
-                                </div>
+                        <div className="bg-white/80 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300">
+                            <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-600">Pending Payments</p>
-                                    <p className="text-2xl font-bold text-yellow-600">
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Pending Payments</p>
+                                    <p className="text-3xl font-bold text-yellow-600">
                                         {currency.symbol}{formatAmount(pendingEarnings)}
                                     </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        From {pendingPayments.length} projects
+                                    </p>
+                                </div>
+                                <div className="p-3 rounded-full bg-yellow-100">
+                                    <ClockIcon className="w-8 h-8 text-yellow-600" />
                                 </div>
                             </div>
                         </div>
 
                         {/* Available Balance */}
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
+                        <div className="bg-white/80 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <div className="p-3 rounded-full bg-blue-100 mr-4">
-                                        <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-600">Available Balance</p>
-                                        <p className="text-2xl font-bold text-blue-600">
-                                            {currency.symbol}{formatAmount(availableBalance)}
-                                        </p>
-                                    </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Available Balance</p>
+                                    <p className="text-3xl font-bold text-blue-600">
+                                        {currency.symbol}{formatAmount(availableBalance)}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Ready to withdraw
+                                    </p>
                                 </div>
+                                <div className="p-3 rounded-full bg-blue-100">
+                                    <BanknotesIcon className="w-8 h-8 text-blue-600" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Average per Project */}
+                        <div className="bg-white/80 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Avg per Project</p>
+                                    <p className="text-3xl font-bold text-purple-600">
+                                        {currency.symbol}{formatAmount(earningsStats.averagePerProject)}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Project average
+                                    </p>
+                                </div>
+                                <div className="p-3 rounded-full bg-purple-100">
+                                    <ChartBarIcon className="w-8 h-8 text-purple-600" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Monthly Comparison */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <CalendarIcon className="h-5 w-5 mr-2 text-blue-600" />
+                                Monthly Earnings Comparison
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+                                    <span className="text-sm font-medium text-gray-700">This Month</span>
+                                    <span className="text-lg font-bold text-blue-600">
+                                        {currency.symbol}{formatAmount(earningsStats.thisMonth)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                                    <span className="text-sm font-medium text-gray-700">Last Month</span>
+                                    <span className="text-lg font-bold text-gray-600">
+                                        {currency.symbol}{formatAmount(earningsStats.lastMonth)}
+                                    </span>
+                                </div>
+                                {earningsStats.thisMonth > earningsStats.lastMonth && (
+                                    <div className="text-center p-2 bg-green-50 rounded-lg">
+                                        <span className="text-sm text-green-600 font-medium">
+                                            📈 {((earningsStats.thisMonth - earningsStats.lastMonth) / Math.max(earningsStats.lastMonth, 1) * 100).toFixed(1)}% increase
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <EyeIcon className="h-5 w-5 mr-2 text-green-600" />
+                                Quick Actions
+                            </h3>
+                            <div className="space-y-3">
                                 <button
                                     onClick={() => setShowWithdrawalModal(true)}
                                     disabled={availableBalance <= 0}
-                                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                    className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                                 >
-                                    Withdraw
+                                    <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+                                    Withdraw Funds
                                 </button>
+                                <a
+                                    href="/freelancer/profile/dashboard"
+                                    className="w-full flex items-center justify-center px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                                >
+                                    <EyeIcon className="h-5 w-5 mr-2" />
+                                    View Profile
+                                </a>
                             </div>
                         </div>
                     </div>

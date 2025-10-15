@@ -3,6 +3,8 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SuccessModal from '@/Components/SuccessModal';
 import MessagesModal from '@/Components/MessagesModal';
+import ReviewDisplay from '@/Components/ReviewDisplay';
+import ReviewSubmissionForm from '@/Components/ReviewSubmissionForm';
 import { formatDistanceToNow } from 'date-fns';
 
 // Confirmation Modal Component
@@ -520,24 +522,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
                                         <h3 className="text-lg font-semibold mb-4">Reviews</h3>
                                         <div className="space-y-4">
                                             {project.reviews.map((review) => (
-                                                <div key={review.id} className="border-l-4 border-blue-400 pl-4">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <div className="font-medium">
-                                                            {review.reviewer.first_name} {review.reviewer.last_name}
-                                                        </div>
-                                                        <div className="flex items-center">
-                                                            {[...Array(5)].map((_, i) => (
-                                                                <span key={i} className={`text-lg ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}>
-                                                                    ★
-                                                                </span>
-                                                            ))}
-                                                            <span className="ml-2 text-sm text-gray-600">({review.rating}/5)</span>
-                                                        </div>
-                                                    </div>
-                                                    {review.comment && (
-                                                        <p className="text-gray-700">{review.comment}</p>
-                                                    )}
-                                                </div>
+                                                <ReviewDisplay key={review.id} review={review} />
                                             ))}
                                         </div>
                                     </div>
@@ -648,62 +633,12 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
 
             {/* Review Modal */}
             {showReviewForm && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                        <div className="mt-3">
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">Leave a Review</h3>
-                            <form onSubmit={submitReview}>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Overall Rating
-                                    </label>
-                                    <div className="flex items-center space-x-1">
-                                        {[1, 2, 3, 4, 5].map((rating) => (
-                                            <button
-                                                key={rating}
-                                                type="button"
-                                                onClick={() => setData('rating', rating)}
-                                                className={`text-2xl ${rating <= data.rating ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400`}
-                                            >
-                                                ★
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Comment (Optional)
-                                    </label>
-                                    <textarea
-                                        value={data.comment}
-                                        onChange={(e) => setData('comment', e.target.value)}
-                                        rows={4}
-                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Share your experience..."
-                                    />
-                                </div>
-
-                                <div className="flex justify-end space-x-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowReviewForm(false)}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                                    >
-                                        {processing ? 'Submitting...' : 'Submit Review'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                <ReviewSubmissionForm
+                    isOpen={showReviewForm}
+                    onClose={() => setShowReviewForm(false)}
+                    project={project}
+                    reviewee={isEmployer ? project.gig_worker : project.employer}
+                />
             )}
 
             {/* Revision Request Modal */}

@@ -519,6 +519,8 @@ class WorkWiseSeeder extends Seeder
             'project_id' => $project1->id,
             'reviewer_id' => $employer1->id,
             'reviewee_id' => $gigWorker3->id,
+            'reviewer_type' => 'employer',
+            'reviewee_type' => 'gig_worker',
             'rating' => 5,
             'comment' => 'Excellent work! Sarah delivered high-quality content that exceeded our expectations. Great SEO optimization and perfect timing.',
             'criteria_ratings' => [
@@ -527,12 +529,15 @@ class WorkWiseSeeder extends Seeder
                 'timeliness' => 5,
             ],
             'is_public' => true,
+            'is_visible' => true,
         ]);
 
         Review::create([
             'project_id' => $project1->id,
             'reviewer_id' => $gigWorker3->id,
             'reviewee_id' => $employer1->id,
+            'reviewer_type' => 'gig_worker',
+            'reviewee_type' => 'employer',
             'rating' => 5,
             'comment' => 'Great employer to work with! Clear requirements, prompt payments, and very professional. Highly recommended!',
             'criteria_ratings' => [
@@ -541,6 +546,7 @@ class WorkWiseSeeder extends Seeder
                 'payment' => 5,
             ],
             'is_public' => true,
+            'is_visible' => true,
         ]);
 
         $this->command->info('✅ Comprehensive sample data created successfully!');

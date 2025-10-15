@@ -18,7 +18,6 @@ class GigWorkerController extends Controller
         $query = User::query()
             ->where('user_type', 'gig_worker')
             ->where('profile_completed', true)
-            ->where('profile_status', 'approved')
             ->with(['receivedReviews']);
 
         // Search functionality
@@ -165,7 +164,6 @@ class GigWorkerController extends Controller
         $gigWorker = User::where('user_type', 'gig_worker')
             ->where('id', $id)
             ->where('profile_completed', true)
-            ->where('profile_status', 'approved')
             ->with([
                 'receivedReviews.reviewer',
                 'gigWorkerProjects.job',

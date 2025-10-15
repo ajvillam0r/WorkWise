@@ -81,6 +81,57 @@ class CloudinaryService
     }
 
     /**
+     * Upload portfolio image to Cloudinary
+     *
+     * @param UploadedFile $file
+     * @param int $userId
+     * @param string $imageName
+     * @return array|null
+     */
+    public function uploadPortfolioImage(UploadedFile $file, int $userId, string $imageName = null): ?array
+    {
+        try {
+            // Validate file
+            if (!$this->validatePortfolioImage($file)) {
+                return null;
+            }
+
+            $imageName = $imageName ?: time();
+            $publicId = "workwise/portfolio_images/user_{$userId}_{$imageName}";
+
+            $result = $this->cloudinary->uploadApi()->upload(
+                $file->getPathname(),
+                [
+                    'public_id' => $publicId,
+                    'folder' => $this->config['portfolio_images']['folder'],
+                    'transformation' => [
+                        'width' => $this->config['portfolio_images']['transformation']['width'],
+                        'height' => $this->config['portfolio_images']['transformation']['height'],
+                        'crop' => $this->config['portfolio_images']['transformation']['crop'],
+                        'quality' => $this->config['portfolio_images']['transformation']['quality'],
+                        'format' => $this->config['portfolio_images']['transformation']['format']
+                    ],
+                    'allowed_formats' => $this->config['portfolio_images']['allowed_formats']
+                ]
+            );
+
+            return [
+                'public_id' => $result['public_id'],
+                'secure_url' => $result['secure_url'],
+                'url' => $result['url'],
+                'width' => $result['width'],
+                'height' => $result['height'],
+                'format' => $result['format'],
+                'bytes' => $result['bytes']
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Cloudinary portfolio upload failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Delete image from Cloudinary
      *
      * @param string $publicId
@@ -143,6 +194,36 @@ class CloudinaryService
         // Check if file is actually an image
         if (!getimagesize($file->getPathname())) {
             Log::warning('File is not a valid image');
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate portfolio image file
+     *
+     * @param UploadedFile $file
+     * @return bool
+     */
+    private function validatePortfolioImage(UploadedFile $file): bool
+    {
+        // Check file size
+        if ($file->getSize() > $this->config['portfolio_images']['max_file_size']) {
+            Log::warning('Portfolio image size exceeds limit: ' . $file->getSize());
+            return false;
+        }
+
+        // Check file extension
+        $extension = strtolower($file->getClientOriginalExtension());
+        if (!in_array($extension, $this->config['portfolio_images']['allowed_formats'])) {
+            Log::warning('Invalid portfolio image format: ' . $extension);
+            return false;
+        }
+
+        // Check if file is actually an image
+        if (!getimagesize($file->getPathname())) {
+            Log::warning('Portfolio file is not a valid image');
             return false;
         }
 

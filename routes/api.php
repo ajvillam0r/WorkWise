@@ -8,6 +8,7 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIRecommendationController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\GigWorkerController;
+use App\Http\Controllers\ReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +36,18 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // User Routes
     Route::get('/users/{id}', [UserController::class, 'show']);
+    
+    // Review Routes
+    Route::prefix('reviews')->group(function () {
+        Route::post('/', [ReviewController::class, 'store']);
+        Route::get('/pending', [ReviewController::class, 'getPendingReviews']);
+        Route::post('/{review}/reply', [ReviewController::class, 'addReply']);
+        Route::post('/process-expired', [ReviewController::class, 'processExpiredReviews']);
+    });
+    
+    // User-specific review routes
+    Route::get('/users/{user}/reviews', [ReviewController::class, 'getUserReviews']);
+    Route::get('/users/{user}/reviews/stats', [ReviewController::class, 'getUserReviewStats']);
 });
 
 // Public API Routes (no authentication required)
@@ -44,6 +57,15 @@ Route::prefix('gig-workers')->group(function () {
     Route::get('/stats/overview', [GigWorkerController::class, 'getStats']);
     Route::get('/{id}', [GigWorkerController::class, 'show']);
 });
+
+// Public review routes (for viewing reviews without authentication)
+Route::prefix('reviews')->group(function () {
+    Route::get('/projects/{project}', [ReviewController::class, 'getProjectReviews']);
+});
+
+// Public user review routes (for viewing user profiles)
+Route::get('/public/users/{user}/reviews', [ReviewController::class, 'getUserReviews']);
+Route::get('/public/users/{user}/reviews/stats', [ReviewController::class, 'getUserReviewStats']);
 
 // Stripe webhook
 Route::post('/stripe/webhook', [WebhookController::class, 'handleStripeWebhook']);

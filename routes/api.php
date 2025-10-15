@@ -8,7 +8,12 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIRecommendationController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\GigWorkerController;
+<<<<<<< HEAD
 use App\Http\Controllers\ReviewController;
+=======
+use App\Http\Controllers\EmployerDashboardController;
+use App\Http\Controllers\JobInvitationController;
+>>>>>>> 9a1fd73 (Naay gidungag gikan sa DaghanBago)
 
 /*
 |--------------------------------------------------------------------------
@@ -21,16 +26,12 @@ use App\Http\Controllers\ReviewController;
 |
 */
 
-// Test route to verify API is working
-Route::get('/test', function () {
-    return response()->json(['message' => 'API is working']);
-});
-
 // Authenticated API Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+<<<<<<< HEAD
     
     Route::post('/projects/{project}/complete', [ProjectController::class, 'complete']);
     
@@ -48,6 +49,37 @@ Route::middleware('auth:sanctum')->group(function () {
     // User-specific review routes
     Route::get('/users/{user}/reviews', [ReviewController::class, 'getUserReviews']);
     Route::get('/users/{user}/reviews/stats', [ReviewController::class, 'getUserReviewStats']);
+=======
+
+    // Project routes
+    Route::apiResource('projects', ProjectController::class);
+
+    // Employer routes
+    Route::get('/employer/jobs', function (Request $request) {
+        $user = $request->user();
+        
+        if ($user->user_type !== 'employer') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
+        $jobs = \App\Models\GigJob::where('employer_id', $user->id)
+            ->where('status', 'open')
+            ->select('id', 'title', 'budget_type', 'budget_min', 'budget_max')
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        return response()->json(['data' => $jobs]);
+    });
+
+    // Job Invitation routes
+    Route::post('/job-invitations/send', [JobInvitationController::class, 'sendInvitation']);
+
+    // Gig Worker routes
+    Route::prefix('gig-worker')->group(function () {
+        Route::get('/job-invitations', [JobInvitationController::class, 'getInvitations']);
+        Route::patch('/job-invitations/{invitation}/respond', [JobInvitationController::class, 'respondToInvitation']);
+    });
+>>>>>>> 9a1fd73 (Naay gidungag gikan sa DaghanBago)
 });
 
 // Public API Routes (no authentication required)

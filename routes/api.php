@@ -8,12 +8,9 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIRecommendationController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\GigWorkerController;
-<<<<<<< HEAD
 use App\Http\Controllers\ReviewController;
-=======
 use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\JobInvitationController;
->>>>>>> 9a1fd73 (Naay gidungag gikan sa DaghanBago)
 
 /*
 |--------------------------------------------------------------------------
@@ -31,7 +28,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-<<<<<<< HEAD
     
     Route::post('/projects/{project}/complete', [ProjectController::class, 'complete']);
     
@@ -49,7 +45,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // User-specific review routes
     Route::get('/users/{user}/reviews', [ReviewController::class, 'getUserReviews']);
     Route::get('/users/{user}/reviews/stats', [ReviewController::class, 'getUserReviewStats']);
-=======
 
     // Project routes
     Route::apiResource('projects', ProjectController::class);
@@ -79,7 +74,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/job-invitations', [JobInvitationController::class, 'getInvitations']);
         Route::patch('/job-invitations/{invitation}/respond', [JobInvitationController::class, 'respondToInvitation']);
     });
->>>>>>> 9a1fd73 (Naay gidungag gikan sa DaghanBago)
 });
 
 // Public API Routes (no authentication required)

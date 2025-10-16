@@ -409,15 +409,9 @@ class GigWorkerDashboardController extends Controller
             $daysLeft = Carbon::now()->diffInDays($dueDate, false);
             
             return [
-<<<<<<< HEAD
                 'id' => $deadline->project_id,
                 'projectTitle' => $deadline->project_title ?? 'Untitled Project',
                 'clientName' => $deadline->client_name ?? 'Unknown Client',
-=======
-                'id' => $project->id,
-                'projectTitle' => $project->job->title ?? 'Untitled Project',
-                'clientName' => $project->employer->name ?? 'Unknown Employer',
->>>>>>> 10a3ee3 (Clients to Employers & Freelancers to Gig Workers)
                 'daysLeft' => max(0, $daysLeft),
                 'completionPercentage' => 0, // Default since we don't have this in contract_deadlines
                 'deadline' => $dueDate->toDateString(),

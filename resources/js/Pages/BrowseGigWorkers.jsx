@@ -462,44 +462,6 @@ export default function BrowseGigWorkers({ auth }) {
         }
     };
 
-    const handleInviteGigWorker = (gigWorker) => {
-        setInvitationModal({
-            isOpen: true,
-            gigWorker: gigWorker
-        });
-    };
-
-    const handleSendInvitation = async ({ jobId, message }) => {
-        setInvitationLoading(true);
-        try {
-            const response = await fetch('/api/invitations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    gig_worker_id: invitationModal.gigWorker.id,
-                    job_id: jobId,
-                    message: message
-                })
-            });
-
-            if (response.ok) {
-                setInvitationModal({ isOpen: false, gigWorker: null });
-                // Show success message
-                alert('Invitation sent successfully!');
-            } else {
-                throw new Error('Failed to send invitation');
-            }
-        } catch (error) {
-            console.error('Error sending invitation:', error);
-            alert('Failed to send invitation. Please try again.');
-        } finally {
-            setInvitationLoading(false);
-        }
-    };
-
     // Gig Worker Profile Card Component
     const GigWorkerCard = ({ gigWorker, viewMode }) => {
         // Helper functions for data extraction
@@ -1250,3 +1212,4 @@ export default function BrowseGigWorkers({ auth }) {
             />
         </AuthenticatedLayout>
     );
+}

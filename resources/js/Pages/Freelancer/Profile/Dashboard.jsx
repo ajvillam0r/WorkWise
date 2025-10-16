@@ -6,7 +6,6 @@ import {
     BriefcaseIcon, 
     AcademicCapIcon, 
     FolderIcon,
-    CertificateIcon,
     LanguageIcon,
     CogIcon,
     EyeIcon,
@@ -27,7 +26,7 @@ export default function Dashboard({ auth, freelancer, profileCompletion, stats }
         { id: 'experience', name: 'Experience', icon: BriefcaseIcon },
         { id: 'education', name: 'Education', icon: AcademicCapIcon },
         { id: 'portfolio', name: 'Portfolio', icon: FolderIcon },
-        { id: 'certifications', name: 'Certifications', icon: CertificateIcon },
+        { id: 'certifications', name: 'Certifications', icon: AcademicCapIcon },
         { id: 'languages', name: 'Languages', icon: LanguageIcon },
         { id: 'skills', name: 'Skills', icon: CogIcon },
     ];
@@ -422,7 +421,7 @@ export default function Dashboard({ auth, freelancer, profileCompletion, stats }
                 </div>
             ) : (
                 <div className="text-center py-12 bg-white rounded-lg shadow">
-                    <CertificateIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <AcademicCapIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No certifications added</h3>
                     <p className="text-gray-600 mb-4">Add your professional certifications to build credibility.</p>
                     <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">

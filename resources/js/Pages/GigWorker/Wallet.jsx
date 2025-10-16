@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { 
     BanknotesIcon, 
     ClockIcon, 
-    TrendingUpIcon, 
+    ArrowTrendingUpIcon, 
     ArrowDownTrayIcon,
     ChartBarIcon,
     CalendarIcon,
@@ -141,7 +141,7 @@ export default function GigWorkerWallet({
                                     </p>
                                 </div>
                                 <div className="p-3 rounded-full bg-green-100">
-                                    <TrendingUpIcon className="w-8 h-8 text-green-600" />
+                                    <ArrowTrendingUpIcon className="w-8 h-8 text-green-600" />
                                 </div>
                             </div>
                         </div>

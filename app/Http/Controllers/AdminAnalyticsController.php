@@ -87,15 +87,9 @@ class AdminAnalyticsController extends Controller
         $userGrowth = User::selectRaw("
                 {$monthFormat} as month,
                 COUNT(*) as count,
-<<<<<<< HEAD
-                SUM(CASE WHEN user_type = 'freelancer' THEN 1 ELSE 0 END) as freelancers,
-                SUM(CASE WHEN user_type = 'client' THEN 1 ELSE 0 END) as clients
+                SUM(CASE WHEN user_type = 'gig_worker' THEN 1 ELSE 0 END) as gig_workers,
+                SUM(CASE WHEN user_type = 'employer' THEN 1 ELSE 0 END) as employers
             ")
-=======
-                SUM(CASE WHEN user_type = "gig_worker" THEN 1 ELSE 0 END) as gig_workers,
-                SUM(CASE WHEN user_type = "employer" THEN 1 ELSE 0 END) as employers
-            ')
->>>>>>> 10a3ee3 (Clients to Employers & Freelancers to Gig Workers)
             ->where('created_at', '>=', Carbon::now()->subMonths($months))
             ->groupBy('month')
             ->orderBy('month')

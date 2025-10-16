@@ -9,7 +9,6 @@ import {
     BriefcaseIcon,
     AcademicCapIcon,
     FolderIcon,
-    CertificateIcon,
     LanguageIcon,
     CogIcon,
     EyeIcon,
@@ -216,7 +215,7 @@ export default function Public({ auth, freelancer, stats, isOwnProfile = false }
                     <div className="space-y-4">
                         {freelancer.certifications.slice(0, 3).map((cert) => (
                             <div key={cert.id} className="flex items-start space-x-3">
-                                <CertificateIcon className="h-6 w-6 text-blue-600 mt-1" />
+                                <AcademicCapIcon className="h-6 w-6 text-blue-600 mt-1" />
                                 <div className="flex-1">
                                     <h4 className="font-medium text-gray-900">{cert.certification_name}</h4>
                                     <p className="text-sm text-gray-600">{cert.issuing_organization}</p>

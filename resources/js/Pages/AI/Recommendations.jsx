@@ -998,7 +998,7 @@ export default function Recommendations({
                                             </svg>
                                             <span className="text-sm">
                                                 {isGigWorker 
-                                                    ? `Match Score: ${gigWorkerRecommendations?.data?.[0]?.match_score || 'N/A'}%`
+                                                    ? `Match Score: ${baseFreelancerRecommendations?.[0]?.match_score || 'N/A'}%`
                                                     : `Active Jobs: ${Object.keys(employerRecommendations || {}).length}`
                                                 }
                                             </span>
@@ -1009,7 +1009,7 @@ export default function Recommendations({
                                             </svg>
                                             <span className="text-sm">
                                                 {isGigWorker 
-                                                    ? `Recommendations: ${gigWorkerRecommendations?.data?.length || 0}`
+                                                    ? `Recommendations: ${baseFreelancerRecommendations?.length || 0}`
                                                     : `Total Matches: ${Object.values(employerRecommendations || {}).reduce((acc, job) => acc + (job.matches?.length || 0), 0)}`
                                                 }
                                             </span>

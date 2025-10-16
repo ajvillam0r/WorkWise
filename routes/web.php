@@ -28,15 +28,11 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\GigWorkerDashboardController;
 use App\Http\Controllers\Api\GigWorkerController;
-<<<<<<< HEAD
 use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\SimpleTestController;
 use App\Http\Controllers\FreelancerController;
-
-=======
 use App\Http\Controllers\JobInvitationController;
->>>>>>> 9a1fd73 (Naay gidungag gikan sa DaghanBago)
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -125,31 +121,21 @@ Route::get('/gig-worker/invitations', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('gig-worker.invitations');
 
-<<<<<<< HEAD
-// Browse Freelancers Route
-Route::get('/freelancers', function () {
+// Browse Gig Workers Route
+Route::get('/gig-workers', function () {
     // Get basic stats for the page
     $totalFreelancers = \App\Models\User::where('user_type', 'gig_worker')
         ->where('profile_completed', true)
         ->where('profile_status', 'approved')
         ->count();
     
-    return Inertia::render('BrowseFreelancers', [
+    return Inertia::render('BrowseGigWorkers', [
         'auth' => [
             'user' => Auth::user()
         ],
         'stats' => [
             'total_gig_workers' => $totalFreelancers
         ]
-=======
-// Browse Gig Workers Route
-Route::get('/gig-workers', function () {
-    return Inertia::render('BrowseGigWorkers', [
-        'auth' => [
-            'user' => Auth::user()
-        ],
-        'gigWorkers' => []
->>>>>>> 10a3ee3 (Clients to Employers & Freelancers to Gig Workers)
     ]);
 })->middleware(['auth', 'verified'])->name('browse.gig-workers');
 

@@ -9,10 +9,15 @@ import usePagination from "@/Hooks/usePagination";
 export default function Recommendations({
     recommendations,
     userType,
+    interfaceType,
     hasError,
     skills = [],
+    pageTitle = "AI Recommendations",
+    pageDescription = "AI-powered matching recommendations",
 }) {
     const isGigWorker = userType === "gig_worker";
+    const isJobMatching = interfaceType === "job_matching";
+    const isTalentMatching = interfaceType === "talent_matching";
 
     const experienceOptions = [
         { label: "All experience levels", value: "all" },
@@ -304,6 +309,15 @@ export default function Recommendations({
         budgetFilter,
     ]);
 
+    // Transform recommendations to ensure match scores are properly mapped
+    const transformedFreelancerRecommendations = useMemo(() => {
+        return filteredFreelancerRecommendations.map(match => ({
+            ...match,
+            score: match.match_score ? Math.round(match.match_score * 100) : (match.score || 0),
+            reason: match.match_reasons || match.reason || 'AI analysis indicates this is a good match for your profile.'
+        }));
+    }, [filteredFreelancerRecommendations]);
+
     const filteredEmployerRecommendations = useMemo(() => {
         if (isGigWorker) {
             return baseEmployerRecommendations;
@@ -382,7 +396,7 @@ export default function Recommendations({
         shouldShowPagination: shouldShowGigWorkerPagination,
         totalItems: gigWorkerTotalItems,
         itemsPerPage: gigWorkerItemsPerPage,
-    } = usePagination(filteredFreelancerRecommendations, 5);
+    } = usePagination(transformedFreelancerRecommendations, 5);
 
     // Pagination for employer recommendations (5 jobs per page)
     const employerRecsArray = useMemo(() => {
@@ -956,7 +970,7 @@ export default function Recommendations({
                 </h2>
             }
         >
-            <Head title="AI Recommendations" />
+            <Head title={pageTitle} />
 
             <link
                 href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap"
@@ -983,13 +997,10 @@ export default function Recommendations({
                                         <svg className="w-8 h-8 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
                                         </svg>
-                                        {isGigWorker ? 'AI Job Recommendations' : 'AI Talent Matching'}
+                                        {pageTitle}
                                     </h1>
                                     <p className="text-blue-100 text-lg">
-                                        {isGigWorker 
-                                            ? 'Discover opportunities tailored to your skills and experience'
-                                            : 'Find the perfect candidates with AI-powered matching'
-                                        }
+                                        {pageDescription}
                                     </p>
                                     <div className="flex items-center mt-4 space-x-6">
                                         <div className="flex items-center">

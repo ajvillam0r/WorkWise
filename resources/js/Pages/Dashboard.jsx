@@ -379,10 +379,10 @@ export default function Dashboard({ auth, stats, activeContracts, jobInvites, ea
                         AI Job Recommendations
                     </h3>
                     <Link 
-                        href="/ai/recommendations" 
+                        href="/jobs" 
                         className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold transition-all duration-300 hover:scale-105"
                     >
-                        View All
+                        Browse Jobs
                     </Link>
                 </div>
             </div>
@@ -593,11 +593,11 @@ export default function Dashboard({ auth, stats, activeContracts, jobInvites, ea
                                             <span className="text-sm font-medium text-gray-900">Browse Jobs</span>
                                         </Link>
                                         <Link
-                                            href="/ai/recommendations"
+                                            href="/profile"
                                             className="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors group"
                                         >
-                                            <ArrowTrendingUpIcon className="w-8 h-8 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
-                                            <span className="text-sm font-medium text-gray-900">AI Recommendations</span>
+                                            <UserIcon className="w-8 h-8 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
+                                            <span className="text-sm font-medium text-gray-900">My Profile</span>
                                         </Link>
                                         <Link
                                             href="/proposals"

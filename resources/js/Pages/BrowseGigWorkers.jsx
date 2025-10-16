@@ -463,25 +463,28 @@ export default function BrowseGigWorkers({ auth }) {
     };
 
     // Gig Worker Profile Card Component
-    const GigWorkerCard = ({ gigWorker, viewMode }) => {
+    const GigWorkerCard = ({ gigWorker, freelancer, viewMode }) => {
+        // Use gigWorker prop if available, otherwise use freelancer prop for backward compatibility
+        const worker = gigWorker || freelancer;
+        
         // Helper functions for data extraction
-        const getFullName = (gigWorker) => {
-            return `${gigWorker.first_name || ''} ${gigWorker.last_name || ''}`.trim() || gigWorker.name || 'Unknown User';
+        const getFullName = (worker) => {
+            return `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || worker.name || 'Unknown User';
         };
 
-        const getProfilePhoto = (gigWorker) => {
-            return gigWorker.profile_photo || gigWorker.avatar || "/api/placeholder/80/80";
+        const getProfilePhoto = (worker) => {
+            return worker.profile_photo || worker.avatar || "/api/placeholder/80/80";
         };
 
-        const getSkills = (gigWorker) => {
-            if (Array.isArray(gigWorker.skills)) {
-                return gigWorker.skills;
+        const getSkills = (worker) => {
+            if (Array.isArray(worker.skills)) {
+                return worker.skills;
             }
-            return gigWorker.skills ? gigWorker.skills.split(',').map(s => s.trim()) : [];
+            return worker.skills ? worker.skills.split(',').map(s => s.trim()) : [];
         };
 
-        const getMemberSince = (gigWorker) => {
-            const date = gigWorker.created_at || gigWorker.memberSince;
+        const getMemberSince = (worker) => {
+            const date = worker.created_at || worker.memberSince;
             if (!date) return 'Recently joined';
             
             try {
@@ -499,8 +502,8 @@ export default function BrowseGigWorkers({ auth }) {
                             <div className="flex items-start space-x-4">
                                 <div className="relative">
                                     <img 
-                                        src={getProfilePhoto(gigWorker)} 
-                                        alt={getFullName(gigWorker)}
+                                        src={getProfilePhoto(worker)} 
+                                        alt={getFullName(worker)}
                                         className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
                                         onError={(e) => {
                                             e.target.src = "/api/placeholder/80/80";
@@ -511,30 +514,29 @@ export default function BrowseGigWorkers({ auth }) {
                                     <div className="flex items-center justify-between mb-2">
                                         <div>
                                             <h3 className="text-xl font-semibold text-gray-900 hover:text-blue-600 cursor-pointer">
-                                                {getFullName(gigWorker)}
+                                                {getFullName(worker)}
                                             </h3>
-                                            <p className="text-gray-600 font-medium">{gigWorker.professional_title || gigWorker.title || 'Gig Worker'}</p>
+                                            <p className="text-gray-600 font-medium">{worker.professional_title || worker.title || 'Gig Worker'}</p>
                                         </div>
                                         <div className="flex items-center">
                                             <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
-                                            <span className="ml-1 text-sm font-medium">{gigWorker.average_rating || gigWorker.rating || '0.0'}</span>
-                                            <span className="ml-1 text-sm text-gray-500">({gigWorker.reviews_count || gigWorker.reviewCount || 0})</span>
+                                            <span className="ml-1 text-sm font-medium">{worker.average_rating || worker.rating || '0.0'}</span>
+                                            <span className="ml-1 text-sm text-gray-500">({worker.reviews_count || worker.reviewCount || 0})</span>
                                         </div>
                                     </div>
-                                    
                                     <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                                         <span className="flex items-center">
                                             <BriefcaseIcon className="w-4 h-4 mr-1" />
-                                            {gigWorker.completed_projects || gigWorker.completedProjects || 0} projects completed
+                                            {worker.completed_projects || worker.completedProjects || 0} projects completed
                                         </span>
                                         <span className="flex items-center">
                                             <AcademicCapIcon className="w-4 h-4 mr-1" />
-                                            {gigWorker.experience_level || gigWorker.experienceLevel || 'Entry Level'}
+                                            {worker.experience_level || worker.experienceLevel || 'Entry Level'}
                                         </span>
-                                        {gigWorker.hourly_rate && (
+                                        {worker.hourly_rate && (
                                             <span className="flex items-center">
                                                 <CurrencyDollarIcon className="w-4 h-4 mr-1" />
-                                                ₱{gigWorker.hourly_rate}/hr
+                                                ₱{worker.hourly_rate}/hr
                                             </span>
                                         )}
                                         <span className="flex items-center">
@@ -700,11 +702,11 @@ export default function BrowseGigWorkers({ auth }) {
     // Calculate current page statistics
     const currentPageGigWorkers = gigWorkers?.length || 0;
     const currentPageSkills = gigWorkers ? gigWorkers.reduce((total, worker) => {
-        const getSkills = (gigWorker) => {
-            if (Array.isArray(gigWorker.skills)) {
-                return gigWorker.skills;
+        const getSkills = (worker) => {
+            if (Array.isArray(worker.skills)) {
+                return worker.skills;
             }
-            return gigWorker.skills ? gigWorker.skills.split(',').map(s => s.trim()) : [];
+            return worker.skills ? worker.skills.split(',').map(s => s.trim()) : [];
         };
         return total + getSkills(worker).length;
     }, 0) : 0;
@@ -1145,7 +1147,7 @@ export default function BrowseGigWorkers({ auth }) {
                                     {gigWorkers.map((gigWorker) => (
                                         <FreelancerCard 
                                             key={gigWorker.id} 
-                                            freelancer={gigWorker} 
+                                            gigWorker={gigWorker} 
                                             viewMode={viewMode} 
                                         />
                                     ))}

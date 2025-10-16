@@ -291,6 +291,11 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // Fetch unread message count
     const fetchMessagesUnreadCount = async () => {
+        // Only fetch if user is authenticated
+        if (!user || !user.id) {
+            return;
+        }
+        
         try {
             const response = await axios.get('/messages/unread/count');
             setMessagesUnreadCount(response.data.count || 0);
@@ -435,6 +440,11 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // Real-time polling for messages
     const checkForNewMessages = async () => {
+        // Only check for messages if user is authenticated
+        if (!user || !user.id) {
+            return;
+        }
+        
         try {
             const response = await axios.get('/messages/unread/count');
             const newMessageCount = response.data.count || 0;
@@ -527,16 +537,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             My Proposals
                                         </Link>
-                                        <Link
-                                            href="/ai/recommendations"
-                                            className={`text-sm font-medium transition-colors ${
-                                                window.route.current('ai.*')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
-                                        >
-                                            AI Recommendations
-                                        </Link>
+
                                     </>
                                 )}
 
@@ -554,25 +555,16 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Post a Job
                                         </Link>
                                         <Link
-                                            href="/s"
+                                            href="/gig-workers"
                                             className={`text-sm font-medium transition-colors ${
-                                                window.route.current('freelancers.*')
+                                                window.route.current('browse.gig-workers')
                                                     ? 'text-blue-600'
                                                     : 'text-gray-600 hover:text-gray-900'
                                             }`}
                                         >
-                                            Browse Freelancers
+                                            Browse Gig Workers
                                         </Link>
-                                        <Link
-                                            href="/ai/recommendations"
-                                            className={`text-sm font-medium transition-colors ${
-                                                window.route.current('ai.*')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
-                                        >
-                                            AI Talent Recommendations
-                                        </Link>
+
                                     </>
                                 )}
 

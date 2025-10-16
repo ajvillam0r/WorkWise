@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
 class FraudDetectionService
@@ -24,8 +25,20 @@ class FraudDetectionService
         'critical' => 90,
     ];
 
+    private string $aiApiKey;
+    private string $aiModel;
+    private string $aiBaseUrl;
+
+    public function __construct()
+    {
+        // Initialize AI service for fraud analysis
+        $this->aiApiKey = env('META_LLAMA_L4_SCOUT_FREE') ?: config('services.openrouter.api_key');
+        $this->aiModel = 'meta-llama/llama-4-scout:free';
+        $this->aiBaseUrl = config('services.openrouter.base_url') ?: env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
+    }
+
     /**
-     * Comprehensive fraud analysis for a user
+     * Comprehensive fraud analysis for a user with AI enhancement
      */
     public function analyzeUserFraud(User $user, Request $request = null): array
     {
@@ -36,6 +49,7 @@ class FraudDetectionService
             'recommendations' => [],
             'fraud_indicators' => [],
             'behavioral_patterns' => [],
+            'ai_analysis' => null,
             'analyzed_at' => now(),
         ];
 
@@ -49,6 +63,9 @@ class FraudDetectionService
         // Calculate overall risk score
         $analysis['overall_risk_score'] = $this->calculateOverallRiskScore($analysis['risk_factors']);
 
+        // Generate AI-powered fraud analysis
+        $analysis['ai_analysis'] = $this->generateAIFraudAnalysis($user, $analysis);
+
         // Generate recommendations
         $analysis['recommendations'] = $this->generateRecommendations($analysis['overall_risk_score'], $analysis['risk_factors']);
 
@@ -56,6 +73,209 @@ class FraudDetectionService
         $analysis['fraud_indicators'] = $this->identifyFraudIndicators($analysis['risk_factors']);
 
         return $analysis;
+    }
+
+    /**
+     * Generate AI-powered fraud analysis
+     */
+    private function generateAIFraudAnalysis(User $user, array $analysis): ?array
+    {
+        try {
+            if (!$this->aiApiKey) {
+                Log::warning('AI API key not configured for fraud detection');
+                return null;
+            }
+
+            $prompt = $this->buildFraudAnalysisPrompt($user, $analysis);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->aiApiKey,
+                'Content-Type' => 'application/json',
+                'HTTP-Referer' => request()->header('referer') ?: config('app.url'),
+                'X-Title' => 'WorkWise AI Fraud Detection'
+            ])->timeout(30)->post("{$this->aiBaseUrl}/chat/completions", [
+                'model' => $this->aiModel,
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'You are an expert AI fraud detection analyst specializing in online marketplace security. Analyze user behavior patterns, transaction anomalies, and risk indicators to provide detailed fraud assessment. Focus on: 1) Behavioral pattern analysis, 2) Transaction anomaly detection, 3) Risk level assessment, 4) Specific fraud type identification, 5) Actionable security recommendations. Always provide clear, professional analysis with specific risk scores and mitigation strategies.'
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $prompt
+                    ]
+                ],
+                'max_tokens' => 300,
+                'temperature' => 0.3 // Lower temperature for more consistent fraud analysis
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $aiContent = $data['choices'][0]['message']['content'] ?? '';
+                
+                return [
+                    'analysis' => $aiContent,
+                    'confidence_score' => $this->extractConfidenceScore($aiContent),
+                    'fraud_type_prediction' => $this->extractFraudType($aiContent),
+                    'ai_risk_adjustment' => $this->calculateAIRiskAdjustment($aiContent),
+                    'generated_at' => now(),
+                ];
+            }
+
+            Log::warning('AI fraud analysis response not successful', [
+                'status' => $response->status(),
+                'response' => $response->body()
+            ]);
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('AI fraud analysis error', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Build fraud analysis prompt for AI
+     */
+    private function buildFraudAnalysisPrompt(User $user, array $analysis): string
+    {
+        $userInfo = [
+            'user_type' => $user->user_type,
+            'account_age_days' => $user->created_at->diffInDays(now()),
+            'email_verified' => $user->email_verified_at ? 'Yes' : 'No',
+            'profile_completion' => $this->calculateProfileCompletion($user),
+        ];
+
+        $riskFactors = $analysis['risk_factors'];
+        $overallRiskScore = $analysis['overall_risk_score'];
+
+        return "Analyze this user's fraud risk profile:
+
+USER PROFILE:
+- User Type: {$userInfo['user_type']}
+- Account Age: {$userInfo['account_age_days']} days
+- Email Verified: {$userInfo['email_verified']}
+- Profile Completion: {$userInfo['profile_completion']}%
+
+RISK ANALYSIS RESULTS:
+- Overall Risk Score: {$overallRiskScore}/100
+- Payment Behavior Risk: {$riskFactors['payment_behavior']['risk_score']}/100
+- Account Behavior Risk: {$riskFactors['account_behavior']['risk_score']}/100
+- Transaction Pattern Risk: {$riskFactors['transaction_patterns']['risk_score']}/100
+- Device Behavior Risk: {$riskFactors['device_behavior']['risk_score']}/100
+- Geographic Behavior Risk: {$riskFactors['geographic_behavior']['risk_score']}/100
+
+DETECTED INDICATORS:
+" . $this->formatIndicatorsForAI($riskFactors) . "
+
+Please provide:
+1. Detailed behavioral pattern analysis
+2. Specific fraud type assessment (if any)
+3. Risk level classification (Low/Medium/High/Critical)
+4. Confidence score (0-100%)
+5. Recommended security actions
+6. False positive likelihood assessment";
+    }
+
+    /**
+     * Format risk indicators for AI analysis
+     */
+    private function formatIndicatorsForAI(array $riskFactors): string
+    {
+        $indicators = [];
+        
+        foreach ($riskFactors as $category => $data) {
+            if (!empty($data['indicators'])) {
+                $indicators[] = strtoupper(str_replace('_', ' ', $category)) . ': ' . implode(', ', $data['indicators']);
+            }
+        }
+
+        return implode("\n", $indicators) ?: 'No specific indicators detected';
+    }
+
+    /**
+     * Extract confidence score from AI response
+     */
+    private function extractConfidenceScore(string $aiContent): int
+    {
+        // Look for confidence patterns in AI response
+        if (preg_match('/confidence[:\s]*(\d+)%?/i', $aiContent, $matches)) {
+            return min(100, max(0, (int)$matches[1]));
+        }
+        
+        return 75; // Default confidence
+    }
+
+    /**
+     * Extract fraud type from AI response
+     */
+    private function extractFraudType(string $aiContent): ?string
+    {
+        $fraudTypes = [
+            'payment_fraud' => ['payment fraud', 'credit card fraud', 'financial fraud'],
+            'account_takeover' => ['account takeover', 'hijacking', 'unauthorized access'],
+            'identity_theft' => ['identity theft', 'impersonation', 'fake identity'],
+            'bot_activity' => ['bot', 'automated', 'scripted behavior'],
+            'money_laundering' => ['money laundering', 'suspicious transfers'],
+            'bid_manipulation' => ['bid manipulation', 'bid stuffing', 'fake bidding'],
+        ];
+
+        $lowerContent = strtolower($aiContent);
+        
+        foreach ($fraudTypes as $type => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (strpos($lowerContent, $keyword) !== false) {
+                    return $type;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Calculate AI risk adjustment
+     */
+    private function calculateAIRiskAdjustment(string $aiContent): int
+    {
+        $lowerContent = strtolower($aiContent);
+        $adjustment = 0;
+
+        // Positive risk indicators
+        if (strpos($lowerContent, 'high risk') !== false) $adjustment += 15;
+        if (strpos($lowerContent, 'critical') !== false) $adjustment += 20;
+        if (strpos($lowerContent, 'suspicious') !== false) $adjustment += 10;
+        if (strpos($lowerContent, 'anomaly') !== false) $adjustment += 8;
+
+        // Negative risk indicators
+        if (strpos($lowerContent, 'low risk') !== false) $adjustment -= 10;
+        if (strpos($lowerContent, 'false positive') !== false) $adjustment -= 15;
+        if (strpos($lowerContent, 'legitimate') !== false) $adjustment -= 8;
+
+        return max(-20, min(20, $adjustment)); // Cap adjustment between -20 and +20
+    }
+
+    /**
+     * Calculate profile completion percentage
+     */
+    private function calculateProfileCompletion(User $user): int
+    {
+        $fields = ['first_name', 'last_name', 'email', 'user_type'];
+        $completed = 0;
+        $total = count($fields);
+
+        foreach ($fields as $field) {
+            if (!empty($user->$field)) {
+                $completed++;
+            }
+        }
+
+        return round(($completed / $total) * 100);
     }
 
     /**

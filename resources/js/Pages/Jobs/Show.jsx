@@ -131,10 +131,29 @@ export default function JobShow({ job, canBid }) {
 
     const handleSubmitBid = (e) => {
         e.preventDefault();
+        
+        // Ensure CSRF token is available
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            setError('CSRF token not found. Please refresh the page and try again.');
+            return;
+        }
+
         post(route('bids.store'), {
             onSuccess: () => {
                 reset();
                 setShowBidForm(false);
+                setError(null);
+            },
+            onError: (errors) => {
+                console.error('Bid submission error:', errors);
+                if (errors.message) {
+                    setError(errors.message);
+                } else if (typeof errors === 'string') {
+                    setError(errors);
+                } else {
+                    setError('An error occurred while submitting your bid. Please try again.');
+                }
             },
         });
     };

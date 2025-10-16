@@ -13,9 +13,9 @@ class AIService
 
     public function __construct()
     {
-        // Prioritize META_LLAMA_L4_SCOUT_FREE API key from .env file
-        $this->apiKey = env('META_LLAMA_L4_SCOUT_FREE') ?: config('services.openrouter.api_key');
-        $this->model = 'meta-llama/llama-4-scout:free';
+        // Use enhanced qwen/qwen3-32b API for better analysis
+        $this->apiKey = env('QWEN_API_KEY') ?: env('META_LLAMA_L4_SCOUT_FREE') ?: config('services.openrouter.api_key');
+        $this->model = env('QWEN_MODEL', 'qwen/qwen3-32b');
         $this->baseUrl = config('services.openrouter.base_url') ?: env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
     }
 
@@ -37,15 +37,18 @@ class AIService
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'You are an expert AI recruiter specializing in Philippine freelance talent matching. Your expertise is in analyzing technical skills compatibility and experience level alignment. Focus exclusively on SKILLS MATCH and EXPERIENCE LEVEL compatibility. Provide detailed analysis of: 1) Direct skills overlap, 2) Related/complementary skills, 3) Experience level alignment, 4) Potential skill gaps. Always use professional, encouraging language. Use Philippine Peso (₱) for budget mentions.'
+                        'content' => 'You are an expert AI recruiter specializing in Philippine freelance talent matching. Your expertise is in analyzing technical skills compatibility, experience level alignment, portfolio validation, and identity verification. Provide detailed analysis of: 1) Skills alignment with quantitative matching, 2) Experience relevance assessment, 3) Portfolio analysis and skill verification, 4) Name verification between portfolio and profile, 5) Qualitative experience assessment. Always use professional, encouraging language. Use Philippine Peso (₱) for budget mentions.'
                     ],
                     [
                         'role' => 'user',
                         'content' => $prompt
                     ]
                 ],
-                'max_tokens' => 200,
-                'temperature' => 0.7
+                'max_completion_tokens' => env('QWEN_MAX_TOKENS', 4096),
+                'temperature' => env('QWEN_TEMPERATURE', 0.6),
+                'top_p' => env('QWEN_TOP_P', 0.95),
+                'reasoning_effort' => 'default',
+                'stop' => null
             ]);
 
             if ($response->successful()) {
@@ -341,6 +344,230 @@ class AIService
         } else {
             return "This gig worker has some relevant skills but may need additional training or experience for optimal project success.";
         }
+    }
+
+    /**
+     * Generate enhanced AI-powered match explanation with comprehensive analysis
+     */
+    public function generateEnhancedMatchExplanation(array $jobData, array $gigWorkerData, array $portfolioData = [], float $matchScore = 0.0): array
+    {
+        try {
+            $prompt = $this->buildEnhancedMatchPrompt($jobData, $gigWorkerData, $portfolioData, $matchScore);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+                'HTTP-Referer' => request()->header('referer') ?: config('app.url'),
+                'X-Title' => 'WorkWise AI Enhanced Matching'
+            ])->timeout(45)->post("{$this->baseUrl}/chat/completions", [
+                'model' => $this->model,
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'You are an expert AI recruiter and talent analyst specializing in comprehensive job matching for the Philippine freelance market. Your expertise includes: 1) Advanced skills assessment and compatibility analysis, 2) Portfolio validation and authenticity verification, 3) Identity consistency checking across profiles, 4) Experience relevance evaluation, 5) Quantitative and qualitative match scoring. Provide detailed, actionable insights with specific recommendations for improvement.'
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $prompt
+                    ]
+                ],
+                'max_completion_tokens' => config('app.qwen_max_tokens', 4096),
+                'temperature' => config('app.qwen_temperature', 0.6),
+                'top_p' => config('app.qwen_top_p', 0.95),
+                'reasoning_effort' => 'default',
+                'stop' => null
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $content = $data['choices'][0]['message']['content'] ?? '';
+
+                return [
+                    'success' => true,
+                    'analysis' => $this->parseEnhancedAnalysis($content),
+                    'raw_response' => $content,
+                    'model_used' => $this->model
+                ];
+            }
+
+            Log::warning('Enhanced AI match explanation failed', [
+                'status' => $response->status(),
+                'response' => $response->body()
+            ]);
+
+            return $this->getFallbackEnhancedAnalysis($jobData, $gigWorkerData, $matchScore);
+
+        } catch (\Exception $e) {
+            Log::error('Enhanced AI match explanation error', [
+                'error' => $e->getMessage(),
+                'job_id' => $jobData['id'] ?? null,
+                'gig_worker_id' => $gigWorkerData['id'] ?? null
+            ]);
+
+            return $this->getFallbackEnhancedAnalysis($jobData, $gigWorkerData, $matchScore);
+        }
+    }
+
+    /**
+     * Build enhanced match analysis prompt
+     */
+    private function buildEnhancedMatchPrompt(array $jobData, array $gigWorkerData, array $portfolioData, float $matchScore): string
+    {
+        $jobSkills = is_array($jobData['required_skills'] ?? null) 
+            ? implode(', ', $jobData['required_skills']) 
+            : ($jobData['required_skills'] ?? 'Not specified');
+
+        $workerSkills = is_array($gigWorkerData['skills'] ?? null) 
+            ? implode(', ', $gigWorkerData['skills']) 
+            : ($gigWorkerData['skills'] ?? 'Not specified');
+
+        $portfolioSummary = $this->summarizePortfolioData($portfolioData);
+
+        return "Analyze this job match comprehensively:
+
+JOB DETAILS:
+- Title: {$jobData['title']}
+- Description: {$jobData['description']}
+- Required Skills: {$jobSkills}
+- Experience Level: {$jobData['experience_level']}
+- Budget: {$jobData['budget']} {$jobData['currency']}
+- Category: {$jobData['category']}
+
+GIG WORKER PROFILE:
+- Name: {$gigWorkerData['name']}
+- Skills: {$workerSkills}
+- Experience Level: {$gigWorkerData['experience_level']}
+- Hourly Rate: {$gigWorkerData['hourly_rate']} {$gigWorkerData['currency']}
+- Bio: {$gigWorkerData['bio']}
+
+PORTFOLIO ANALYSIS:
+{$portfolioSummary}
+
+CURRENT MATCH SCORE: {$matchScore}
+
+Please provide a comprehensive analysis including:
+
+1. SKILLS ALIGNMENT (Quantitative Assessment):
+   - Exact skill matches and gaps
+   - Skill proficiency levels
+   - Technical compatibility score (0-100)
+
+2. EXPERIENCE RELEVANCE (Qualitative Assessment):
+   - Experience level compatibility
+   - Industry experience alignment
+   - Project complexity readiness
+
+3. PORTFOLIO VALIDATION:
+   - Skills verification against portfolio content
+   - Project quality and relevance assessment
+   - Portfolio authenticity indicators
+
+4. IDENTITY VERIFICATION:
+   - Name consistency across profile and portfolio
+   - Profile completeness and authenticity
+   - Red flags or verification concerns
+
+5. OVERALL RECOMMENDATIONS:
+   - Match strength summary
+   - Areas for improvement
+   - Success probability assessment
+
+Format your response as structured analysis with clear sections and actionable insights.";
+    }
+
+    /**
+     * Summarize portfolio data for analysis
+     */
+    private function summarizePortfolioData(array $portfolioData): string
+    {
+        if (empty($portfolioData)) {
+            return "No portfolio data available for analysis.";
+        }
+
+        $summary = "Portfolio Items:\n";
+        foreach ($portfolioData as $index => $item) {
+            $summary .= "- Project " . ($index + 1) . ": {$item['title']} ({$item['project_type']})\n";
+            $summary .= "  Description: {$item['description']}\n";
+            if (!empty($item['technologies'])) {
+                $technologies = is_array($item['technologies']) ? implode(', ', $item['technologies']) : $item['technologies'];
+                $summary .= "  Technologies: {$technologies}\n";
+            }
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Parse enhanced analysis from AI response
+     */
+    private function parseEnhancedAnalysis(string $content): array
+    {
+        $analysis = [
+            'skills_alignment' => $this->extractSection($content, 'SKILLS ALIGNMENT'),
+            'experience_relevance' => $this->extractSection($content, 'EXPERIENCE RELEVANCE'),
+            'portfolio_validation' => $this->extractSection($content, 'PORTFOLIO VALIDATION'),
+            'identity_verification' => $this->extractSection($content, 'IDENTITY VERIFICATION'),
+            'recommendations' => $this->extractSection($content, 'OVERALL RECOMMENDATIONS'),
+            'technical_score' => $this->extractTechnicalScore($content),
+            'success_probability' => $this->extractSuccessProbability($content)
+        ];
+
+        return $analysis;
+    }
+
+    /**
+     * Extract specific section from AI response
+     */
+    private function extractSection(string $content, string $sectionName): string
+    {
+        $pattern = '/(?:^|\n)\s*\d*\.?\s*' . preg_quote($sectionName, '/') . '.*?:(.*?)(?=\n\s*\d*\.?\s*[A-Z][A-Z\s]+:|$)/s';
+        if (preg_match($pattern, $content, $matches)) {
+            return trim($matches[1]);
+        }
+        return 'Analysis not available';
+    }
+
+    /**
+     * Extract technical compatibility score
+     */
+    private function extractTechnicalScore(string $content): ?int
+    {
+        if (preg_match('/technical.*?score.*?(\d+)/i', $content, $matches)) {
+            return (int) $matches[1];
+        }
+        return null;
+    }
+
+    /**
+     * Extract success probability
+     */
+    private function extractSuccessProbability(string $content): ?int
+    {
+        if (preg_match('/success.*?probability.*?(\d+)%/i', $content, $matches)) {
+            return (int) $matches[1];
+        }
+        return null;
+    }
+
+    /**
+     * Get fallback enhanced analysis when AI service fails
+     */
+    private function getFallbackEnhancedAnalysis(array $jobData, array $gigWorkerData, float $matchScore): array
+    {
+        return [
+            'success' => false,
+            'analysis' => [
+                'skills_alignment' => 'Basic skills compatibility analysis available. AI service temporarily unavailable for detailed assessment.',
+                'experience_relevance' => 'Experience level appears compatible based on profile data.',
+                'portfolio_validation' => 'Portfolio analysis requires AI service for comprehensive validation.',
+                'identity_verification' => 'Manual verification recommended when AI service is unavailable.',
+                'recommendations' => $this->getFallbackExplanation($jobData, $gigWorkerData, $matchScore),
+                'technical_score' => null,
+                'success_probability' => null
+            ],
+            'raw_response' => 'Fallback analysis - AI service unavailable',
+            'model_used' => 'fallback'
+        ];
     }
 
     /**

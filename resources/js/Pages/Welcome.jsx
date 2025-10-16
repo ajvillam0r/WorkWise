@@ -1,6 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { useEffect } from 'react';
 
+// Access the global route helper
+const route = window.route;
+
 export default function Welcome({ auth }) {
     useEffect(() => {
         // Neural Network Animation
@@ -476,7 +479,7 @@ export default function Welcome({ auth }) {
                                 <h4 className="font-semibold text-gray-900 mb-4">For Freelancers</h4>
                                 <ul className="space-y-2 text-gray-600">
                                     <li><Link href="/jobs" className="hover:text-blue-600 transition-colors">Browse Jobs</Link></li>
-                                    <li><Link href="/ai/recommendations" className="hover:text-blue-600 transition-colors">AI Recommendations</Link></li>
+                                    <li><Link href="/jobs" className="hover:text-blue-600 transition-colors">Browse Jobs</Link></li>
                                     <li><Link href={route('role.selection')} className="hover:text-blue-600 transition-colors">Join as Freelancer</Link></li>
                                 </ul>
                             </div>
@@ -484,7 +487,7 @@ export default function Welcome({ auth }) {
                             <div>
                                 <h4 className="font-semibold text-gray-900 mb-4">For Employers</h4>
                                 <ul className="space-y-2 text-gray-600">
-                                    <li><Link href="/freelancers" className="hover:text-blue-600 transition-colors">Browse Freelancers</Link></li>
+                                    <li><Link href="/gig-workers" className="hover:text-blue-600 transition-colors">Browse Gig Workers</Link></li>
                                     <li><Link href="/jobs/create" className="hover:text-blue-600 transition-colors">Post a Job</Link></li>
                                     <li><Link href={route('role.selection')} className="hover:text-blue-600 transition-colors">Join as Employer</Link></li>
                                 </ul>

@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -215,6 +216,32 @@ class User extends Authenticatable
     public function reportsReceived(): HasMany
     {
         return $this->hasMany(Report::class, 'reported_user_id');
+    }
+
+    /**
+     * Get identity verifications for this user
+     */
+    public function identityVerifications(): HasMany
+    {
+        return $this->hasMany(IdentityVerification::class);
+    }
+
+    /**
+     * Get the latest identity verification
+     */
+    public function latestIdentityVerification()
+    {
+        return $this->hasOne(IdentityVerification::class)->latestOfMany();
+    }
+
+    /**
+     * Check if user is identity verified
+     */
+    public function isIdentityVerified(): bool
+    {
+        return $this->identityVerifications()
+            ->where('status', 'verified')
+            ->exists();
     }
 
     /**

@@ -366,10 +366,10 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                         </span>
                     </h3>
                     <Link 
-                        href="/ai/recommendations" 
+                        href="/jobs" 
                         className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center"
                     >
-                        View All
+                        Browse Jobs
                         <ArrowUpIcon className="w-4 h-4 ml-1 rotate-45" />
                     </Link>
                 </div>
@@ -658,12 +658,12 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                                     <span className="text-xs text-gray-500 mt-1">Find new opportunities</span>
                                 </Link>
                                 <Link
-                                    href="/ai/recommendations"
+                                    href="/profile"
                                     className="flex flex-col items-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group border border-purple-200"
                                 >
-                                    <ArrowTrendingUpIcon className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                                    <span className="text-sm font-medium text-gray-900">AI Recommendations</span>
-                                    <span className="text-xs text-gray-500 mt-1">Smart job matches</span>
+                                    <UserIcon className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
+                                    <span className="text-sm font-medium text-gray-900">My Profile</span>
+                                    <span className="text-xs text-gray-500 mt-1">Update profile</span>
                                 </Link>
                                 <Link
                                     href="/proposals"

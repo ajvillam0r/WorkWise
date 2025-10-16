@@ -539,230 +539,483 @@ class AIJobMatchingService
             'match_count' => $matches->count()
         ];
     }
-}
 
-class SkillRecommendationStat
-{
-    protected function taxonomy(): array
+    /**
+     * Enhanced AI-powered job recommendations with portfolio analysis and name verification
+     */
+    public function getEnhancedAIJobRecommendations(User $gigWorker): array
     {
-        return Cache::rememberForever('full_taxonomy', function () {
-            $path = base_path('full_freelance_services_taxonomy.json');
-            $json = file_exists($path) ? file_get_contents($path) : '{}';
-            $data = json_decode($json, true) ?: [];
-            return $data;
+        $matches = $this->findMatchingJobs($gigWorker, 10);
+
+        $enhancedMatches = $matches->map(function ($match) use ($gigWorker) {
+            $job = $match['job'];
+            
+            // Get comprehensive AI analysis
+            $comprehensiveAnalysis = $this->getComprehensiveMatchAnalysis($job, $gigWorker, $match['match_score']);
+            
+            // Enhanced matching score with portfolio validation
+            $enhancedScore = $this->calculateEnhancedMatchScore($job, $gigWorker);
+            
+            return array_merge($match, [
+                'enhanced_match_score' => $enhancedScore,
+                'comprehensive_analysis' => $comprehensiveAnalysis,
+                'portfolio_validation' => $this->validatePortfolioSkills($gigWorker, $job),
+                'identity_verification' => $this->verifyIdentityConsistency($gigWorker),
+                'quantitative_assessment' => $this->getQuantitativeSkillsAssessment($job, $gigWorker),
+                'qualitative_assessment' => $this->getQualitativeExperienceAssessment($job, $gigWorker)
+            ]);
         });
+
+        return [
+            'matches' => $enhancedMatches->toArray(),
+            'total_jobs' => GigJob::where('status', 'open')->count(),
+            'match_count' => $matches->count(),
+            'suggested_improvements' => $this->getSuggestedImprovements($gigWorker),
+            'portfolio_insights' => $this->getPortfolioInsights($gigWorker),
+        ];
     }
 
-    protected function flattenTaxonomy(): array
+    /**
+     * Calculate enhanced match score with portfolio validation
+     */
+    private function calculateEnhancedMatchScore(GigJob $job, User $gigWorker): float
     {
-        $data = $this->taxonomy();
-        $skills = [];
-        $categories = [];
-        foreach (($data['services'] ?? []) as $service) {
-            foreach (($service['categories'] ?? []) as $cat) {
-                $categories[] = [
-                    'name' => $cat['name'] ?? '',
-                    'skills' => $cat['skills'] ?? [],
-                ];
-                foreach (($cat['skills'] ?? []) as $s) {
-                    $skills[$s] = true;
+        $baseScore = $this->calculateMatchScore($job, $gigWorker);
+        
+        // Portfolio validation bonus (up to 20% increase)
+        $portfolioBonus = $this->calculatePortfolioBonus($gigWorker, $job);
+        
+        // Identity verification bonus (up to 10% increase)
+        $identityBonus = $this->calculateIdentityVerificationBonus($gigWorker);
+        
+        // Experience quality bonus (up to 15% increase)
+        $experienceBonus = $this->calculateExperienceQualityBonus($gigWorker, $job);
+        
+        $enhancedScore = $baseScore + ($baseScore * ($portfolioBonus + $identityBonus + $experienceBonus));
+        
+        return min(1.0, $enhancedScore);
+    }
+
+    /**
+     * Get comprehensive AI match analysis
+     */
+    private function getComprehensiveMatchAnalysis(GigJob $job, User $gigWorker, float $matchScore): array
+    {
+        if (!$this->aiService->isAvailable()) {
+            return [
+                'success' => false,
+                'message' => 'AI service not available for comprehensive analysis'
+            ];
+        }
+
+        try {
+            $jobData = [
+                'id' => $job->id,
+                'title' => $job->title,
+                'description' => $job->description,
+                'required_skills' => $job->required_skills ?? [],
+                'experience_level' => $job->experience_level,
+                'budget' => $job->budget,
+                'currency' => $job->currency ?? 'PHP',
+                'category' => $job->category
+            ];
+
+            $gigWorkerData = [
+                'id' => $gigWorker->id,
+                'name' => $gigWorker->first_name . ' ' . $gigWorker->last_name,
+                'skills' => $gigWorker->skills ?? [],
+                'experience_level' => $gigWorker->experience_level,
+                'hourly_rate' => $gigWorker->hourly_rate,
+                'currency' => $gigWorker->currency ?? 'PHP',
+                'bio' => $gigWorker->bio
+            ];
+
+            // Get portfolio data
+            $portfolioData = $this->getPortfolioDataForAnalysis($gigWorker);
+
+            return $this->aiService->generateEnhancedMatchExplanation($jobData, $gigWorkerData, $portfolioData, $matchScore);
+        } catch (\Exception $e) {
+            \Log::error('Comprehensive AI analysis failed', [
+                'job_id' => $job->id,
+                'gig_worker_id' => $gigWorker->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Failed to generate comprehensive analysis'
+            ];
+        }
+    }
+
+    /**
+     * Get portfolio data for AI analysis
+     */
+    private function getPortfolioDataForAnalysis(User $gigWorker): array
+    {
+        $freelancerProfile = $gigWorker->freelancerProfile;
+        if (!$freelancerProfile) {
+            return [];
+        }
+
+        $portfolios = $freelancerProfile->portfolios()->get();
+        
+        return $portfolios->map(function ($portfolio) {
+            return [
+                'title' => $portfolio->title ?? 'Untitled Project',
+                'description' => $portfolio->description ?? '',
+                'project_type' => $portfolio->project_type ?? 'General',
+                'technologies' => $portfolio->technologies ?? [],
+                'images' => $portfolio->images ?? [],
+                'created_at' => $portfolio->created_at
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Validate portfolio skills against claimed skills
+     */
+    private function validatePortfolioSkills(User $gigWorker, GigJob $job): array
+    {
+        $freelancer = $gigWorker->freelancerProfile;
+        if (!$freelancer) {
+            return [
+                'validation_status' => 'no_portfolio',
+                'verified_skills' => [],
+                'unverified_skills' => $gigWorker->skills ?? [],
+                'portfolio_skill_match' => 0.0,
+                'recommendations' => ['Create a portfolio to showcase your skills']
+            ];
+        }
+
+        $portfolios = $freelancer->portfolios()->public()->get();
+        $claimedSkills = array_map('strtolower', $gigWorker->skills ?? []);
+        $jobRequiredSkills = array_map('strtolower', $job->required_skills ?? []);
+        
+        $verifiedSkills = [];
+        $portfolioSkills = [];
+        
+        foreach ($portfolios as $portfolio) {
+            $techUsed = array_map('strtolower', $portfolio->technologies_used ?? []);
+            $portfolioSkills = array_merge($portfolioSkills, $techUsed);
+            
+            // Check if portfolio description mentions skills
+            $description = strtolower($portfolio->description ?? '');
+            foreach ($claimedSkills as $skill) {
+                if (str_contains($description, $skill) || in_array($skill, $techUsed)) {
+                    $verifiedSkills[] = $skill;
                 }
             }
         }
+        
+        $verifiedSkills = array_unique($verifiedSkills);
+        $unverifiedSkills = array_diff($claimedSkills, $verifiedSkills);
+        
+        // Calculate portfolio-job skill match
+        $portfolioJobMatch = count(array_intersect($portfolioSkills, $jobRequiredSkills));
+        $portfolioSkillMatch = count($jobRequiredSkills) > 0 ? $portfolioJobMatch / count($jobRequiredSkills) : 0;
+        
         return [
-            'skills' => array_keys($skills),
-            'categories' => $categories,
+            'validation_status' => count($portfolios) > 0 ? 'has_portfolio' : 'no_portfolio',
+            'verified_skills' => $verifiedSkills,
+            'unverified_skills' => $unverifiedSkills,
+            'portfolio_skills' => array_unique($portfolioSkills),
+            'portfolio_skill_match' => $portfolioSkillMatch,
+            'portfolio_count' => count($portfolios),
+            'relevant_portfolios' => $portfolios->filter(function($portfolio) use ($jobRequiredSkills) {
+                $techUsed = array_map('strtolower', $portfolio->technologies_used ?? []);
+                return count(array_intersect($techUsed, $jobRequiredSkills)) > 0;
+            })->count(),
+            'recommendations' => $this->getPortfolioRecommendations($verifiedSkills, $unverifiedSkills, $jobRequiredSkills)
         ];
     }
 
-    protected function synonyms(): array
+    /**
+     * Verify identity consistency between profile and portfolio
+     */
+    private function verifyIdentityConsistency(User $gigWorker): array
     {
-        return [
-            'react js' => 'react',
-            'react.js' => 'react',
-            'js' => 'javascript',
-            'node' => 'node.js',
-            'adobe premiere' => 'adobe premiere pro',
-            'davinci' => 'davinci resolve',
-            'ux' => 'ui/ux',
-            'ui' => 'ui/ux',
-            'ml' => 'machine learning',
-            'ai' => 'machine learning',
-            'unity3d' => 'unity',
-            'c sharp' => 'c#',
-            'c plus plus' => 'c++',
-            'frontend' => 'web development',
-            'backend' => 'web development',
-            'laravel php' => 'laravel',
-        ];
-    }
-
-    protected function categorySynonyms(): array
-    {
-        return [
-            'graphic designer' => 'Graphic Design',
-            'logo designer' => 'Logo Design & Branding',
-            'ui designer' => 'UI/UX Design',
-            'ux designer' => 'UI/UX Design',
-            'ui/ux designer' => 'UI/UX Design',
-            'web designer' => 'Web Design',
-            'video editor' => 'Video Editing',
-            '3d modeler' => '3D Modeling',
-            'frontend developer' => 'Web Development',
-            'backend developer' => 'Web Development',
-            'full stack developer' => 'Web Development',
-            'mobile developer' => 'Mobile App Development',
-            'react native developer' => 'Mobile App Development',
-            'flutter developer' => 'Mobile App Development',
-            'unity developer' => 'Game Development',
-            'software developer' => 'Software Development',
-            'api developer' => 'API Integration & Automation',
-            'database administrator' => 'Database Management',
-            'cybersecurity analyst' => 'Cybersecurity',
-            'ai engineer' => 'AI & Machine Learning',
-            'seo specialist' => 'SEO',
-            'social media manager' => 'Social Media Marketing',
-            'content writer' => 'Article & Blog Writing',
-            'technical writer' => 'Technical Writing',
-            'translator' => 'Translation',
-            'photographer' => 'Photography',
-            'project manager' => 'Project Management',
-            'accountant' => 'Accounting & Bookkeeping',
-            'legal consultant' => 'Legal Consulting',
-            'data analyst' => 'Data Analysis',
-            'data scientist' => 'Machine Learning',
-            'shopify developer' => 'E-commerce Development',
-            'woocommerce developer' => 'E-commerce Development',
-            'cad designer' => 'CAD Design',
-            'mechanical engineer' => 'Mechanical Engineering',
-            'electrical engineer' => 'Electrical Engineering',
-            'civil engineer' => 'Civil Engineering',
-        ];
-    }
-
-    protected function normalize(string $text): string
-    {
-        $t = Str::lower($text);
-        $t = preg_replace('/[^a-z0-9+.# ]/i', ' ', $t);
-        $t = preg_replace('/\s+/', ' ', $t);
-        return trim($t);
-    }
-
-    protected function tokenize(string $text): array
-    {
-        return array_values(array_filter(explode(' ', $this->normalize($text))));
-    }
-
-    protected function rootify(string $word): string
-    {
-        $w = $word;
-        $rules = [
-            ['ers', 3], ['er', 2], ['ors', 3], ['or', 2],
-            ['ing', 3], ['ments', 5], ['ment', 4], ['ions', 4], ['ion', 3],
-            ['ists', 4], ['ist', 3], ['als', 3], ['al', 2], ['s', 1],
-        ];
-        foreach ($rules as [$end, $cut]) {
-            if (Str::endsWith($w, $end) && Str::length($w) > $cut) {
-                return Str::substr($w, 0, Str::length($w) - $cut);
-            }
-        }
-        return $w;
-    }
-
-    protected function matchCategories(string $text, array $categoryIndex): array
-    {
-        $textNorm = $this->normalize($text);
-        $tokensRoot = array_map(fn ($t) => $this->rootify($t), $this->tokenize($text));
-        $matched = [];
-
-        foreach ($categoryIndex as $cat) {
-            $catNorm = $this->normalize($cat['name']);
-            $catTokensRoot = array_map(fn ($t) => $this->rootify($t), explode(' ', $catNorm));
-
-            if (Str::contains($textNorm, $catNorm)) {
-                $matched[$cat['name']] = true;
-                continue;
-            }
-
-            $overlap = count(array_intersect($catTokensRoot, $tokensRoot));
-            $threshold = min(2, count($catTokensRoot));
-            if ($overlap >= $threshold) {
-                $matched[$cat['name']] = true;
-            }
+        $freelancer = $gigWorker->freelancerProfile;
+        $profileName = trim(($gigWorker->first_name ?? '') . ' ' . ($gigWorker->last_name ?? ''));
+        
+        if (!$freelancer) {
+            return [
+                'verification_status' => 'no_freelancer_profile',
+                'consistency_score' => 0.0,
+                'issues' => ['No freelancer profile found'],
+                'recommendations' => ['Complete your freelancer profile']
+            ];
         }
 
-        foreach ($this->categorySynonyms() as $alias => $catName) {
-            if (Str::contains($textNorm, $this->normalize($alias))) {
-                $matched[$catName] = true;
-            }
-        }
-
-        return array_keys($matched);
-    }
-
-    public function recommend(string $title, string $description, array $exclude = []): array
-    {
-        $flat = $this->flattenTaxonomy();
-        $categories = $flat['categories'];
-        $allSkills = $flat['skills'];
-        $excludeSet = collect($exclude)->map(fn ($s) => $this->normalize($s))->flip();
-
-        $text = trim($title . ' ' . $description);
-        $textNorm = $this->normalize($text);
-        $tokens = $this->tokenize($text);
-
-        // Category matches (high-priority skills)
-        $matchedCategories = $this->matchCategories($text, $categories);
-        $scored = [];
-        foreach ($matchedCategories as $catName) {
-            $cat = collect($categories)->first(fn ($c) => $c['name'] === $catName);
-            if (!$cat) continue;
-            foreach (($cat['skills'] ?? []) as $s) {
-                if (!$excludeSet->has($this->normalize($s))) {
-                    $scored[$s] = max($scored[$s] ?? 0, 5);
+        $portfolios = $freelancer->portfolios()->get();
+        $issues = [];
+        $consistencyScore = 1.0;
+        
+        // Check portfolio client names for consistency
+        foreach ($portfolios as $portfolio) {
+            if ($portfolio->client_name && !empty(trim($portfolio->client_name))) {
+                // This is where we would implement name similarity checking
+                // For now, we'll do basic checks
+                $clientName = trim($portfolio->client_name);
+                if (strlen($clientName) < 2) {
+                    $issues[] = "Portfolio '{$portfolio->title}' has incomplete client name";
+                    $consistencyScore -= 0.1;
                 }
             }
         }
-
-        // Direct skill matching
-        foreach ($allSkills as $s) {
-            if ($excludeSet->has($this->normalize($s))) continue;
-            $sNorm = $this->normalize($s);
-            $score = 0;
-            if (Str::contains($textNorm, $sNorm)) $score += 3;
-            $sTokens = explode(' ', $sNorm);
-            $tokenHits = count(array_intersect($sTokens, $tokens));
-            if ($tokenHits >= min(2, count($sTokens))) $score += 2;
-            foreach ($this->synonyms() as $key => $val) {
-                $k = $this->normalize($key);
-                $v = $this->normalize($val);
-                if (Str::contains($textNorm, $k) && ($v === $sNorm || Str::contains($sNorm, $v))) {
-                    $score += 2;
-                }
-            }
-            if ($score > 0) {
-                $scored[$s] = max($scored[$s] ?? 0, $score);
-            }
+        
+        // Check profile completeness
+        if (empty($profileName) || strlen($profileName) < 3) {
+            $issues[] = 'Profile name is incomplete';
+            $consistencyScore -= 0.3;
         }
-
-        // Emerging skills (simple heuristic; can be replaced with market feed)
-        $emerging = $this->suggestEmergingSkills($title, $description, $excludeSet->keys()->all());
-
-        // Innovative roles (combine category and keyword signals)
-        $innovativeRoles = $this->suggestInnovativeRoles($title, $description, array_keys($scored));
-
-        // Sort skills by score and return top N
-        arsort($scored);
-        $taxonomySkills = array_slice(array_keys($scored), 0, 12);
-
+        
+        if (empty($gigWorker->email_verified_at)) {
+            $issues[] = 'Email not verified';
+            $consistencyScore -= 0.2;
+        }
+        
+        $consistencyScore = max(0.0, $consistencyScore);
+        
         return [
-            'taxonomy_skills' => $taxonomySkills,
-            'emerging_skills' => $emerging,
-            'innovative_roles' => $innovativeRoles,
+            'verification_status' => count($issues) === 0 ? 'verified' : 'needs_attention',
+            'consistency_score' => $consistencyScore,
+            'profile_name' => $profileName,
+            'portfolio_count' => count($portfolios),
+            'issues' => $issues,
+            'recommendations' => $this->getIdentityRecommendations($issues)
         ];
     }
 
-    protected function suggestEmergingSkills(string $title, string $description, array $exclude = []): array
+    /**
+     * Get quantitative skills assessment
+     */
+    private function getQuantitativeSkillsAssessment(GigJob $job, User $gigWorker): array
+    {
+        $requiredSkills = array_map('strtolower', $job->required_skills ?? []);
+        $workerSkills = array_map('strtolower', $gigWorker->skills ?? []);
+        
+        $directMatches = array_intersect($requiredSkills, $workerSkills);
+        $partialMatches = [];
+        
+        // Find partial matches
+        foreach ($requiredSkills as $required) {
+            if (!in_array($required, $directMatches)) {
+                foreach ($workerSkills as $worker) {
+                    if (str_contains($worker, $required) || str_contains($required, $worker)) {
+                        $partialMatches[] = ['required' => $required, 'worker' => $worker];
+                        break;
+                    }
+                }
+            }
+        }
+        
+        $matchPercentage = count($requiredSkills) > 0 ? (count($directMatches) / count($requiredSkills)) * 100 : 0;
+        
+        return [
+            'total_required_skills' => count($requiredSkills),
+            'total_worker_skills' => count($workerSkills),
+            'direct_matches' => count($directMatches),
+            'partial_matches' => count($partialMatches),
+            'match_percentage' => round($matchPercentage, 1),
+            'direct_match_skills' => $directMatches,
+            'partial_match_details' => $partialMatches,
+            'missing_skills' => array_diff($requiredSkills, $directMatches),
+            'extra_skills' => array_diff($workerSkills, $requiredSkills),
+            'skill_coverage_score' => $this->calculateSkillCoverageScore($directMatches, $partialMatches, $requiredSkills)
+        ];
+    }
+
+    /**
+     * Get qualitative experience assessment
+     */
+    private function getQualitativeExperienceAssessment(GigJob $job, User $gigWorker): array
+    {
+        $freelancer = $gigWorker->freelancerProfile;
+        
+        if (!$freelancer) {
+            return [
+                'assessment_status' => 'no_profile',
+                'experience_score' => 0.0,
+                'recommendations' => ['Complete your freelancer profile to improve matching']
+            ];
+        }
+
+        $experiences = $freelancer->experiences()->get();
+        $portfolios = $freelancer->portfolios()->get();
+        
+        // Analyze experience relevance
+        $relevantExperience = 0;
+        $totalExperience = count($experiences);
+        $jobSkills = array_map('strtolower', $job->required_skills ?? []);
+        
+        foreach ($experiences as $experience) {
+            $expSkills = array_map('strtolower', $experience->skills_used ?? []);
+            $skillOverlap = count(array_intersect($expSkills, $jobSkills));
+            if ($skillOverlap > 0) {
+                $relevantExperience++;
+            }
+        }
+        
+        // Analyze portfolio relevance
+        $relevantPortfolios = 0;
+        foreach ($portfolios as $portfolio) {
+            $portfolioSkills = array_map('strtolower', $portfolio->technologies_used ?? []);
+            $skillOverlap = count(array_intersect($portfolioSkills, $jobSkills));
+            if ($skillOverlap > 0) {
+                $relevantPortfolios++;
+            }
+        }
+        
+        $experienceScore = $this->calculateExperienceRelevanceScore($relevantExperience, $totalExperience, $relevantPortfolios, count($portfolios));
+        
+        return [
+            'assessment_status' => 'completed',
+            'experience_score' => $experienceScore,
+            'total_experiences' => $totalExperience,
+            'relevant_experiences' => $relevantExperience,
+            'total_portfolios' => count($portfolios),
+            'relevant_portfolios' => $relevantPortfolios,
+            'experience_relevance_percentage' => $totalExperience > 0 ? round(($relevantExperience / $totalExperience) * 100, 1) : 0,
+            'portfolio_relevance_percentage' => count($portfolios) > 0 ? round(($relevantPortfolios / count($portfolios)) * 100, 1) : 0,
+            'recommendations' => $this->getExperienceRecommendations($relevantExperience, $totalExperience, $relevantPortfolios, count($portfolios))
+        ];
+    }
+
+    // Helper methods for calculations and recommendations
+
+    private function calculatePortfolioBonus(User $gigWorker, GigJob $job): float
+    {
+        $validation = $this->validatePortfolioSkills($gigWorker, $job);
+        return min(0.2, $validation['portfolio_skill_match'] * 0.2);
+    }
+
+    private function calculateIdentityVerificationBonus(User $gigWorker): float
+    {
+        $verification = $this->verifyIdentityConsistency($gigWorker);
+        return min(0.1, $verification['consistency_score'] * 0.1);
+    }
+
+    private function calculateExperienceQualityBonus(User $gigWorker, GigJob $job): float
+    {
+        $assessment = $this->getQualitativeExperienceAssessment($job, $gigWorker);
+        return min(0.15, $assessment['experience_score'] * 0.15);
+    }
+
+    private function calculateSkillCoverageScore(array $directMatches, array $partialMatches, array $requiredSkills): float
+    {
+        if (count($requiredSkills) === 0) return 1.0;
+        
+        $directScore = count($directMatches) * 1.0;
+        $partialScore = count($partialMatches) * 0.5;
+        $totalScore = ($directScore + $partialScore) / count($requiredSkills);
+        
+        return min(1.0, $totalScore);
+    }
+
+    private function calculateExperienceRelevanceScore(int $relevantExp, int $totalExp, int $relevantPortfolios, int $totalPortfolios): float
+    {
+        $expScore = $totalExp > 0 ? $relevantExp / $totalExp : 0;
+        $portfolioScore = $totalPortfolios > 0 ? $relevantPortfolios / $totalPortfolios : 0;
+        
+        // Weight experience and portfolio equally
+        return ($expScore + $portfolioScore) / 2;
+    }
+
+    private function getPortfolioRecommendations(array $verified, array $unverified, array $jobRequired): array
+    {
+        $recommendations = [];
+        
+        if (count($unverified) > 0) {
+            $recommendations[] = "Add portfolio projects showcasing: " . implode(', ', array_slice($unverified, 0, 3));
+        }
+        
+        $missingJobSkills = array_diff($jobRequired, $verified);
+        if (count($missingJobSkills) > 0) {
+            $recommendations[] = "Create projects demonstrating: " . implode(', ', array_slice($missingJobSkills, 0, 3));
+        }
+        
+        if (empty($recommendations)) {
+            $recommendations[] = "Your portfolio effectively demonstrates your skills!";
+        }
+        
+        return $recommendations;
+    }
+
+    private function getIdentityRecommendations(array $issues): array
+    {
+        $recommendations = [];
+        
+        foreach ($issues as $issue) {
+            if (str_contains($issue, 'email')) {
+                $recommendations[] = "Verify your email address to improve trust";
+            } elseif (str_contains($issue, 'name')) {
+                $recommendations[] = "Complete your profile name information";
+            } elseif (str_contains($issue, 'client name')) {
+                $recommendations[] = "Add complete client information to your portfolio projects";
+            }
+        }
+        
+        if (empty($recommendations)) {
+            $recommendations[] = "Your identity verification looks good!";
+        }
+        
+        return $recommendations;
+    }
+
+    private function getExperienceRecommendations(int $relevantExp, int $totalExp, int $relevantPortfolios, int $totalPortfolios): array
+    {
+        $recommendations = [];
+        
+        if ($totalExp === 0) {
+            $recommendations[] = "Add your work experience to strengthen your profile";
+        } elseif ($relevantExp < $totalExp * 0.5) {
+            $recommendations[] = "Highlight more relevant experience for better job matching";
+        }
+        
+        if ($totalPortfolios === 0) {
+            $recommendations[] = "Create portfolio projects to showcase your skills";
+        } elseif ($relevantPortfolios < $totalPortfolios * 0.5) {
+            $recommendations[] = "Add more portfolio projects relevant to your target jobs";
+        }
+        
+        if (empty($recommendations)) {
+            $recommendations[] = "Your experience profile is well-aligned with job requirements!";
+        }
+        
+        return $recommendations;
+    }
+
+    private function getPortfolioInsights(User $gigWorker): array
+    {
+        $freelancer = $gigWorker->freelancerProfile;
+        if (!$freelancer) {
+            return ['status' => 'no_profile', 'insights' => []];
+        }
+
+        $portfolios = $freelancer->portfolios()->get();
+        $insights = [];
+        
+        if (count($portfolios) === 0) {
+            $insights[] = "No portfolio items found - consider adding projects to showcase your skills";
+        } else {
+            $insights[] = "Portfolio contains " . count($portfolios) . " project(s)";
+            
+            $publicCount = $portfolios->where('is_public', true)->count();
+            if ($publicCount < count($portfolios)) {
+                $insights[] = (count($portfolios) - $publicCount) . " portfolio item(s) are private - make them public to improve visibility";
+            }
+            
+            $featuredCount = $portfolios->where('is_featured', true)->count();
+            if ($featuredCount === 0) {
+                $insights[] = "Consider featuring your best portfolio items";
+            }
+        }
+        
+        return ['status' => 'analyzed', 'insights' => $insights];
+    }
+
+    private function suggestEmergingSkills(string $title, string $description, array $exclude = []): array
     {
         $text = Str::lower($title . ' ' . $description);
         $catalog = [

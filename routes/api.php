@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\GigWorkerController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\JobInvitationController;
+use App\Http\Controllers\IdentityVerificationController;
+use App\Http\Controllers\StripeIdentityWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -69,10 +71,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // Job Invitation routes
     Route::post('/job-invitations/send', [JobInvitationController::class, 'sendInvitation']);
 
+    // AI Gig Worker Matching routes
+    Route::get('/jobs/{job}/ai-gig-worker-matches', [AIRecommendationController::class, 'getAiGigWorkerMatches']);
+
     // Gig Worker routes
     Route::prefix('gig-worker')->group(function () {
         Route::get('/job-invitations', [JobInvitationController::class, 'getInvitations']);
         Route::patch('/job-invitations/{invitation}/respond', [JobInvitationController::class, 'respondToInvitation']);
+    });
+
+    // Identity Verification routes
+    Route::prefix('identity')->group(function () {
+        Route::post('/verification/create', [IdentityVerificationController::class, 'createVerificationSession']);
+        Route::get('/verification/status', [IdentityVerificationController::class, 'getVerificationStatus']);
     });
 });
 
@@ -95,6 +106,9 @@ Route::get('/public/users/{user}/reviews/stats', [ReviewController::class, 'getU
 
 // Stripe webhook
 Route::post('/stripe/webhook', [WebhookController::class, 'handleStripeWebhook']);
+
+// Stripe Identity webhook
+Route::post('/stripe/identity/webhook', [StripeIdentityWebhookController::class, 'handleWebhook']);
 
 // AI Test Connection
 Route::match(['GET', 'POST'], '/ai/test-connection', [AIRecommendationController::class, 'testConnection'])

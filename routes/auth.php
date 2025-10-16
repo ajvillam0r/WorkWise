@@ -19,7 +19,6 @@ Route::middleware('guest')->group(function () {
         ->name('role.selection');
 
     Route::post('join', [RoleSelectionController::class, 'store'])
-        ->withoutMiddleware(['csrf'])
         ->name('role.store');
 
 

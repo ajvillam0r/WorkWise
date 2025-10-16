@@ -16,6 +16,27 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
     });
     const [isSkillDropdownOpen, setIsSkillDropdownOpen] = useState(false);
 
+    // AI Matching State
+    const [aiMatchModal, setAiMatchModal] = useState({
+        isOpen: false,
+        jobId: null,
+        matches: [],
+        loading: false,
+        currentPage: 1,
+        hasMore: true
+    });
+
+    // Invitation Modal state
+    const [invitationModal, setInvitationModal] = useState({
+        isOpen: false,
+        gigWorkerId: null,
+        gigWorkerName: '',
+        jobId: null,
+        jobTitle: '',
+        message: '',
+        loading: false
+    });
+
     // Helper function to safely parse required_skills
     const parseSkills = (skills) => {
         if (!skills) return [];
@@ -35,6 +56,7 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
 
         return [];
     };
+    
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         jobId: null,
@@ -46,6 +68,147 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
     });
 
     const isEmployer = auth.user?.user_type === 'employer';
+
+    // AI Gig Worker Match Handler
+    const handleAiGigWorkerMatch = async (jobId) => {
+        setAiMatchModal({
+            isOpen: true,
+            jobId: jobId,
+            matches: [],
+            loading: true,
+            currentPage: 1,
+            hasMore: true
+        });
+
+        try {
+            const response = await fetch(`/api/jobs/${jobId}/ai-gig-worker-matches?page=1`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                setAiMatchModal(prev => ({
+                    ...prev,
+                    matches: data.matches || [],
+                    loading: false,
+                    hasMore: data.hasMore || false
+                }));
+            } else {
+                console.error('Failed to fetch AI matches:', data.message);
+                setAiMatchModal(prev => ({
+                    ...prev,
+                    loading: false,
+                    matches: []
+                }));
+            }
+        } catch (error) {
+            console.error('Error fetching AI matches:', error);
+            setAiMatchModal(prev => ({
+                ...prev,
+                loading: false,
+                matches: []
+            }));
+        }
+    };
+
+    // Load More Matches
+    const loadMoreMatches = async () => {
+        if (!aiMatchModal.hasMore || aiMatchModal.loading) return;
+
+        setAiMatchModal(prev => ({ ...prev, loading: true }));
+
+        try {
+            const nextPage = aiMatchModal.currentPage + 1;
+            const response = await fetch(`/api/jobs/${aiMatchModal.jobId}/ai-gig-worker-matches?page=${nextPage}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                setAiMatchModal(prev => ({
+                    ...prev,
+                    matches: [...prev.matches, ...(data.matches || [])],
+                    loading: false,
+                    currentPage: nextPage,
+                    hasMore: data.hasMore || false
+                }));
+            } else {
+                console.error('Failed to fetch more matches:', data.message);
+                setAiMatchModal(prev => ({ ...prev, loading: false }));
+            }
+        } catch (error) {
+            console.error('Error fetching more matches:', error);
+            setAiMatchModal(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    // Close AI Match Modal
+    const closeAiMatchModal = () => {
+        setAiMatchModal({
+            isOpen: false,
+            jobId: null,
+            matches: [],
+            loading: false,
+            currentPage: 1,
+            hasMore: true
+        });
+    };
+
+    // Open Invitation Modal
+    const openInvitationModal = (gigWorkerId, gigWorkerName, jobId, jobTitle) => {
+        setInvitationModal({
+            isOpen: true,
+            gigWorkerId,
+            gigWorkerName,
+            jobId,
+            jobTitle,
+            message: '',
+            loading: false
+        });
+    };
+
+    // Close Invitation Modal
+    const closeInvitationModal = () => {
+        setInvitationModal({
+            isOpen: false,
+            gigWorkerId: null,
+            gigWorkerName: '',
+            jobId: null,
+            jobTitle: '',
+            message: '',
+            loading: false
+        });
+    };
+
+    // Send Job Invitation
+    const sendJobInvitation = async () => {
+        setInvitationModal(prev => ({ ...prev, loading: true }));
+
+        try {
+            const response = await fetch('/api/job-invitations/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    job_id: invitationModal.jobId,
+                    gig_worker_id: invitationModal.gigWorkerId,
+                    message: invitationModal.message
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                alert('Invitation sent successfully!');
+                closeInvitationModal();
+            } else {
+                alert(data.message || 'Failed to send invitation');
+            }
+        } catch (error) {
+            console.error('Error sending invitation:', error);
+            alert('An error occurred while sending the invitation');
+        } finally {
+            setInvitationModal(prev => ({ ...prev, loading: false }));
+        }
+    };
 
     const experienceOptions = [
         { label: 'All experience levels', value: 'all' },
@@ -339,7 +502,7 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                 <div>
                                     <h1 className="text-3xl font-bold mb-2 flex items-center">
                                         <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6.294a23.946 23.946 0 01-4-.748M16 6H8m0 0v-.5a.5.5 0 01.5-.5h7a.5.5 0 01.5.5V6m-8 0a2 2 0 00-2 2v6.294c.103-.017.206-.035.31-.054M8 6h8m-8 0H6a2 2 0 00-2 2v6.294" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2h8zM16 10h.01M12 14h.01M8 14h.01M8 10h.01" />
                                         </svg>
                                         {isEmployer ? 'Manage Your Jobs' : 'Find Your Next Opportunity'}
                                     </h1>
@@ -838,12 +1001,20 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                                     Edit
                                                                 </Link>
                                                                 {job.status === 'open' && (
-                                                                    <button
-                                                                        onClick={() => handleCloseJob(job.id)}
-                                                                        className="text-sm text-yellow-600 hover:text-yellow-800"
-                                                                    >
-                                                                        Close
-                                                                    </button>
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => handleCloseJob(job.id)}
+                                                                            className="text-sm text-yellow-600 hover:text-yellow-800"
+                                                                        >
+                                                                            Close
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleAiGigWorkerMatch(job.id)}
+                                                                            className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-sm"
+                                                                        >
+                                                                            🤖 AI Gig Worker Match
+                                                                        </button>
+                                                                    </>
                                                                 )}
                                                                 <button
                                                                     onClick={() => handleDeleteJob(job.id)}
@@ -947,6 +1118,131 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                 </div>
             </div>
 
+            {/* AI Gig Worker Matches Modal */}
+            {aiMatchModal.isOpen && (
+                <div className="fixed inset-0 bg-gray-600/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-10 mx-auto p-6 border border-gray-200 max-w-4xl shadow-2xl rounded-xl bg-white/95 backdrop-blur-sm">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-bold text-gray-900">🤖 AI Gig Worker Matches</h3>
+                            <button
+                                onClick={closeAiMatchModal}
+                                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {aiMatchModal.loading && aiMatchModal.matches.length === 0 ? (
+                            <div className="flex justify-center items-center py-12">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                                <span className="ml-3 text-lg text-gray-600">Finding the best matches...</span>
+                            </div>
+                        ) : aiMatchModal.matches.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="text-6xl mb-4">🔍</div>
+                                <h4 className="text-xl font-semibold text-gray-700 mb-2">No matches found</h4>
+                                <p className="text-gray-500">We couldn't find any gig workers that match this job's requirements.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 max-h-96 overflow-y-auto">
+                                {aiMatchModal.matches.map((match, index) => (
+                                    <div key={index} className="bg-gradient-to-r from-white to-gray-50 p-6 rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center space-x-4">
+                                                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                                    {match.name ? match.name.charAt(0).toUpperCase() : 'U'}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-lg font-semibold text-gray-900">{match.name || 'Gig Worker'}</h4>
+                                                    <p className="text-sm text-gray-600">{match.title || 'Professional'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-2xl font-bold text-green-600">{match.compatibility_score}%</div>
+                                                <div className="text-xs text-gray-500">Match Score</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <div className="text-sm font-medium text-gray-600 mb-2">Skills</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(match.skills || []).slice(0, 3).map((skill, skillIndex) => (
+                                                        <span key={skillIndex} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-lg">
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                    {(match.skills || []).length > 3 && (
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">
+                                                            +{(match.skills || []).length - 3} more
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium text-gray-600 mb-2">Experience & Rate</div>
+                                                <div className="text-sm text-gray-700">
+                                                    <div>{match.experience || 'Not specified'}</div>
+                                                    <div className="font-semibold text-green-600">${match.hourly_rate || 'N/A'}/hr</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <div className="text-sm font-medium text-gray-600 mb-1">Availability</div>
+                                                <div className="text-sm text-gray-700">{match.availability || 'Not specified'}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium text-gray-600 mb-1">Location</div>
+                                                <div className="text-sm text-gray-700">{match.location || 'Not specified'}</div>
+                                            </div>
+                                        </div>
+
+                                        {match.ai_insights && (
+                                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg mb-4">
+                                                <div className="text-sm font-medium text-purple-700 mb-2">🤖 AI Insights</div>
+                                                <p className="text-sm text-gray-700">{match.ai_insights}</p>
+                                            </div>
+                                        )}
+
+                                        <div className="flex justify-end space-x-3">
+                                            <button className="px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                                                View Profile
+                                            </button>
+                                            <button 
+                                                onClick={() => openInvitationModal(match.id, match.name, aiMatchModal.jobId, jobs.find(job => job.id === aiMatchModal.jobId)?.title || 'Job')}
+                                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                                            >
+                                                Send Invitation
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {aiMatchModal.hasMore && !aiMatchModal.loading && aiMatchModal.matches.length > 0 && (
+                            <div className="mt-6 text-center">
+                                <button
+                                    onClick={loadMoreMatches}
+                                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                >
+                                    Load More Matches
+                                </button>
+                            </div>
+                        )}
+
+                        {aiMatchModal.loading && aiMatchModal.matches.length > 0 && (
+                            <div className="mt-6 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                                <span className="text-sm text-gray-600 mt-2 block">Loading more matches...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Confirmation Modal */}
             {confirmModal.isOpen && (
                 <div className="fixed inset-0 bg-gray-600/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
@@ -989,6 +1285,73 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                     Cancel
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Job Invitation Modal */}
+            {invitationModal.isOpen && (
+                <div className="fixed inset-0 bg-gray-600/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-6 border border-gray-200 max-w-lg shadow-2xl rounded-xl bg-white/95 backdrop-blur-sm">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">💌 Send Job Invitation</h3>
+                            <button
+                                onClick={closeInvitationModal}
+                                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="mb-4">
+                            <div className="text-sm text-gray-600 mb-2">
+                                <strong>Inviting:</strong> {invitationModal.gigWorkerName}
+                            </div>
+                            <div className="text-sm text-gray-600 mb-4">
+                                <strong>For Job:</strong> {invitationModal.jobTitle}
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Personal Message (Optional)
+                            </label>
+                            <textarea
+                                value={invitationModal.message}
+                                onChange={(e) => setInvitationModal(prev => ({ ...prev, message: e.target.value }))}
+                                placeholder="Add a personal message to make your invitation more appealing..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                                rows="4"
+                                maxLength="1000"
+                            />
+                            <div className="text-xs text-gray-500 mt-1">
+                                {invitationModal.message.length}/1000 characters
+                            </div>
+                        </div>
+
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={closeInvitationModal}
+                                disabled={invitationModal.loading}
+                                className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold rounded-lg transition-colors duration-300 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={sendJobInvitation}
+                                disabled={invitationModal.loading}
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {invitationModal.loading ? (
+                                    <div className="flex items-center justify-center">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Sending...
+                                    </div>
+                                ) : (
+                                    'Send Invitation'
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>

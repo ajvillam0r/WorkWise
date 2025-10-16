@@ -28,6 +28,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\GigWorkerDashboardController;
 use App\Http\Controllers\Api\GigWorkerController;
+use App\Http\Controllers\IdentityVerificationController;
 use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\SimpleTestController;
@@ -139,6 +140,11 @@ Route::get('/gig-workers', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('browse.gig-workers');
 
+// Redirect old freelancers route to gig-workers
+Route::get('/freelancers', function () {
+    return redirect('/gig-workers');
+})->name('freelancers.redirect');
+
 // Employer Dashboard Route
 Route::get('/employer/dashboard', [EmployerDashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -210,7 +216,7 @@ Route::post('/onboarding/gig-worker/skip', [GigWorkerOnboardingController::class
     Route::get('/jobs/{job}', [GigJobController::class, 'show'])->name('jobs.show');
 
     // Gig Worker-only routes (bidding)
-    Route::middleware(['gig_worker'])->group(function () {
+    Route::middleware(['gig_worker', 'fraud.detection'])->group(function () {
         Route::post('/bids', [BidController::class, 'store'])->name('bids.store');
     });
 
@@ -287,14 +293,16 @@ Route::post('/onboarding/gig-worker/skip', [GigWorkerOnboardingController::class
     Route::post('/contracts/{contract}/cancel', [ContractController::class, 'cancel'])->name('contracts.cancel');
 
     // Payment routes - mixed permissions
-    Route::get('/projects/{project}/payment', [PaymentController::class, 'show'])->name('payment.show');
-    Route::post('/projects/{project}/payment/intent', [PaymentController::class, 'createPaymentIntent'])->name('payment.intent');
-    Route::post('/payment/confirm', [PaymentController::class, 'confirmPayment'])->name('payment.confirm');
-    Route::get('/payment/history', [PaymentController::class, 'history'])->name('payment.history');
-    Route::get('/transactions/{transaction}', [PaymentController::class, 'transaction'])->name('transactions.show');
+    Route::middleware(['fraud.detection'])->group(function () {
+        Route::get('/projects/{project}/payment', [PaymentController::class, 'show'])->name('payment.show');
+        Route::post('/projects/{project}/payment/intent', [PaymentController::class, 'createPaymentIntent'])->name('payment.intent');
+        Route::post('/payment/confirm', [PaymentController::class, 'confirmPayment'])->name('payment.confirm');
+        Route::get('/payment/history', [PaymentController::class, 'history'])->name('payment.history');
+        Route::get('/transactions/{transaction}', [PaymentController::class, 'transaction'])->name('transactions.show');
+    });
 
     // AI Recommendation Routes
-    Route::get('/ai/recommendations', [AIRecommendationController::class, 'index'])->name('ai.recommendations');
+    Route::get('/ai/recommendations', [AIRecommendationController::class, 'index'])->middleware(['auth', 'verified'])->name('ai.recommendations');
 
     // Message attachment download
     Route::get('/messages/{message}/download', [MessageController::class, 'downloadAttachment'])->name('messages.download');
@@ -321,13 +329,13 @@ Route::post('/onboarding/gig-worker/skip', [GigWorkerOnboardingController::class
 
     // Role-specific wallet routes with proper middleware
     // Employer wallet (deposits and escrow management)
-    Route::middleware(['employer'])->prefix('employer/wallet')->name('employer.wallet.')->group(function () {
+    Route::middleware(['employer', 'fraud.detection'])->prefix('employer/wallet')->name('employer.wallet.')->group(function () {
         Route::get('/', [EmployerWalletController::class, 'index'])->name('index');
         Route::post('/create-intent', [EmployerWalletController::class, 'createIntent'])->name('create-intent');
     });
 
     // Gig Worker wallet (earnings and withdrawals)
-    Route::middleware(['gig_worker'])->prefix('gig-worker/wallet')->name('gig-worker.wallet.')->group(function () {
+    Route::middleware(['gig_worker', 'fraud.detection'])->prefix('gig-worker/wallet')->name('gig-worker.wallet.')->group(function () {
         Route::get('/', [GigWorkerWalletController::class, 'index'])->name('index');
         Route::post('/withdraw', [GigWorkerWalletController::class, 'requestWithdrawal'])->name('withdraw');
     });
@@ -496,12 +504,34 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 // Gig Worker Profile Routes
 Route::get('/gig-worker/{id}/profile', [GigWorkerController::class, 'showProfile'])->name('gig-worker.profile');
 
+// Identity Verification Routes
+Route::middleware('auth')->group(function () {
+    Route::get('/identity/verify/return', [IdentityVerificationController::class, 'handleVerificationReturn'])->name('identity.verify.return');
+});
+
 // Temporary API routes via web (for debugging)
 Route::prefix('api/gig-workers')->group(function () {
     Route::get('/', [GigWorkerController::class, 'index']);
     Route::get('/skills/available', [GigWorkerController::class, 'getAvailableSkills']);
     Route::get('/stats/overview', [GigWorkerController::class, 'getStats']);
     Route::get('/{id}', [GigWorkerController::class, 'show']);
+});
+
+// Identity Verification Routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/identity/verify', function () {
+        $verification = auth()->user()->identityVerifications()->latest()->first();
+        return Inertia::render('Identity/Verify', [
+            'verification' => $verification
+        ]);
+    })->name('identity.verify');
+    
+    Route::get('/identity/status', function () {
+        $verification = auth()->user()->identityVerifications()->latest()->first();
+        return Inertia::render('Identity/VerificationStatus', [
+            'verification' => $verification
+        ]);
+    })->name('identity.status');
 });
 
 // Debug routes for Railway deployment issues

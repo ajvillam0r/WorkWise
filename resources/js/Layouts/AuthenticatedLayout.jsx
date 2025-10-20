@@ -96,6 +96,10 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // Mini chat ref for controlling it from notifications
     const miniChatRef = useRef(null);
+    
+    // MiniChatModal state
+    const [showMiniChat, setShowMiniChat] = useState(false);
+    const [miniChatTargetUserId, setMiniChatTargetUserId] = useState(null);
 
     // Fetch notifications
     const fetchNotifications = async () => {
@@ -257,13 +261,17 @@ export default function AuthenticatedLayout({ header, children }) {
         console.log('Message button clicked - notification type:', notification.type, 'targetUserId:', targetUserId);
 
         if (targetUserId) {
-            // Navigate to messages index with user parameter to open specific conversation
-            console.log('Navigating to messages with user:', targetUserId);
-            router.visit(`/messages?user=${targetUserId}`);
+            // Open the MiniChatModal with the target user
+            setMiniChatTargetUserId(targetUserId);
+            setShowMiniChat(true);
+            
+            // Use the ref to open conversation directly
+            if (miniChatRef.current) {
+                miniChatRef.current.openConversation(targetUserId);
+                miniChatRef.current.expandChat();
+            }
         } else {
-            // Navigate to messages index if no specific user
-            console.log('No targetUserId found, navigating to messages index');
-            router.visit('/messages');
+            console.log('No targetUserId found for messaging');
         }
 
         setShowingNotificationsDropdown(false);
@@ -1155,8 +1163,18 @@ export default function AuthenticatedLayout({ header, children }) {
 
             <main className="flex-1">{children}</main>
 
-            {/* Messages Page Modal removed; MiniChatModal widget removed from UI */}
-            {/* MiniChatModal component preserved for potential use elsewhere but not rendered in main layout */}
+            {/* MiniChatModal for floating messaging */}
+            {showMiniChat && (
+                <MiniChatModal
+                    ref={miniChatRef}
+                    isOpen={showMiniChat}
+                    targetUserId={miniChatTargetUserId}
+                    onUserIdProcessed={() => {
+                        // Reset target user ID after processing
+                        setMiniChatTargetUserId(null);
+                    }}
+                />
+            )}
         </div>
     );
 }

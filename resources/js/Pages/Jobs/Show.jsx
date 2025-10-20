@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SuccessModal from '@/Components/SuccessModal';
+import ErrorModal from '@/Components/ErrorModal';
 import MessagesModal from '@/Components/MessagesModal';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -121,6 +122,12 @@ export default function JobShow({ job, canBid }) {
         isOpen: false,
         message: ''
     });
+    const [errorModal, setErrorModal] = useState({
+        isOpen: false,
+        title: 'Error',
+        message: '',
+        actionButton: null
+    });
     
     const { data, setData, post, errors, reset } = useForm({
         job_id: job.id,
@@ -174,9 +181,60 @@ export default function JobShow({ job, canBid }) {
                     setError(null);
                     setConfirmModal({ ...confirmModal, isOpen: false });
 
+                    // Debug logging
+                    console.log('onSuccess callback - page.props:', page.props);
+                    console.log('page.props.errors:', page.props?.errors);
+                    console.log('page.props.flash:', page.props?.flash);
+
+                    // Check if there's an error in the validation errors (from withErrors)
+                    if (page.props?.errors) {
+                        console.log('Found errors in page.props.errors:', page.props.errors);
+                        
+                        // Check if this is an insufficient escrow error
+                        if (page.props.errors.error_type === 'insufficient_escrow') {
+                            console.log('Setting insufficient escrow error modal');
+                            setErrorModal({
+                                isOpen: true,
+                                title: 'Insufficient Escrow Balance',
+                                message: `You need ₱${page.props.errors.required_amount} to accept this proposal, but your current balance is only ₱${page.props.errors.current_balance}.`,
+                                actionButton: {
+                                    text: 'Add Funds to Escrow',
+                                    onClick: () => {
+                                        setErrorModal({ ...errorModal, isOpen: false });
+                                        router.visit('/escrow/add-funds');
+                                    }
+                                }
+                            });
+                        } else {
+                            console.log('Setting generic error:', page.props.errors.error || 'Insuffecient Escrow Balance');
+                            setError(page.props.errors.error || 'Insuffecient Escrow Balance');
+                        }
+                        return;
+                    }
+
                     // Check if there's an error in the flash messages
                     if (page.props?.flash?.error) {
-                        setError(page.props.flash.error);
+                        console.log('Found flash error:', page.props.flash.error);
+                        console.log('Flash error_type:', page.props.flash.error_type);
+                        
+                        // Check if this is an insufficient escrow error
+                        if (page.props.flash.error_type === 'insufficient_escrow') {
+                            console.log('Setting insufficient escrow error modal from flash');
+                            setErrorModal({
+                                isOpen: true,
+                                title: 'Insufficient Escrow Balance',
+                                message: `You need ₱${page.props.flash.required_amount} to accept this proposal, but your current balance is only ₱${page.props.flash.current_balance}.`,
+                                actionButton: {
+                                    text: 'Add Funds to Escrow',
+                                    onClick: () => {
+                                        setErrorModal({ ...errorModal, isOpen: false });
+                                        router.visit('/escrow/add-funds');
+                                    }
+                                }
+                            });
+                        } else {
+                            setError(page.props.flash.error);
+                        }
                         return;
                     }
 
@@ -201,10 +259,30 @@ export default function JobShow({ job, canBid }) {
                     }
                 },
                 onError: (errors) => {
-                    console.error('Bid update failed:', errors);
+                    console.error('Bid update failed - onError callback:', errors);
+                    console.log('onError - errors structure:', JSON.stringify(errors, null, 2));
                     setProcessing(false);
-                    setError(errors.error || errors.message || 'Failed to update bid status. Please try again.');
                     setConfirmModal({ ...confirmModal, isOpen: false });
+                    
+                    // Check if this is an insufficient escrow error
+                    if (errors.error_type === 'insufficient_escrow') {
+                        console.log('onError - Setting insufficient escrow error modal');
+                        setErrorModal({
+                            isOpen: true,
+                            title: 'Insufficient Escrow Balance',
+                            message: `You need ₱${errors.required_amount} to accept this proposal, but your current balance is only ₱${errors.current_balance}.`,
+                            actionButton: {
+                                text: 'Add Funds to Escrow',
+                                onClick: () => {
+                                    setErrorModal({ ...errorModal, isOpen: false });
+                                    router.visit('/escrow/add-funds');
+                                }
+                            }
+                        });
+                    } else {
+                        console.log('onError - Setting generic error:', errors.error || errors.message || 'Failed to update bid status. Please try again.');
+                        setError(errors.error || errors.message || 'Failed to update bid status. Please try again.');
+                    }
                 }
             }
         );
@@ -675,12 +753,12 @@ export default function JobShow({ job, canBid }) {
                                     </div>
                                     {!isEmployer && (
                                         <div className="mt-4 pt-4 border-t border-gray-200">
-                                            <button
+                                            {/* <button
                                                 onClick={() => handleContactEmployer(job.employer.id)}
                                                 className="w-full inline-flex justify-center items-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                             >
                                                   Contact Employer
-                                            </button>
+                                            </button> */}
                                         </div>
                                     )}
                                 </div>
@@ -724,6 +802,15 @@ export default function JobShow({ job, canBid }) {
                 onClose={() => setSuccessModal({ isOpen: false, message: '' })}
                 message={successModal.message}
                 duration={1000}
+            />
+
+            {/* Error Modal */}
+            <ErrorModal
+                isOpen={errorModal.isOpen}
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+                title={errorModal.title}
+                message={errorModal.message}
+                actionButton={errorModal.actionButton}
             />
 
             {/* Messages Modal */}

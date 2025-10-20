@@ -42,23 +42,28 @@ class ProfileController extends Controller
 
         // Handle profile picture upload to Cloudinary
         if ($request->hasFile('profile_picture')) {
-            // Delete old profile picture from Cloudinary if exists
-            if ($user->profile_picture) {
-                $publicId = $this->cloudinaryService->extractPublicId($user->profile_picture);
-                if ($publicId) {
-                    $this->cloudinaryService->deleteImage($publicId);
+            try {
+                // Delete old profile picture from Cloudinary if exists
+                if ($user->profile_picture) {
+                    $publicId = $this->cloudinaryService->extractPublicId($user->profile_picture);
+                    if ($publicId) {
+                        $this->cloudinaryService->deleteImage($publicId);
+                    }
                 }
-            }
 
-            // Upload new profile picture to Cloudinary
-            $uploadResult = $this->cloudinaryService->uploadProfilePicture(
-                $request->file('profile_picture'), 
-                $user->id
-            );
+                // Upload new profile picture to Cloudinary
+                $uploadResult = $this->cloudinaryService->uploadProfilePicture(
+                    $request->file('profile_picture'), 
+                    $user->id
+                );
 
-            if ($uploadResult) {
-                $validated['profile_picture'] = $uploadResult['secure_url'];
-            } else {
+                if ($uploadResult) {
+                    $validated['profile_picture'] = $uploadResult['secure_url'];
+                } else {
+                    return Redirect::route('profile.edit')->with('error', 'Failed to upload profile picture. Please try again.');
+                }
+            } catch (\Exception $e) {
+                \Log::error('Profile picture upload failed: ' . $e->getMessage());
                 return Redirect::route('profile.edit')->with('error', 'Failed to upload profile picture. Please try again.');
             }
         } else {
@@ -68,33 +73,43 @@ class ProfileController extends Controller
 
         // Handle legacy profile photo upload (keep for backward compatibility)
         if ($request->hasFile('profile_photo')) {
-            // Delete old profile photo if exists
-            if ($user->profile_photo) {
-                Storage::disk('public')->delete($user->profile_photo);
-            }
+            try {
+                // Delete old profile photo if exists
+                if ($user->profile_photo) {
+                    Storage::disk('public')->delete($user->profile_photo);
+                }
 
-            // Store new profile photo
-            $path = $request->file('profile_photo')->store('profile-photos', 'public');
-            $validated['profile_photo'] = $path;
+                // Store new profile photo
+                $path = $request->file('profile_photo')->store('profile-photos', 'public');
+                $validated['profile_photo'] = $path;
+            } catch (\Exception $e) {
+                \Log::error('Profile photo upload failed: ' . $e->getMessage());
+                return Redirect::route('profile.edit')->with('error', 'Failed to upload profile photo. Please try again.');
+            }
         } else {
             // Remove profile_photo from validated data if no file uploaded
             unset($validated['profile_photo']);
         }
 
         // Fill user with validated data
-        $user->fill($validated);
+        try {
+            $user->fill($validated);
 
-        // Handle email verification reset
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+            // Handle email verification reset
+            if ($user->isDirty('email')) {
+                $user->email_verified_at = null;
+            }
+
+            // Update profile completion status
+            $user->profile_completed = $this->calculateProfileCompletion($user);
+
+            $user->save();
+
+            return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        } catch (\Exception $e) {
+            \Log::error('Profile update failed: ' . $e->getMessage());
+            return Redirect::route('profile.edit')->with('error', 'Failed to update profile. Please try again.');
         }
-
-        // Update profile completion status
-        $user->profile_completed = $this->calculateProfileCompletion($user);
-
-        $user->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
     /**

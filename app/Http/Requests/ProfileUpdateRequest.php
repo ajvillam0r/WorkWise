@@ -38,7 +38,7 @@ class ProfileUpdateRequest extends FormRequest
             'profile_picture' => ['nullable', 'image', 'max:5120'], // 5MB max for Cloudinary
         ];
 
-        if ($isFreelancer) {
+        if ($isGigWorker) {
             // Freelancer-specific fields
             $rules = array_merge($rules, [
                 'professional_title' => ['required', 'string', 'max:255'],

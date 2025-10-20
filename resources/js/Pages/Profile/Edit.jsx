@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Transition } from '@headlessui/react';
+import SuccessModal from '@/Components/SuccessModal';
 
 export default function Edit({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
@@ -9,6 +10,7 @@ export default function Edit({ mustVerifyEmail, status }) {
     const [activeTab, setActiveTab] = useState('basic');
     const [skillInput, setSkillInput] = useState('');
     const [languageInput, setLanguageInput] = useState('');
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const isGigWorker = user.user_type === 'gig_worker';
     const isEmployer = user.user_type === 'employer';
@@ -42,22 +44,27 @@ export default function Edit({ mustVerifyEmail, status }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         
-        const formData = new FormData();
-        Object.keys(data).forEach(key => {
-            if (key === 'skills' || key === 'languages') {
-                formData.append(key, JSON.stringify(data[key]));
-            } else if ((key === 'profile_photo' || key === 'profile_picture') && data[key]) {
-                formData.append(key, data[key]);
-            } else {
-                formData.append(key, data[key] || '');
-            }
-        });
+        // Create a clean data object without null/undefined values for files
+        const submitData = { ...data };
+        
+        // Remove file fields if they're null to avoid sending empty files
+        if (!submitData.profile_photo) {
+            delete submitData.profile_photo;
+        }
+        if (!submitData.profile_picture) {
+            delete submitData.profile_picture;
+        }
 
-        patch(route('profile.update'), formData, {
+        patch(route('profile.update'), submitData, {
             preserveScroll: true,
             preserveState: true,
+            forceFormData: true, // This ensures proper handling of file uploads
             onError: (errors) => {
-                console.error(errors);
+                console.error('Profile update errors:', errors);
+            },
+            onSuccess: () => {
+                console.log('Profile updated successfully');
+                setShowSuccessModal(true);
             },
         });
     };
@@ -989,6 +996,13 @@ export default function Edit({ mustVerifyEmail, status }) {
                     font-family: 'Inter', sans-serif;
                 }
             `}</style>
+
+            {/* Success Modal */}
+            <SuccessModal 
+                show={showSuccessModal} 
+                onClose={() => setShowSuccessModal(false)}
+                message="Profile updated successfully!"
+            />
         </AuthenticatedLayout>
     );
 }

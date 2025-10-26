@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -63,7 +64,7 @@ class ProfileController extends Controller
                     return Redirect::route('profile.edit')->with('error', 'Failed to upload profile picture. Please try again.');
                 }
             } catch (\Exception $e) {
-                \Log::error('Profile picture upload failed: ' . $e->getMessage());
+                Log::error('Profile picture upload failed: ' . $e->getMessage());
                 return Redirect::route('profile.edit')->with('error', 'Failed to upload profile picture. Please try again.');
             }
         } else {
@@ -83,12 +84,34 @@ class ProfileController extends Controller
                 $path = $request->file('profile_photo')->store('profile-photos', 'public');
                 $validated['profile_photo'] = $path;
             } catch (\Exception $e) {
-                \Log::error('Profile photo upload failed: ' . $e->getMessage());
+                Log::error('Profile photo upload failed: ' . $e->getMessage());
                 return Redirect::route('profile.edit')->with('error', 'Failed to upload profile photo. Please try again.');
             }
         } else {
             // Remove profile_photo from validated data if no file uploaded
             unset($validated['profile_photo']);
+        }
+
+        // Handle skills array properly
+        if (isset($validated['skills'])) {
+            if (is_string($validated['skills'])) {
+                // If skills is a string, convert to array
+                $validated['skills'] = array_filter(array_map('trim', explode(',', $validated['skills'])));
+            } elseif (is_array($validated['skills'])) {
+                // If skills is already an array, clean it up
+                $validated['skills'] = array_filter(array_map('trim', $validated['skills']));
+            }
+        }
+
+        // Handle languages array properly
+        if (isset($validated['languages'])) {
+            if (is_string($validated['languages'])) {
+                // If languages is a string, convert to array
+                $validated['languages'] = array_filter(array_map('trim', explode(',', $validated['languages'])));
+            } elseif (is_array($validated['languages'])) {
+                // If languages is already an array, clean it up
+                $validated['languages'] = array_filter(array_map('trim', $validated['languages']));
+            }
         }
 
         // Fill user with validated data
@@ -103,11 +126,12 @@ class ProfileController extends Controller
             // Update profile completion status
             $user->profile_completed = $this->calculateProfileCompletion($user);
 
+            // Save the user
             $user->save();
 
             return Redirect::route('profile.edit')->with('status', 'profile-updated');
         } catch (\Exception $e) {
-            \Log::error('Profile update failed: ' . $e->getMessage());
+            Log::error('Profile update failed: ' . $e->getMessage());
             return Redirect::route('profile.edit')->with('error', 'Failed to update profile. Please try again.');
         }
     }
@@ -119,7 +143,7 @@ class ProfileController extends Controller
     {
         $requiredFields = ['first_name', 'last_name', 'email', 'bio', 'barangay'];
 
-        if ($user->user_type === 'freelancer') {
+        if ($user->user_type === 'gig_worker') {
             $requiredFields = array_merge($requiredFields, [
                 'professional_title', 'hourly_rate', 'skills'
             ]);

@@ -561,7 +561,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Post a Job
                                         </Link>
-                                        <Link
+                                        {/* <Link
                                             href="/freelancers"
                                             className={`text-sm font-medium transition-colors ${
                                                 window.route.current('freelancers.*')
@@ -570,8 +570,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             }`}
                                         >
                                             Browse Freelancers
-                                        </Link>
-                                        <Link
+                                        </Link> */}
+                                        {/* <Link
                                             href="/ai/recommendations"
                                             className={`text-sm font-medium transition-colors ${
                                                 window.route.current('ai.*')
@@ -580,7 +580,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             }`}
                                         >
                                             AI Talent Recommendations
-                                        </Link>
+                                        </Link> */}
                                     </>
                                 )}
 
@@ -596,7 +596,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Projects
                                 </Link>
 
-                                <Link
+                                {/* <Link
                                     href="/messages"
                                     className={`text-sm font-medium transition-colors ${
                                         window.route.current('messages.*')
@@ -605,7 +605,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     }`}
                                 >
                                     Messages
-                                </Link>
+                                </Link> */}
                             </div>
                         </div>
 
@@ -796,7 +796,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                             {/* Enhanced Messages Dropdown */}
                             <div className="relative">
-                                <button
+                                {/* <button
                                     onClick={handleMessagesButtonClick}
                                     className="relative p-2 text-gray-400 hover:text-gray-600 transition-all duration-200 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                                 >
@@ -808,7 +808,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             {messagesUnreadCount > 99 ? '99+' : messagesUnreadCount}
                                         </span>
                                     )}
-                                </button>
+                                </button> */}
 
                                 {/* Enhanced Messages Dropdown */}
                                 {showingMessagesDropdown && (

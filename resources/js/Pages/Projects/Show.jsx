@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SuccessModal from '@/Components/SuccessModal';
-import MessagesModal from '@/Components/MessagesModal';
+import MiniChatModal from '@/Components/MiniChatModal';
 import { formatDistanceToNow } from 'date-fns';
 
 // Confirmation Modal Component
@@ -93,8 +93,9 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [showCompletionForm, setShowCompletionForm] = useState(false);
     const [completionError, setCompletionError] = useState(null);
-    const [showMessagesModal, setShowMessagesModal] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [showMiniChat, setShowMiniChat] = useState(false);
+    const [miniChatTargetUserId, setMiniChatTargetUserId] = useState(null);
+    const miniChatRef = useRef(null);
 
     // Helper function to safely parse required_skills
     const parseSkills = (skills) => {
@@ -217,8 +218,8 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
     };
 
     const handleSendMessage = (userId) => {
-        setSelectedUserId(userId);
-        setShowMessagesModal(true);
+        setMiniChatTargetUserId(userId);
+        setShowMiniChat(true);
     };
 
     const submitReview = (e) => {
@@ -770,12 +771,17 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
                 showProcessing={!successModal.message.toLowerCase().includes('payment')}
             />
 
-            {/* Messages Modal */}
-            <MessagesModal
-                isOpen={showMessagesModal}
-                onClose={() => setShowMessagesModal(false)}
-                initialUserId={selectedUserId}
-            />
+            {/* Mini Chat Modal */}
+            {showMiniChat && (
+                <MiniChatModal
+                    ref={miniChatRef}
+                    isOpen={showMiniChat}
+                    targetUserId={miniChatTargetUserId}
+                    onUserIdProcessed={() => {
+                        setMiniChatTargetUserId(null);
+                    }}
+                />
+            )}
 
             <style>{`
                 body {

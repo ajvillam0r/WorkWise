@@ -840,15 +840,15 @@ class SkillRecommendationStat
         return array_values(array_unique($out));
     }
 
-    public function recordAcceptance(string $type, string $value, array $context = []): void
-    {
-        SkillRecommendationStat::query()->updateOrCreate(
-            ['type' => $type, 'value' => $value],
-            [
-                'accepted_count' => \DB::raw('accepted_count + 1'),
-                'last_accepted_at' => now(),
-                'context' => $context,
-            ]
-        );
-    }
+    // public function recordAcceptance(string $type, string $value, array $context = []): void
+    // {
+    //     SkillRecommendationStat::query()->updateOrCreate(
+    //         ['type' => $type, 'value' => $value],
+    //         [
+    //             'accepted_count' => \DB::raw('accepted_count + 1'),
+    //             'last_accepted_at' => now(),
+    //             'context' => $context,
+    //         ]
+    //     );
+    // }
 }

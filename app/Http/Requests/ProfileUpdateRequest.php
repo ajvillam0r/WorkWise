@@ -16,7 +16,7 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         $user = $this->user();
-        $isGigWorker = $user->user_type === 'freelancer';
+        $isGigWorker = $user->user_type === 'gig_worker';
 
         $rules = [
             // Basic information
@@ -39,19 +39,19 @@ class ProfileUpdateRequest extends FormRequest
         ];
 
         if ($isGigWorker) {
-            // Freelancer-specific fields
+            // Gig worker-specific fields
             $rules = array_merge($rules, [
-                'professional_title' => ['required', 'string', 'max:255'],
-                'hourly_rate' => ['required', 'numeric', 'min:5', 'max:500'],
-                'experience_level' => ['required', 'in:beginner,intermediate,expert'],
-                'skills' => ['required', 'array', 'min:1', 'max:15'],
+                'professional_title' => ['nullable', 'string', 'max:255'],
+                'hourly_rate' => ['nullable', 'numeric', 'min:5', 'max:500'],
+                'experience_level' => ['nullable', 'in:beginner,intermediate,expert'],
+                'skills' => ['nullable', 'array', 'max:15'],
                 'skills.*' => ['string', 'max:50'],
                 'languages' => ['nullable', 'array', 'max:10'],
                 'languages.*' => ['string', 'max:50'],
                 'portfolio_url' => ['nullable', 'url', 'max:255'],
             ]);
         } else {
-            // Client-specific fields
+            // Employer-specific fields
             $rules = array_merge($rules, [
                 'company_name' => ['nullable', 'string', 'max:255'],
                 'work_type_needed' => ['nullable', 'string', 'max:255'],

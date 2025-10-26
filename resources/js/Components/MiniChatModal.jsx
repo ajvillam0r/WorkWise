@@ -8,7 +8,7 @@ const MiniChatModal = forwardRef(({ isOpen = true, unreadCount = 0, targetUserId
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
-    const [isMinimized, setIsMinimized] = useState(true);
+    const [isMinimized, setIsMinimized] = useState(false);
     const [attachment, setAttachment] = useState(null);
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);

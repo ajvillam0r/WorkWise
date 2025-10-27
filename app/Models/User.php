@@ -52,6 +52,28 @@ class User extends Authenticatable
         'is_admin',
         'google_id',
         'avatar',
+        // Enhanced gig worker fields
+        'broad_category',
+        'specific_services',
+        'skills_with_experience',
+        'working_hours',
+        'timezone',
+        'preferred_communication',
+        'availability_notes',
+        'id_type',
+        'id_front_image',
+        'id_back_image',
+        'id_verification_status',
+        'id_verification_notes',
+        'id_verified_at',
+        'tutorial_completed',
+        'onboarding_step',
+        // KYC Address fields
+        'country',
+        'street_address',
+        'city',
+        'postal_code',
+        'address_verified_at',
     ];
 
     /**
@@ -82,6 +104,14 @@ class User extends Authenticatable
             'stripe_onboarded_at' => 'datetime',
             'escrow_balance' => 'decimal:2',
             'is_admin' => 'boolean',
+            'specific_services' => 'array',
+            'skills_with_experience' => 'array',
+            'working_hours' => 'array',
+            'preferred_communication' => 'array',
+            'id_verified_at' => 'datetime',
+            'tutorial_completed' => 'boolean',
+            'onboarding_step' => 'integer',
+            'address_verified_at' => 'datetime',
         ];
     }
 
@@ -268,5 +298,13 @@ class User extends Authenticatable
     public function deposits(): HasMany
     {
         return $this->hasMany(Deposit::class);
+    }
+
+    /**
+     * Get the user's portfolio items
+     */
+    public function portfolioItems(): HasMany
+    {
+        return $this->hasMany(PortfolioItem::class)->orderBy('display_order');
     }
 }

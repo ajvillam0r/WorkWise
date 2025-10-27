@@ -277,6 +277,7 @@ class FraudDetectionService
     {
         $riskScore = 0;
         $indicators = [];
+        $data = [];
 
         if (!$request) {
             return [
@@ -287,13 +288,30 @@ class FraudDetectionService
         }
 
         $currentIP = $request->ip();
-        $userLocation = $user->location ?? 'Philippines';
+        $registrationCountry = $user->country ?? 'Philippines';
+        
+        // Check for country mismatch between registration and KYC address
+        if ($user->street_address && $user->country) {
+            // User has completed KYC with address
+            $data['registration_country'] = $registrationCountry;
+            $data['kyc_country'] = $user->country;
+            
+            // If countries don't match, flag for review
+            if ($registrationCountry !== $user->country) {
+                $riskScore += 50;
+                $indicators[] = "Country mismatch: Registered from {$registrationCountry} but KYC address is in {$user->country}";
+            }
+        }
 
-        // Check for IP location mismatch
+        // Check for IP location mismatch with registration country
         $ipInfo = $this->getIPGeolocation($currentIP);
-        if ($ipInfo && $ipInfo['country'] !== 'Philippines' && strpos($userLocation, 'Philippines') !== false) {
-            $riskScore += 60;
-            $indicators[] = 'Geographic location mismatch detected';
+        if ($ipInfo && isset($ipInfo['country'])) {
+            $data['current_ip_country'] = $ipInfo['country'];
+            
+            if ($ipInfo['country'] !== $registrationCountry) {
+                $riskScore += 40;
+                $indicators[] = "Current IP country ({$ipInfo['country']}) differs from registration country ({$registrationCountry})";
+            }
         }
 
         // Check for rapid IP changes
@@ -308,15 +326,15 @@ class FraudDetectionService
             $indicators[] = 'Multiple IP addresses in short time frame';
         }
 
+        // Add additional data
+        $data['current_ip'] = $currentIP;
+        $data['ip_info'] = $ipInfo;
+        $data['recent_ips'] = $recentIPs;
+        
         return [
             'risk_score' => min(100, $riskScore),
             'indicators' => $indicators,
-            'data' => [
-                'current_ip' => $currentIP,
-                'ip_info' => $ipInfo,
-                'user_location' => $userLocation,
-                'recent_ips' => $recentIPs,
-            ]
+            'data' => $data
         ];
     }
 

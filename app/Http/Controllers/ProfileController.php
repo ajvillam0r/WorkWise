@@ -27,8 +27,12 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        // Load portfolio items for gig workers
+        $user = $request->user();
+        $user->load('portfolioItems');
+        
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
         ]);
     }
@@ -72,20 +76,27 @@ class ProfileController extends Controller
             unset($validated['profile_picture']);
         }
 
-        // Handle legacy profile photo upload (keep for backward compatibility)
+        // Handle legacy profile photo upload (migrate to Cloudinary)
         if ($request->hasFile('profile_photo')) {
             try {
-                // Delete old profile photo if exists
-                if ($user->profile_photo) {
-                    Storage::disk('public')->delete($user->profile_photo);
+                // Delete old profile photo from Cloudinary if exists
+                if ($user->profile_photo && str_contains($user->profile_photo, 'cloudinary')) {
+                    $publicId = $this->cloudinaryService->extractPublicId($user->profile_photo);
+                    if ($publicId) {
+                        $this->cloudinaryService->deleteImage($publicId);
+                    }
                 }
 
-                // Store new profile photo
-                $path = $request->file('profile_photo')->store('profile-photos', 'public');
-                $validated['profile_photo'] = $path;
+                // Upload new profile photo to Cloudinary
+                $result = $this->cloudinaryService->uploadProfilePicture($request->file('profile_photo'), $user->id);
+                if ($result) {
+                    $validated['profile_photo'] = $result['secure_url'];
+                } else {
+                    return Redirect::route('profile.edit')->with('error', 'Failed to upload profile photo. Please try again.');
+                }
             } catch (\Exception $e) {
                 Log::error('Profile photo upload failed: ' . $e->getMessage());
-                return Redirect::route('profile.edit')->with('error', 'Failed to upload profile photo. Please try again.');
+                return Redirect::route('profile.edit')->with('error', 'Failed to upload profile photo.');
             }
         } else {
             // Remove profile_photo from validated data if no file uploaded

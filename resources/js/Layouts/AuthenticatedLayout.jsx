@@ -437,7 +437,10 @@ export default function AuthenticatedLayout({ header, children }) {
                 }
             }
         } catch (error) {
-            console.error('Error checking for new notifications:', error);
+            // Silently handle 401 errors (user may not have full access yet)
+            if (error.response?.status !== 401) {
+                console.error('Error checking for new notifications:', error);
+            }
         }
     };
 
@@ -461,7 +464,10 @@ export default function AuthenticatedLayout({ header, children }) {
                 }
             }
         } catch (error) {
-            console.error('Error checking for new messages:', error);
+            // Silently handle 401 errors (user may not have full access yet)
+            if (error.response?.status !== 401) {
+                console.error('Error checking for new messages:', error);
+            }
         }
     };
 
@@ -967,9 +973,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Dropdown>
                                     <Dropdown.Trigger>
                                         <button className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                                                {user.first_name ? user.first_name.charAt(0).toUpperCase() : user.name.charAt(0).toUpperCase()}
-                                            </div>
+                                            {user.profile_photo ? (
+                                                <img 
+                                                    src={user.profile_photo} 
+                                                    alt={user.first_name || user.name}
+                                                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                                                />
+                                            ) : user.profile_picture ? (
+                                                <img 
+                                                    src={user.profile_picture} 
+                                                    alt={user.first_name || user.name}
+                                                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                                                />
+                                            ) : (
+                                                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                                                    {user.first_name ? user.first_name.charAt(0).toUpperCase() : user.name.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
                                             <span className="hidden md:block">{user.first_name || user.name}</span>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1127,9 +1147,23 @@ export default function AuthenticatedLayout({ header, children }) {
 
                     <div className="border-t border-gray-200 px-4 py-3">
                         <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-                                {user.first_name ? user.first_name.charAt(0).toUpperCase() : user.name.charAt(0).toUpperCase()}
-                            </div>
+                            {user.profile_photo ? (
+                                <img 
+                                    src={user.profile_photo} 
+                                    alt={user.first_name || user.name}
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                                />
+                            ) : user.profile_picture ? (
+                                <img 
+                                    src={user.profile_picture} 
+                                    alt={user.first_name || user.name}
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+                                    {user.first_name ? user.first_name.charAt(0).toUpperCase() : user.name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                             <div>
                                 <div className="text-sm font-medium text-gray-900">{user.first_name ? `${user.first_name} ${user.last_name}` : user.name}</div>
                                 <div className="text-xs text-gray-500 capitalize">{user.user_type}</div>

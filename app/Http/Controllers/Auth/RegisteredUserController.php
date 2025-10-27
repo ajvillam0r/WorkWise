@@ -58,7 +58,7 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', Rules\Password::defaults()],
             'password_confirmation' => 'required|same:password',
-            'barangay' => 'nullable|string|max:255',
+            'country' => 'required|string|max:100',
             'user_type' => 'required|in:gig_worker,employer',
             'terms_agreed' => 'required|accepted',
             'marketing_emails' => 'boolean',
@@ -70,7 +70,7 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'user_type' => $request->user_type,
-            'barangay' => $request->barangay ?: 'Not specified', // Default value if not provided
+            'country' => $request->country,
         ];
 
         $user = User::create($userData);

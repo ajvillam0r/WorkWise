@@ -9,7 +9,6 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\GigWorkerOnboardingController;
-use App\Http\Controllers\FreelancerOnboardingController;
 use App\Http\Controllers\ClientOnboardingController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIRecommendationController;
@@ -22,6 +21,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminAnalyticsController;
 use App\Http\Controllers\AdminVerificationController;
+use App\Http\Controllers\AdminIdVerificationController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminFraudController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -248,9 +248,9 @@ Route::get('/jobs', [GigJobController::class, 'index'])->middleware(['auth.redir
 
 Route::middleware('auth')->group(function () {
     // Onboarding routes
-    Route::get('/onboarding/gig-worker', [FreelancerOnboardingController::class, 'show'])->name('gig-worker.onboarding');
-    Route::post('/onboarding/gig-worker', [FreelancerOnboardingController::class, 'store']);
-    Route::post('/onboarding/gig-worker/skip', [FreelancerOnboardingController::class, 'skip'])->name('gig-worker.onboarding.skip');
+    Route::get('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'show'])->name('gig-worker.onboarding');
+    Route::post('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'store']);
+    Route::post('/onboarding/gig-worker/skip', [GigWorkerOnboardingController::class, 'skip'])->name('gig-worker.onboarding.skip');
 
     Route::get('/onboarding/employer', [ClientOnboardingController::class, 'show'])->name('employer.onboarding');
     Route::post('/onboarding/employer', [ClientOnboardingController::class, 'store']);
@@ -456,6 +456,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('/reports/{report}/status', [AdminReportController::class, 'updateStatus'])->name('reports.updateStatus');
     Route::get('/reports-analytics', [AdminReportController::class, 'fraudAnalytics'])->name('reports.analytics');
     Route::patch('/reports/bulk-update', [AdminReportController::class, 'bulkUpdate'])->name('reports.bulkUpdate');
+
+    // ID Verification management
+    Route::get('/id-verifications', [AdminIdVerificationController::class, 'index'])->name('id-verifications.index');
+    Route::get('/id-verifications/{user}', [AdminIdVerificationController::class, 'show'])->name('id-verifications.show');
+    Route::post('/id-verifications/{user}/approve', [AdminIdVerificationController::class, 'approve'])->name('id-verifications.approve');
+    Route::post('/id-verifications/{user}/reject', [AdminIdVerificationController::class, 'reject'])->name('id-verifications.reject');
+    Route::post('/id-verifications/{user}/request-resubmit', [AdminIdVerificationController::class, 'requestResubmit'])->name('id-verifications.requestResubmit');
 
     // Analytics
     Route::get('/analytics', [AdminAnalyticsController::class, 'overview'])->name('analytics.overview');

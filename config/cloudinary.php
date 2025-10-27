@@ -49,4 +49,68 @@ return [
         'allowed_formats' => ['jpg', 'jpeg', 'png', 'webp'],
         'max_file_size' => 5000000, // 5MB in bytes
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | ID Verification Settings
+    |--------------------------------------------------------------------------
+    |
+    | Settings for ID verification image uploads (secure storage)
+    |
+    */
+    'id_verification' => [
+        'folder' => 'workwise/id_verification',
+        'access_type' => 'authenticated', // Restricted access
+        'allowed_formats' => ['jpg', 'jpeg', 'png', 'pdf'],
+        'max_file_size' => 10485760, // 10MB in bytes
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Portfolio Settings
+    |--------------------------------------------------------------------------
+    |
+    | Settings for portfolio file uploads
+    |
+    */
+    'portfolio' => [
+        'folder' => 'workwise/portfolios',
+        'allowed_formats' => ['jpg', 'jpeg', 'png', 'pdf', 'webp'],
+        'max_file_size' => 10485760, // 10MB in bytes
+        'transformation' => [
+            'width' => 1200,
+            'height' => 900,
+            'crop' => 'limit',
+            'quality' => 'auto',
+            'format' => 'auto'
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Resume Settings
+    |--------------------------------------------------------------------------
+    |
+    | Settings for resume file uploads
+    |
+    */
+    'resumes' => [
+        'folder' => 'workwise/resumes',
+        'allowed_formats' => ['pdf', 'doc', 'docx'],
+        'max_file_size' => 5242880, // 5MB in bytes
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Message Attachments Settings
+    |--------------------------------------------------------------------------
+    |
+    | Settings for message attachment uploads
+    |
+    */
+    'message_attachments' => [
+        'folder' => 'workwise/messages',
+        'allowed_formats' => ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'zip', 'rar'],
+        'max_file_size' => 10485760, // 10MB in bytes
+    ],
 ];

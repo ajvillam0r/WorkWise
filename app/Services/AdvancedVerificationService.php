@@ -236,23 +236,36 @@ class AdvancedVerificationService
      */
     private function verifyAddress(User $user, array $data): array
     {
-        $address = $data['address'] ?? $user->location;
-        
-        if (!$address) {
+        // Check if user has complete address from KYC
+        if (!$user->street_address || !$user->city || !$user->postal_code || !$user->country) {
             return [
                 'status' => 'failed',
-                'message' => 'Address required'
+                'message' => 'Complete address required (street, city, postal code, country)'
             ];
         }
 
+        // Build complete address string
+        $completeAddress = trim(implode(', ', array_filter([
+            $user->street_address,
+            $user->barangay,
+            $user->city,
+            $user->postal_code,
+            $user->country
+        ])));
+
         // Verify address using geolocation service
-        $addressValidation = $this->validateAddress($address);
+        $addressValidation = $this->validateAddress($completeAddress);
+        
+        // Add KYC address verification timestamp check
+        $addressValidation['kyc_verified'] = !is_null($user->address_verified_at);
+        $addressValidation['kyc_verified_at'] = $user->address_verified_at;
 
         return [
             'status' => $addressValidation['is_valid'] ? 'completed' : 'failed',
             'confidence_score' => $addressValidation['confidence'] ?? 0.0,
             'verified_by' => 'system',
-            'validation_result' => $addressValidation
+            'validation_result' => $addressValidation,
+            'complete_address' => $completeAddress
         ];
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\User;
+use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -11,6 +12,13 @@ use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
+    protected $cloudinaryService;
+
+    public function __construct(CloudinaryService $cloudinaryService)
+    {
+        $this->cloudinaryService = $cloudinaryService;
+    }
+
     /**
      * Display message inbox
      */
@@ -113,11 +121,17 @@ class MessageController extends Controller
         $attachmentPath = null;
         $attachmentName = null;
 
-        // Handle file attachment
+        // Handle file attachment upload to Cloudinary
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $attachmentName = $file->getClientOriginalName();
-            $attachmentPath = $file->store('message-attachments', 'public');
+            $result = $this->cloudinaryService->uploadMessageAttachment($file, auth()->id(), null);
+            if ($result) {
+                $attachmentPath = $result['secure_url'];
+                $attachmentName = $result['original_filename'];
+            } else {
+                return back()->withErrors(['attachment' => 'Failed to upload attachment. Please try again.']);
+            }
         }
 
         $message = Message::create([

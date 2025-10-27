@@ -34,6 +34,23 @@ export default function Edit({ mustVerifyEmail, status }) {
         languages: user.languages || [],
         portfolio_url: user.portfolio_url || '',
 
+        // Gig worker onboarding fields
+        broad_category: user.broad_category || '',
+        specific_services: user.specific_services || [],
+        skills_with_experience: user.skills_with_experience || [],
+        working_hours: user.working_hours || {
+            monday: { enabled: true, start: '09:00', end: '17:00' },
+            tuesday: { enabled: true, start: '09:00', end: '17:00' },
+            wednesday: { enabled: true, start: '09:00', end: '17:00' },
+            thursday: { enabled: true, start: '09:00', end: '17:00' },
+            friday: { enabled: true, start: '09:00', end: '17:00' },
+            saturday: { enabled: false, start: '09:00', end: '17:00' },
+            sunday: { enabled: false, start: '09:00', end: '17:00' },
+        },
+        timezone: user.timezone || 'Asia/Manila',
+        preferred_communication: user.preferred_communication || [],
+        availability_notes: user.availability_notes || '',
+
         // Client fields
         company_name: user.company_name || '',
         work_type_needed: user.work_type_needed || '',
@@ -138,6 +155,11 @@ export default function Edit({ mustVerifyEmail, status }) {
     const tabs = [
         { id: 'basic', name: 'Basic Info', icon: '👤' },
         { id: 'professional', name: isGigWorker ? 'Professional' : 'Business', icon: isGigWorker ? '💼' : '🏢' },
+        ...(isGigWorker ? [
+            { id: 'skills', name: 'Skills & Services', icon: '⭐' },
+            { id: 'availability', name: 'Availability', icon: '📅' },
+            { id: 'portfolio', name: 'Portfolio', icon: '🎨' },
+        ] : []),
         { id: 'security', name: 'Security', icon: '🔒' },
     ];
 
@@ -702,6 +724,276 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                 )}
                                             </div>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Skills & Services Tab */}
+                                {activeTab === 'skills' && isGigWorker && (
+                                    <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
+                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Skills & Services</h3>
+                                        <div className="space-y-6">
+                                            {/* Broad Category */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Category
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={data.broad_category}
+                                                    onChange={(e) => setData('broad_category', e.target.value)}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="e.g., Creative & Design Services"
+                                                />
+                                            </div>
+
+                                            {/* Specific Services */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Specific Services
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {data.specific_services.map((service, index) => (
+                                                        <div key={index} className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={service}
+                                                                onChange={(e) => {
+                                                                    const newServices = [...data.specific_services];
+                                                                    newServices[index] = e.target.value;
+                                                                    setData('specific_services', newServices);
+                                                                }}
+                                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                                                                placeholder="Service name"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setData('specific_services', 
+                                                                        data.specific_services.filter((_, i) => i !== index)
+                                                                    );
+                                                                }}
+                                                                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setData('specific_services', [...data.specific_services, ''])}
+                                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                                                    >
+                                                        + Add Service
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Skills with Experience */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Skills with Experience Level
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {data.skills_with_experience.map((item, index) => (
+                                                        <div key={index} className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={item.skill}
+                                                                onChange={(e) => {
+                                                                    const newSkills = [...data.skills_with_experience];
+                                                                    newSkills[index].skill = e.target.value;
+                                                                    setData('skills_with_experience', newSkills);
+                                                                }}
+                                                                placeholder="Skill name"
+                                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                                                            />
+                                                            <select
+                                                                value={item.experience_level}
+                                                                onChange={(e) => {
+                                                                    const newSkills = [...data.skills_with_experience];
+                                                                    newSkills[index].experience_level = e.target.value;
+                                                                    setData('skills_with_experience', newSkills);
+                                                                }}
+                                                                className="px-4 py-2 border border-gray-300 rounded-lg"
+                                                            >
+                                                                <option value="beginner">Beginner</option>
+                                                                <option value="intermediate">Intermediate</option>
+                                                                <option value="expert">Expert</option>
+                                                            </select>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setData('skills_with_experience', 
+                                                                        data.skills_with_experience.filter((_, i) => i !== index)
+                                                                    );
+                                                                }}
+                                                                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setData('skills_with_experience', [
+                                                            ...data.skills_with_experience, 
+                                                            { skill: '', experience_level: 'intermediate' }
+                                                        ])}
+                                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                                                    >
+                                                        + Add Skill
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Availability Tab */}
+                                {activeTab === 'availability' && isGigWorker && (
+                                    <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
+                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Availability & Communication</h3>
+                                        <div className="space-y-6">
+                                            {/* Working Hours */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                    Working Hours
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {Object.keys(data.working_hours).map((day) => (
+                                                        <div key={day} className="flex items-center gap-4">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={data.working_hours[day].enabled}
+                                                                onChange={(e) => {
+                                                                    setData('working_hours', {
+                                                                        ...data.working_hours,
+                                                                        [day]: { ...data.working_hours[day], enabled: e.target.checked }
+                                                                    });
+                                                                }}
+                                                                className="w-5 h-5 text-blue-600 rounded"
+                                                            />
+                                                            <span className="w-24 capitalize font-medium">{day}</span>
+                                                            {data.working_hours[day].enabled && (
+                                                                <>
+                                                                    <input
+                                                                        type="time"
+                                                                        value={data.working_hours[day].start}
+                                                                        onChange={(e) => {
+                                                                            setData('working_hours', {
+                                                                                ...data.working_hours,
+                                                                                [day]: { ...data.working_hours[day], start: e.target.value }
+                                                                            });
+                                                                        }}
+                                                                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                                                                    />
+                                                                    <span className="text-gray-600">to</span>
+                                                                    <input
+                                                                        type="time"
+                                                                        value={data.working_hours[day].end}
+                                                                        onChange={(e) => {
+                                                                            setData('working_hours', {
+                                                                                ...data.working_hours,
+                                                                                [day]: { ...data.working_hours[day], end: e.target.value }
+                                                                            });
+                                                                        }}
+                                                                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                                                                    />
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Timezone */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Timezone
+                                                </label>
+                                                <select
+                                                    value={data.timezone}
+                                                    onChange={(e) => setData('timezone', e.target.value)}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                >
+                                                    <option value="Asia/Manila">Asia/Manila (PHT)</option>
+                                                    <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                                                    <option value="America/New_York">America/New_York (EST)</option>
+                                                    <option value="Europe/London">Europe/London (GMT)</option>
+                                                </select>
+                                            </div>
+
+                                            {/* Preferred Communication */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Preferred Communication Methods
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {['email', 'chat', 'video_call', 'phone'].map((method) => (
+                                                        <label key={method} className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={data.preferred_communication.includes(method)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setData('preferred_communication', [...data.preferred_communication, method]);
+                                                                    } else {
+                                                                        setData('preferred_communication', 
+                                                                            data.preferred_communication.filter(m => m !== method)
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                className="w-5 h-5 text-blue-600 rounded"
+                                                            />
+                                                            <span className="capitalize">{method.replace('_', ' ')}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Availability Notes */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Availability Notes
+                                                </label>
+                                                <textarea
+                                                    value={data.availability_notes}
+                                                    onChange={(e) => setData('availability_notes', e.target.value)}
+                                                    rows={4}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="Any additional notes about your availability..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Portfolio Tab */}
+                                {activeTab === 'portfolio' && isGigWorker && (
+                                    <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
+                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Portfolio</h3>
+                                        <p className="text-sm text-gray-600 mb-4">
+                                            Your portfolio items are managed separately during onboarding. 
+                                        </p>
+                                        {user.portfolio_items && user.portfolio_items.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {user.portfolio_items.map((item, index) => (
+                                                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                                                        <h4 className="font-semibold text-lg mb-2">{item.title}</h4>
+                                                        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                                                        {item.project_url && (
+                                                            <a href={item.project_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                                                                View Project →
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                                                <p className="text-gray-500">No portfolio items yet. Add them during your onboarding process.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

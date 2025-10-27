@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -9,6 +10,13 @@ use Inertia\Response;
 
 class FreelancerOnboardingController extends Controller
 {
+    protected $cloudinaryService;
+
+    public function __construct(CloudinaryService $cloudinaryService)
+    {
+        $this->cloudinaryService = $cloudinaryService;
+    }
+
     /**
      * Show the freelancer onboarding page
      */
@@ -52,10 +60,12 @@ class FreelancerOnboardingController extends Controller
             'profile_photo' => 'nullable|image|max:2048',
         ]);
 
-        // Handle profile photo upload
+        // Handle profile photo upload to Cloudinary
         if ($request->hasFile('profile_photo')) {
-            $path = $request->file('profile_photo')->store('profile-photos', 'public');
-            $validated['profile_photo'] = $path;
+            $result = $this->cloudinaryService->uploadProfilePicture($request->file('profile_photo'), $user->id);
+            if ($result) {
+                $validated['profile_photo'] = $result['secure_url'];
+            }
         }
 
         // Update user profile

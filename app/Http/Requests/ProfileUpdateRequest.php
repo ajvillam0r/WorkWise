@@ -49,6 +49,16 @@ class ProfileUpdateRequest extends FormRequest
                 'languages' => ['nullable', 'array', 'max:10'],
                 'languages.*' => ['string', 'max:50'],
                 'portfolio_url' => ['nullable', 'url', 'max:255'],
+                
+                // Gig worker onboarding fields
+                'broad_category' => ['nullable', 'string', 'max:255'],
+                'specific_services' => ['nullable', 'array'],
+                'specific_services.*' => ['string', 'max:255'],
+                'skills_with_experience' => ['nullable', 'array'],
+                'working_hours' => ['nullable', 'array'],
+                'timezone' => ['nullable', 'string', 'max:255'],
+                'preferred_communication' => ['nullable', 'array'],
+                'availability_notes' => ['nullable', 'string', 'max:500'],
             ]);
         } else {
             // Employer-specific fields

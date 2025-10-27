@@ -55,8 +55,8 @@ class GigWorkerOnboardingController extends Controller
 
         \Log::info('Gig worker onboarding started', [
             'user_id' => $user->id,
-            'has_profile_photo' => $request->hasFile('profile_photo'),
-            'profile_photo_size' => $request->hasFile('profile_photo') ? $request->file('profile_photo')->getSize() : 0,
+            'has_profile_picture' => $request->hasFile('profile_picture'),
+            'profile_picture_size' => $request->hasFile('profile_picture') ? $request->file('profile_picture')->getSize() : 0,
             'has_id_front' => $request->hasFile('id_front_image'),
             'has_id_back' => $request->hasFile('id_back_image'),
             'portfolio_count' => count($request->input('portfolio_items', [])),
@@ -69,7 +69,7 @@ class GigWorkerOnboardingController extends Controller
             'professional_title' => 'required|string|max:255',
             'hourly_rate' => 'required|numeric|min:5|max:10000',
             'bio' => 'required|string|min:50|max:2000',
-            'profile_photo' => 'nullable|image|max:2048',
+            'profile_picture' => 'nullable|image|max:2048',
 
             // Step 2: Hierarchical Skills
             'broad_category' => 'required|string|max:255',
@@ -106,16 +106,16 @@ class GigWorkerOnboardingController extends Controller
             'availability_notes' => 'nullable|string|max:500',
         ]);
 
-        // Handle profile photo upload to Cloudinary
-        if ($request->hasFile('profile_photo')) {
-            \Log::info('Uploading profile photo to Cloudinary', ['user_id' => $user->id]);
-            $result = $this->cloudinaryService->uploadProfilePicture($request->file('profile_photo'), $user->id);
+        // Handle profile picture upload to Cloudinary
+        if ($request->hasFile('profile_picture')) {
+            \Log::info('Uploading profile picture to Cloudinary', ['user_id' => $user->id]);
+            $result = $this->cloudinaryService->uploadProfilePicture($request->file('profile_picture'), $user->id);
             if ($result) {
-                $validated['profile_photo'] = $result['secure_url'];
-                \Log::info('Profile photo uploaded successfully', ['url' => $result['secure_url']]);
+                $validated['profile_picture'] = $result['secure_url'];
+                \Log::info('Profile picture uploaded successfully', ['url' => $result['secure_url']]);
             } else {
-                \Log::error('Failed to upload profile photo', ['user_id' => $user->id]);
-                return back()->withErrors(['profile_photo' => 'Failed to upload profile photo. Please try again.'])->withInput();
+                \Log::error('Failed to upload profile picture', ['user_id' => $user->id]);
+                return back()->withErrors(['profile_picture' => 'Failed to upload profile picture. Please try again.'])->withInput();
             }
         }
 
@@ -228,7 +228,7 @@ class GigWorkerOnboardingController extends Controller
 
         \Log::info('Gig worker onboarding completed successfully', [
             'user_id' => $user->id,
-            'profile_photo_uploaded' => isset($validated['profile_photo']),
+            'profile_picture_uploaded' => isset($validated['profile_picture']),
             'id_verification_uploaded' => isset($validated['id_front_image']) && isset($validated['id_back_image']),
             'portfolio_items_count' => !empty($validated['portfolio_items']) ? count($validated['portfolio_items']) : 0
         ]);

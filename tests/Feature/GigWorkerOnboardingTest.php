@@ -196,7 +196,7 @@ class GigWorkerOnboardingTest extends TestCase
             'professional_title' => 'Full Stack Developer',
             'hourly_rate' => 75,
             'bio' => 'I am an experienced full stack developer with expertise in modern web technologies and cloud platforms.',
-            'profile_photo' => $this->fakeImage('profile.jpg', 800, 800),
+            'profile_picture' => $this->fakeImage('profile.jpg', 800, 800),
             'broad_category' => 'Web Development',
             'specific_services' => ['Frontend Development', 'Backend Development'],
             'skills_with_experience' => [

@@ -23,6 +23,10 @@ export default function Edit({ mustVerifyEmail, status }) {
         bio: user.bio || '',
         location: user.location || '',
         barangay: user.barangay || '',
+        street_address: user.street_address || '',
+        city: user.city || '',
+        postal_code: user.postal_code || '',
+        country: user.country || '',
         profile_photo: null,
         profile_picture: null,
 
@@ -127,11 +131,11 @@ export default function Edit({ mustVerifyEmail, status }) {
             );
         }
         
-        // Fallback to legacy profile photo
+        // Fallback to profile photo (Cloudinary URL)
         if (user.profile_photo) {
             return (
                 <img
-                    src={`/storage/${user.profile_photo}`}
+                    src={user.profile_photo}
                     alt={`${user.first_name} ${user.last_name}`}
                     className="h-24 w-24 rounded-full object-cover"
                 />
@@ -404,7 +408,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                     </div>
                                                     <div>
                                                         <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                                                            Additional Location Info
+                                                            Location Landmarks / Notes
                                                         </label>
                                                         <input
                                                             type="text"
@@ -412,10 +416,87 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                             value={data.location}
                                                             onChange={(e) => setData('location', e.target.value)}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                            placeholder="e.g., Near Mactan Airport"
+                                                            placeholder="e.g., Near Mactan Airport, beside 7-Eleven"
                                                         />
+                                                        <p className="mt-1 text-xs text-gray-500">
+                                                            Add landmarks or notes to help locate your address
+                                                        </p>
                                                         {errors.location && <p className="mt-2 text-sm text-red-600">{errors.location}</p>}
                                                     </div>
+                                                </div>
+
+                                                {/* Complete Address from KYC */}
+                                                <div className="border-t border-gray-200 pt-6 mt-6">
+                                                    <h4 className="text-sm font-semibold text-gray-900 mb-4">
+                                                        Verified Address (from ID Verification)
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <label htmlFor="street_address" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Street Address
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                id="street_address"
+                                                                value={data.street_address}
+                                                                onChange={(e) => setData('street_address', e.target.value)}
+                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="123 Main Street"
+                                                                readOnly={user.address_verified_at ? true : false}
+                                                            />
+                                                            {errors.street_address && <p className="mt-2 text-sm text-red-600">{errors.street_address}</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                City
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                id="city"
+                                                                value={data.city}
+                                                                onChange={(e) => setData('city', e.target.value)}
+                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="Lapu-Lapu City"
+                                                                readOnly={user.address_verified_at ? true : false}
+                                                            />
+                                                            {errors.city && <p className="mt-2 text-sm text-red-600">{errors.city}</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Postal Code
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                id="postal_code"
+                                                                value={data.postal_code}
+                                                                onChange={(e) => setData('postal_code', e.target.value)}
+                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="6015"
+                                                                readOnly={user.address_verified_at ? true : false}
+                                                            />
+                                                            {errors.postal_code && <p className="mt-2 text-sm text-red-600">{errors.postal_code}</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Country
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                id="country"
+                                                                value={data.country}
+                                                                onChange={(e) => setData('country', e.target.value)}
+                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="Philippines"
+                                                                readOnly={user.address_verified_at ? true : false}
+                                                            />
+                                                            {errors.country && <p className="mt-2 text-sm text-red-600">{errors.country}</p>}
+                                                        </div>
+                                                    </div>
+                                                    {user.address_verified_at && (
+                                                        <p className="mt-2 text-xs text-green-600">
+                                                            ✓ Address verified on {new Date(user.address_verified_at).toLocaleDateString()}. Contact support to update.
+                                                        </p>
+                                                    )}
                                                 </div>
 
                                                 {/* Bio */}
@@ -1106,6 +1187,28 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                             </span>
                                                         </div>
                                                     </div>
+
+                                                    {isGigWorker && user.id_verification_status && (
+                                                        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                                                            <div>
+                                                                <h4 className="text-sm font-medium text-gray-900">ID Verification Status</h4>
+                                                                <p className="text-sm text-gray-600">
+                                                                    Your {user.id_type?.replace('_', ' ')} is {user.id_verification_status}
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                    user.id_verification_status === 'verified'
+                                                                        ? 'bg-green-100 text-green-800'
+                                                                        : user.id_verification_status === 'pending'
+                                                                        ? 'bg-yellow-100 text-yellow-800'
+                                                                        : 'bg-red-100 text-red-800'
+                                                                }`}>
+                                                                    {user.id_verification_status === 'verified' ? '✓' : user.id_verification_status === 'pending' ? '⏳' : '❌'} {user.id_verification_status.charAt(0).toUpperCase() + user.id_verification_status.slice(1)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
 
                                                     <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                                                         <div>

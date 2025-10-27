@@ -34,6 +34,13 @@ class ProfileUpdateRequest extends FormRequest
             'bio' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'string', 'max:255'],
             'barangay' => ['nullable', 'string', 'max:255'],
+            
+            // Address fields from KYC
+            'street_address' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
+            'country' => ['nullable', 'string', 'max:100'],
+            
             'profile_photo' => ['nullable', 'image', 'max:2048'], // 2MB max
             'profile_picture' => ['nullable', 'image', 'max:5120'], // 5MB max for Cloudinary
         ];

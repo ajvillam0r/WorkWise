@@ -15,7 +15,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         professional_title: '',
         hourly_rate: '',
         bio: '',
-        profile_photo: null,
+        profile_picture: null,
 
         // Step 2: Hierarchical Skills
         broad_category: '',
@@ -150,7 +150,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                     alert(userMessage);
                     
                     // Navigate to the step with the error
-                    if (firstErrorField.includes('professional_title') || firstErrorField.includes('hourly_rate') || firstErrorField.includes('bio') || firstErrorField.includes('profile_photo')) {
+                    if (firstErrorField.includes('professional_title') || firstErrorField.includes('hourly_rate') || firstErrorField.includes('bio') || firstErrorField.includes('profile_picture')) {
                         setCurrentStep(1);
                     } else if (firstErrorField.includes('skills') || firstErrorField.includes('broad_category') || firstErrorField.includes('specific_services')) {
                         setCurrentStep(2);
@@ -467,15 +467,15 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                         </div>
 
                                         <div>
-                                            <InputLabel htmlFor="profile_photo" value="Profile Photo (Optional)" />
+                                            <InputLabel htmlFor="profile_picture" value="Profile Photo (Optional)" />
                                             <input
-                                                id="profile_photo"
+                                                id="profile_picture"
                                                 type="file"
                                                 accept="image/*"
                                                 className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                onChange={(e) => setData('profile_photo', e.target.files[0])}
+                                                onChange={(e) => setData('profile_picture', e.target.files[0])}
                                             />
-                                            <InputError message={errors.profile_photo} className="mt-2" />
+                                            <InputError message={errors.profile_picture} className="mt-2" />
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Profiles with photos get 40% more responses!
                                             </p>

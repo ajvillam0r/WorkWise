@@ -1195,6 +1195,14 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             </nav>
 
+            {header && (
+                <header className="bg-white border-b border-gray-200">
+                    <div className="mx-auto py-6" style={{ paddingLeft: '0.45in', paddingRight: '0.45in' }}>
+                        {header}
+                    </div>
+                </header>
+            )}
+
             <main className="flex-1">{children}</main>
 
             {/* MiniChatModal for floating messaging */}

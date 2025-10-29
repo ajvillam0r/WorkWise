@@ -30,10 +30,12 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
-            'user_type' => fake()->randomElement(['client', 'freelancer']),
+            'user_type' => fake()->randomElement(['employer', 'gig_worker']),
             'phone' => fake()->phoneNumber(),
-            'location' => fake()->city(),
-            'barangay' => fake()->streetName(),
+            'country' => 'Philippines',
+            'province' => fake()->randomElement(['Metro Manila', 'Cebu', 'Davao del Sur']),
+            'city' => fake()->city(),
+            'municipality' => fake()->streetName(),
         ];
     }
 
@@ -53,7 +55,7 @@ class UserFactory extends Factory
     public function employer(): static
     {
         return $this->state(fn (array $attributes) => [
-            'user_type' => 'client',
+            'user_type' => 'employer',
         ]);
     }
 
@@ -63,7 +65,7 @@ class UserFactory extends Factory
     public function gigWorker(): static
     {
         return $this->state(fn (array $attributes) => [
-            'user_type' => 'freelancer',
+            'user_type' => 'gig_worker',
         ]);
     }
 }

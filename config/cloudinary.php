@@ -63,6 +63,7 @@ return [
         'access_type' => 'authenticated', // Restricted access
         'allowed_formats' => ['jpg', 'jpeg', 'png', 'pdf'],
         'max_file_size' => 10485760, // 10MB in bytes
+        'timeout' => 60, // Upload timeout in seconds
     ],
 
     /*

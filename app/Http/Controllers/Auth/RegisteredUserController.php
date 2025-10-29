@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\GeolocationService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,7 +59,6 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', Rules\Password::defaults()],
             'password_confirmation' => 'required|same:password',
-            'country' => 'required|string|max:100',
             'user_type' => 'required|in:gig_worker,employer',
             'terms_agreed' => 'required|accepted',
             'marketing_emails' => 'boolean',
@@ -70,10 +70,20 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'user_type' => $request->user_type,
-            'country' => $request->country,
         ];
 
         $user = User::create($userData);
+
+        // Auto-verify address using IP geolocation
+        try {
+            $geolocationService = app(GeolocationService::class);
+            $geolocationService->detectAndVerifyAddress($user);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to auto-verify address during registration', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
 
         // Clear the session data
         session()->forget('selected_user_type');

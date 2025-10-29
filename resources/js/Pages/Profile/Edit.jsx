@@ -1,42 +1,48 @@
 import React, { useState } from 'react';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Transition } from '@headlessui/react';
 import SuccessModal from '@/Components/SuccessModal';
+import AvatarUploadOverlay from '@/Components/AvatarUploadOverlay';
+import VerificationBadge, { VerificationBadges } from '@/Components/VerificationBadge';
 
-export default function Edit({ mustVerifyEmail, status }) {
+export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
     const { auth } = usePage().props;
     const user = auth.user;
     const [activeTab, setActiveTab] = useState('basic');
     const [skillInput, setSkillInput] = useState('');
-    const [languageInput, setLanguageInput] = useState('');
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const isGigWorker = user.user_type === 'gig_worker';
     const isEmployer = user.user_type === 'employer';
 
-    const { data, setData, patch, processing, errors, recentlySuccessful } = useForm({
+    // Helper function to get color based on completion percentage
+    const getCompletionColor = (percentage) => {
+        if (percentage === 100) return 'from-green-500 to-green-600';
+        if (percentage >= 75) return 'from-blue-500 to-blue-600';
+        if (percentage >= 50) return 'from-yellow-500 to-yellow-600';
+        return 'from-orange-500 to-orange-600';
+    };
+
+    const { data, setData, patch, processing, errors, recentlySuccessful, reset } = useForm({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
         phone: user.phone || '',
         bio: user.bio || '',
-        location: user.location || '',
-        barangay: user.barangay || '',
+        country: user.country || '',
+        province: user.province || '',
+        municipality: user.municipality || '',
         street_address: user.street_address || '',
         city: user.city || '',
         postal_code: user.postal_code || '',
-        country: user.country || '',
         profile_photo: null,
         profile_picture: null,
 
         // Freelancer fields
         professional_title: user.professional_title || '',
         hourly_rate: user.hourly_rate || '',
-        experience_level: user.experience_level || 'intermediate',
-        skills: user.skills || [],
-        languages: user.languages || [],
-        portfolio_url: user.portfolio_url || '',
 
         // Gig worker onboarding fields
         broad_category: user.broad_category || '',
@@ -90,34 +96,6 @@ export default function Edit({ mustVerifyEmail, status }) {
         });
     };
 
-    const addSkill = () => {
-        if (skillInput.trim() && !data.skills.includes(skillInput.trim()) && data.skills.length < 15) {
-            setData('skills', [...data.skills, skillInput.trim()]);
-            setSkillInput('');
-        }
-    };
-
-    const removeSkill = (skillToRemove) => {
-        setData('skills', data.skills.filter(skill => skill !== skillToRemove));
-    };
-
-    const addLanguage = () => {
-        if (languageInput.trim() && !data.languages.includes(languageInput.trim()) && data.languages.length < 10) {
-            setData('languages', [...data.languages, languageInput.trim()]);
-            setLanguageInput('');
-        }
-    };
-
-    const removeLanguage = (languageToRemove) => {
-        setData('languages', data.languages.filter(language => language !== languageToRemove));
-    };
-
-    const barangays = [
-        'Agus', 'Babag', 'Bankal', 'Baring', 'Basak', 'Buaya', 'Calawisan', 'Canjulao',
-        'Caw-oy', 'Gun-ob', 'Ibo', 'Looc', 'Mactan', 'Maribago', 'Marigondon', 'Pajac',
-        'Pajo', 'Poblacion', 'Punta Engaño', 'Pusok', 'Sabang', 'Santa Rosa', 'Subabasbas',
-        'Talima', 'Tingo', 'Tingub', 'Tugbongan'
-    ];
 
     const getUserAvatar = () => {
         // Check for Cloudinary profile picture first
@@ -160,7 +138,6 @@ export default function Edit({ mustVerifyEmail, status }) {
         { id: 'basic', name: 'Basic Info', icon: '👤' },
         { id: 'professional', name: isGigWorker ? 'Professional' : 'Business', icon: isGigWorker ? '💼' : '🏢' },
         ...(isGigWorker ? [
-            { id: 'skills', name: 'Skills & Services', icon: '⭐' },
             { id: 'availability', name: 'Availability', icon: '📅' },
             { id: 'portfolio', name: 'Portfolio', icon: '🎨' },
         ] : []),
@@ -170,13 +147,45 @@ export default function Edit({ mustVerifyEmail, status }) {
     return (
         <AuthenticatedLayout
             header={
-                <div>
-                    <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                        Edit Profile
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                        Manage your account settings and profile information
-                    </p>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                            Edit Profile
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                            Manage your account settings and profile information
+                        </p>
+                    </div>
+                    <div className="flex gap-3">
+                        {!isEditing ? (
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 font-medium shadow-md hover:shadow-lg"
+                            >
+                                Edit Profile
+                            </button>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        setIsEditing(false);
+                                        // Reset form to original user values
+                                        reset();
+                                    }}
+                                    className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-300 font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={processing}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 font-medium shadow-md hover:shadow-lg disabled:opacity-50"
+                                >
+                                    {processing ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
             }
         >
@@ -197,11 +206,29 @@ export default function Edit({ mustVerifyEmail, status }) {
                                     {/* Profile Photo */}
                                     <div className="text-center mb-6">
                                         <div className="flex justify-center mb-4">
-                                            {getUserAvatar()}
+                                            <AvatarUploadOverlay
+                                                currentImage={user.profile_picture || user.profile_photo}
+                                                userName={`${user.first_name} ${user.last_name}`}
+                                                size="lg"
+                                                onUpload={async (file) => {
+                                                    setData('profile_picture', file);
+                                                    // Automatically submit the form to upload
+                                                    patch(route('profile.update'), {
+                                                        profile_picture: file,
+                                                    }, {
+                                                        preserveScroll: true,
+                                                        forceFormData: true,
+                                                        onSuccess: () => {
+                                                            console.log('Profile picture updated');
+                                                        },
+                                                    });
+                                                }}
+                                            />
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-900 mb-2">
                                             {user.first_name} {user.last_name}
                                         </h3>
+                                        <VerificationBadges user={user} size="sm" className="justify-center mt-2 mb-3" />
                                         <p className="text-sm text-gray-600 mb-3">
                                             {isGigWorker ? user.professional_title || 'Gig Worker' : user.company_name || 'Employer'}
                                         </p>
@@ -217,17 +244,53 @@ export default function Edit({ mustVerifyEmail, status }) {
                                     </div>
 
                                     {/* Profile Completion */}
-                                    <div className="mb-8 bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                        <div className="flex justify-between text-sm font-medium text-blue-700 mb-3">
-                                            <span>Profile Completion</span>
-                                            <span>85%</span>
+                                    {isGigWorker && profileCompletion && (
+                                        <div className="mb-8 bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
+                                            <div className="flex justify-between text-sm font-medium text-blue-700 mb-3">
+                                                <span>Profile Completion</span>
+                                                <span>{profileCompletion.percentage}%</span>
+                                            </div>
+                                            <div className="w-full bg-blue-200 rounded-full h-3 shadow-inner">
+                                                <div 
+                                                    className={`h-3 rounded-full shadow-lg transition-all duration-500 bg-gradient-to-r ${getCompletionColor(profileCompletion.percentage)}`}
+                                                    style={{ width: `${profileCompletion.percentage}%` }}
+                                                ></div>
+                                            </div>
+                                            <p className="text-xs text-blue-600 mt-3 font-medium">
+                                                {profileCompletion.is_complete 
+                                                    ? '🎉 Your profile is complete!' 
+                                                    : `Complete ${profileCompletion.missing_count} more ${profileCompletion.missing_count === 1 ? 'field' : 'fields'} to attract more employers`
+                                                }
+                                            </p>
                                         </div>
-                                        <div className="w-full bg-blue-200 rounded-full h-3 shadow-inner">
-                                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full shadow-lg" style={{ width: '85%' }}></div>
-                                        </div>
-                                        <p className="text-xs text-blue-600 mt-3 font-medium">
-                                            Complete your profile to attract more {isGigWorker ? 'employers' : 'gig workers'}
-                                        </p>
+                                    )}
+
+                                    {/* ID Verification Quick Access */}
+                                    <div className="mb-6">
+                                        <Link
+                                            href="/id-verification"
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                            </svg>
+                                            <span>ID Verification</span>
+                                            {user.id_verification_status === 'pending' && (
+                                                <span className="ml-1 px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-full">
+                                                    Pending
+                                                </span>
+                                            )}
+                                            {user.id_verification_status === 'verified' && (
+                                                <span className="ml-1 px-2 py-0.5 bg-green-400 text-green-900 text-xs font-bold rounded-full">
+                                                    ✓
+                                                </span>
+                                            )}
+                                            {!user.id_verification_status && (
+                                                <span className="ml-1 px-2 py-0.5 bg-red-400 text-red-900 text-xs font-bold rounded-full">
+                                                    Required
+                                                </span>
+                                            )}
+                                        </Link>
                                     </div>
 
                                     {/* Navigation Tabs */}
@@ -267,17 +330,34 @@ export default function Edit({ mustVerifyEmail, status }) {
 
                                             <div className="space-y-6">
                                                 {/* Profile Photo Upload */}
-                                                <div>
+                                                {/* <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-4">
                                                         Profile Picture
                                                     </label>
                                                     <div className="flex items-center space-x-6">
                                                         <div className="flex-shrink-0">
-                                                            {getUserAvatar()}
+                                                            <AvatarUploadOverlay
+                                                                currentImage={user.profile_picture || user.profile_photo}
+                                                                userName={`${user.first_name} ${user.last_name}`}
+                                                                size="lg"
+                                                                onUpload={async (file) => {
+                                                                    setData('profile_picture', file);
+                                                                    // Automatically submit the form to upload
+                                                                    patch(route('profile.update'), {
+                                                                        profile_picture: file,
+                                                                    }, {
+                                                                        preserveScroll: true,
+                                                                        forceFormData: true,
+                                                                        onSuccess: () => {
+                                                                            console.log('Profile picture updated');
+                                                                        },
+                                                                    });
+                                                                }}
+                                                            />
                                                         </div>
                                                         <div className="flex-1">
                                                             <div className="space-y-4">
-                                                                {/* Cloudinary Upload (Recommended) */}
+                                                                
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-blue-700 mb-2">
                                                                         🌟 Recommended: High-Quality Upload
@@ -293,7 +373,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                     </p>
                                                                 </div>
                                                                 
-                                                                {/* Legacy Upload */}
+                                                                
                                                                 <div className="pt-2 border-t border-gray-200">
                                                                     <label className="block text-xs font-medium text-gray-600 mb-2">
                                                                         Legacy Upload (Basic)
@@ -313,7 +393,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                     </div>
                                                     {errors.profile_picture && <p className="mt-2 text-sm text-red-600">{errors.profile_picture}</p>}
                                                     {errors.profile_photo && <p className="mt-2 text-sm text-red-600">{errors.profile_photo}</p>}
-                                                </div>
+                                                </div> */}
 
                                                 {/* Name Fields */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -326,6 +406,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                             id="first_name"
                                                             value={data.first_name}
                                                             onChange={(e) => setData('first_name', e.target.value)}
+                                                            disabled={!isEditing}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             required
                                                         />
@@ -340,6 +421,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                             id="last_name"
                                                             value={data.last_name}
                                                             onChange={(e) => setData('last_name', e.target.value)}
+                                                            disabled={!isEditing}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             required
                                                         />
@@ -358,6 +440,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                             id="email"
                                                             value={data.email}
                                                             onChange={(e) => setData('email', e.target.value)}
+                                                            disabled={!isEditing}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             required
                                                         />
@@ -377,6 +460,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                             id="phone"
                                                             value={data.phone}
                                                             onChange={(e) => setData('phone', e.target.value)}
+                                                            disabled={!isEditing}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="+63 912 345 6789"
                                                         />
@@ -384,44 +468,17 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                     </div>
                                                 </div>
 
-                                                {/* Location */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <label htmlFor="barangay" className="block text-sm font-medium text-gray-700 mb-2">
-                                                            Barangay *
-                                                        </label>
-                                                        <select
-                                                            id="barangay"
-                                                            value={data.barangay}
-                                                            onChange={(e) => setData('barangay', e.target.value)}
-                                                            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                            required
-                                                        >
-                                                            <option value="">Select Barangay</option>
-                                                            {barangays.map((barangay) => (
-                                                                <option key={barangay} value={barangay}>
-                                                                    {barangay}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                        {errors.barangay && <p className="mt-2 text-sm text-red-600">{errors.barangay}</p>}
-                                                    </div>
-                                                    <div>
-                                                        <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                                                            Location Landmarks / Notes
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            id="location"
-                                                            value={data.location}
-                                                            onChange={(e) => setData('location', e.target.value)}
-                                                            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                            placeholder="e.g., Near Mactan Airport, beside 7-Eleven"
-                                                        />
-                                                        <p className="mt-1 text-xs text-gray-500">
-                                                            Add landmarks or notes to help locate your address
+                                                {/* Location (Auto-Detected) */}
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Location (Auto-detected via IP)
+                                                    </label>
+                                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                        <p className="text-gray-900 font-medium">{user.country || 'Not detected'}</p>
+                                                        {user.city && <p className="text-sm text-gray-600 mt-1">City: {user.city}</p>}
+                                                        <p className="text-xs text-gray-500 mt-2">
+                                                            📍 Location automatically verified during registration
                                                         </p>
-                                                        {errors.location && <p className="mt-2 text-sm text-red-600">{errors.location}</p>}
                                                     </div>
                                                 </div>
 
@@ -440,9 +497,9 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="street_address"
                                                                 value={data.street_address}
                                                                 onChange={(e) => setData('street_address', e.target.value)}
+                                                                disabled={!isEditing || user.address_verified_at}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="123 Main Street"
-                                                                readOnly={user.address_verified_at ? true : false}
                                                             />
                                                             {errors.street_address && <p className="mt-2 text-sm text-red-600">{errors.street_address}</p>}
                                                         </div>
@@ -455,9 +512,9 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="city"
                                                                 value={data.city}
                                                                 onChange={(e) => setData('city', e.target.value)}
+                                                                disabled={!isEditing || user.address_verified_at}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="Lapu-Lapu City"
-                                                                readOnly={user.address_verified_at ? true : false}
                                                             />
                                                             {errors.city && <p className="mt-2 text-sm text-red-600">{errors.city}</p>}
                                                         </div>
@@ -470,9 +527,9 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="postal_code"
                                                                 value={data.postal_code}
                                                                 onChange={(e) => setData('postal_code', e.target.value)}
+                                                                disabled={!isEditing || user.address_verified_at}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="6015"
-                                                                readOnly={user.address_verified_at ? true : false}
                                                             />
                                                             {errors.postal_code && <p className="mt-2 text-sm text-red-600">{errors.postal_code}</p>}
                                                         </div>
@@ -485,9 +542,9 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="country"
                                                                 value={data.country}
                                                                 onChange={(e) => setData('country', e.target.value)}
+                                                                disabled={!isEditing || user.address_verified_at}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="Philippines"
-                                                                readOnly={user.address_verified_at ? true : false}
                                                             />
                                                             {errors.country && <p className="mt-2 text-sm text-red-600">{errors.country}</p>}
                                                         </div>
@@ -508,6 +565,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                         id="bio"
                                                         value={data.bio}
                                                         onChange={(e) => setData('bio', e.target.value)}
+                                                        disabled={!isEditing}
                                                         rows={4}
                                                         className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                         placeholder={isGigWorker
@@ -519,6 +577,106 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                         {data.bio.length}/1000 characters. This will be visible on your profile.
                                                     </p>
                                                     {errors.bio && <p className="mt-2 text-sm text-red-600">{errors.bio}</p>}
+                                                </div>
+
+                                                {/* Verification Status Section */}
+                                                <div className="border-t border-gray-200 pt-6 mt-6">
+                                                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Verification Status</h4>
+                                                    <div className="space-y-4">
+                                                        {/* Email Verification */}
+                                                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-2xl">📧</span>
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900">Email Verification</p>
+                                                                    <p className="text-sm text-gray-600">{user.email}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {user.email_verified_at ? (
+                                                                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                                                        ✓ Verified
+                                                                    </span>
+                                                                ) : (
+                                                                    <a
+                                                                        href={route('verification.send')}
+                                                                        method="post"
+                                                                        as="button"
+                                                                        className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                                                    >
+                                                                        Verify Email
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* ID Verification */}
+                                                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-2xl">🆔</span>
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900">Valid ID Verification</p>
+                                                                    <p className="text-sm text-gray-600">
+                                                                        {user.id_verification_status === 'pending' && 'Under review'}
+                                                                        {user.id_verification_status === 'verified' && 'Verified by admin'}
+                                                                        {user.id_verification_status === 'rejected' && 'Rejected - Resubmission needed'}
+                                                                        {!user.id_verification_status && 'Not submitted'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {user.id_verification_status === 'verified' ? (
+                                                                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                                                        ✓ Verified
+                                                                    </span>
+                                                                ) : user.id_verification_status === 'pending' ? (
+                                                                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                                                        ⏳ Pending
+                                                                    </span>
+                                                                ) : (
+                                                                    <Link
+                                                                        href="/id-verification"
+                                                                        className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                                                    >
+                                                                        {user.id_verification_status === 'rejected' ? 'Resubmit ID' : 'Upload ID'}
+                                                                    </Link>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Address Verification */}
+                                                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-2xl">📍</span>
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900">Address Verification</p>
+                                                                    <p className="text-sm text-gray-600">
+                                                                        {user.address_verified_at 
+                                                                            ? `Auto-verified on ${new Date(user.address_verified_at).toLocaleDateString()}`
+                                                                            : 'Not verified'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {user.address_verified_at ? (
+                                                                    <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                                                                        ✓ Verified
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-sm">
+                                                                        Auto-detected
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {user.id_verification_status === 'rejected' && user.id_verification_notes && (
+                                                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                                                <p className="text-sm font-medium text-red-900 mb-1">Rejection Reason:</p>
+                                                                <p className="text-sm text-red-700">{user.id_verification_notes}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -554,6 +712,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="professional_title"
                                                                 value={data.professional_title}
                                                                 onChange={(e) => setData('professional_title', e.target.value)}
+                                                                disabled={!isEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="e.g., Full Stack Developer, UI/UX Designer"
                                                                 required
@@ -576,6 +735,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                     id="hourly_rate"
                                                                     value={data.hourly_rate}
                                                                     onChange={(e) => setData('hourly_rate', e.target.value)}
+                                                                    disabled={!isEditing}
                                                                     className="w-full pl-8 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     placeholder="25.00"
                                                                     min="5"
@@ -590,135 +750,136 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                             {errors.hourly_rate && <p className="mt-2 text-sm text-red-600">{errors.hourly_rate}</p>}
                                                         </div>
 
-                                                        {/* Experience Level */}
-                                                        <div>
-                                                            <label htmlFor="experience_level" className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Experience Level *
-                                                            </label>
-                                                            <select
-                                                                id="experience_level"
-                                                                value={data.experience_level}
-                                                                onChange={(e) => setData('experience_level', e.target.value)}
-                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                required
-                                                            >
-                                                                <option value="beginner">Beginner (0-2 years)</option>
-                                                                <option value="intermediate">Intermediate (2-5 years)</option>
-                                                                <option value="expert">Expert (5+ years)</option>
-                                                            </select>
-                                                            <p className="mt-2 text-sm text-gray-500">
-                                                                This helps our AI match you with appropriate projects and affects your visibility in search results.
-                                                            </p>
-                                                            {errors.experience_level && <p className="mt-2 text-sm text-red-600">{errors.experience_level}</p>}
-                                                        </div>
-
-                                                        {/* Skills */}
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Skills *
-                                                            </label>
-                                                            <div className="flex items-center space-x-2 mb-3">
+                                                        {/* === SKILLS & SERVICES (Basis for AI Matching) === */}
+                                                        <div className="border-t border-gray-200 pt-6 mt-6">
+                                                            <h4 className="text-lg font-semibold text-gray-900 mb-4">Skills & Services</h4>
+                                                            <p className="text-sm text-gray-600 mb-6">These details are used for AI-powered job matching</p>
+                                                            
+                                                            {/* Broad Category */}
+                                                            <div className="mb-6">
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Category
+                                                                </label>
                                                                 <input
                                                                     type="text"
-                                                                    value={skillInput}
-                                                                    onChange={(e) => setSkillInput(e.target.value)}
-                                                                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                                                                    className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                    placeholder="Type a skill and press Enter"
+                                                                    value={data.broad_category}
+                                                                    onChange={(e) => setData('broad_category', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="e.g., Creative & Design Services"
                                                                 />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={addSkill}
-                                                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                                                >
-                                                                    Add
-                                                                </button>
                                                             </div>
-                                                            <div className="flex flex-wrap gap-2 mb-2">
-                                                                {data.skills.map((skill, index) => (
-                                                                    <span
-                                                                        key={index}
-                                                                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                                                                    >
-                                                                        {skill}
+
+                                                            {/* Specific Services */}
+                                                            <div className="mb-6">
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Specific Services
+                                                                </label>
+                                                                <div className="space-y-2">
+                                                                    {data.specific_services.map((service, index) => (
+                                                                        <div key={index} className="flex gap-2">
+                                                                            <input
+                                                                                type="text"
+                                                                                value={service}
+                                                                                onChange={(e) => {
+                                                                                    const newServices = [...data.specific_services];
+                                                                                    newServices[index] = e.target.value;
+                                                                                    setData('specific_services', newServices);
+                                                                                }}
+                                                                                disabled={!isEditing}
+                                                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                                                                                placeholder="Service name"
+                                                                            />
+                                                                            {isEditing && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setData('specific_services', 
+                                                                                            data.specific_services.filter((_, i) => i !== index)
+                                                                                        );
+                                                                                    }}
+                                                                                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                                                                                >
+                                                                                    Remove
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                    {isEditing && (
                                                                         <button
                                                                             type="button"
-                                                                            onClick={() => removeSkill(skill)}
-                                                                            className="ml-2 text-blue-600 hover:text-blue-800"
+                                                                            onClick={() => setData('specific_services', [...data.specific_services, ''])}
+                                                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
                                                                         >
-                                                                            ×
+                                                                            + Add Service
                                                                         </button>
-                                                                    </span>
-                                                                ))}
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <p className="text-sm text-gray-500">
-                                                                Add up to 15 skills that best describe your expertise
-                                                            </p>
-                                                            {errors.skills && <p className="mt-2 text-sm text-red-600">{errors.skills}</p>}
-                                                        </div>
 
-                                                        {/* Languages */}
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Languages
-                                                            </label>
-                                                            <div className="flex items-center space-x-2 mb-3">
-                                                                <input
-                                                                    type="text"
-                                                                    value={languageInput}
-                                                                    onChange={(e) => setLanguageInput(e.target.value)}
-                                                                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addLanguage())}
-                                                                    className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                    placeholder="Type a language and press Enter"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={addLanguage}
-                                                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                                                                >
-                                                                    Add
-                                                                </button>
-                                                            </div>
-                                                            <div className="flex flex-wrap gap-2 mb-2">
-                                                                {data.languages.map((language, index) => (
-                                                                    <span
-                                                                        key={index}
-                                                                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
-                                                                    >
-                                                                        {language}
+                                                            {/* Skills with Experience */}
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Skills with Experience Level
+                                                                </label>
+                                                                <div className="space-y-2">
+                                                                    {data.skills_with_experience.map((item, index) => (
+                                                                        <div key={index} className="flex gap-2">
+                                                                            <input
+                                                                                type="text"
+                                                                                value={item.skill}
+                                                                                onChange={(e) => {
+                                                                                    const newSkills = [...data.skills_with_experience];
+                                                                                    newSkills[index].skill = e.target.value;
+                                                                                    setData('skills_with_experience', newSkills);
+                                                                                }}
+                                                                                disabled={!isEditing}
+                                                                                placeholder="Skill name"
+                                                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                                                                            />
+                                                                            <select
+                                                                                value={item.experience_level}
+                                                                                onChange={(e) => {
+                                                                                    const newSkills = [...data.skills_with_experience];
+                                                                                    newSkills[index].experience_level = e.target.value;
+                                                                                    setData('skills_with_experience', newSkills);
+                                                                                }}
+                                                                                disabled={!isEditing}
+                                                                                className="px-4 py-2 border border-gray-300 rounded-lg"
+                                                                            >
+                                                                                <option value="beginner">Beginner</option>
+                                                                                <option value="intermediate">Intermediate</option>
+                                                                                <option value="expert">Expert</option>
+                                                                            </select>
+                                                                            {isEditing && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setData('skills_with_experience', 
+                                                                                            data.skills_with_experience.filter((_, i) => i !== index)
+                                                                                        );
+                                                                                    }}
+                                                                                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                                                                                >
+                                                                                    Remove
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                    {isEditing && (
                                                                         <button
                                                                             type="button"
-                                                                            onClick={() => removeLanguage(language)}
-                                                                            className="ml-2 text-green-600 hover:text-green-800"
+                                                                            onClick={() => setData('skills_with_experience', [
+                                                                                ...data.skills_with_experience, 
+                                                                                { skill: '', experience_level: 'intermediate' }
+                                                                            ])}
+                                                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
                                                                         >
-                                                                            ×
+                                                                            + Add Skill
                                                                         </button>
-                                                                    </span>
-                                                                ))}
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <p className="text-sm text-gray-500">
-                                                                Add languages you can communicate in professionally
-                                                            </p>
-                                                            {errors.languages && <p className="mt-2 text-sm text-red-600">{errors.languages}</p>}
-                                                        </div>
-
-                                                        {/* Portfolio URL */}
-                                                        <div>
-                                                            <label htmlFor="portfolio_url" className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Portfolio Website
-                                                            </label>
-                                                            <input
-                                                                type="url"
-                                                                id="portfolio_url"
-                                                                value={data.portfolio_url}
-                                                                onChange={(e) => setData('portfolio_url', e.target.value)}
-                                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                placeholder="https://yourportfolio.com"
-                                                            />
-                                                            <p className="mt-2 text-sm text-gray-500">
-                                                                Link to your portfolio, GitHub, or professional website
-                                                            </p>
-                                                            {errors.portfolio_url && <p className="mt-2 text-sm text-red-600">{errors.portfolio_url}</p>}
                                                         </div>
                                                     </>
                                                 ) : (
@@ -733,6 +894,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="company_name"
                                                                 value={data.company_name}
                                                                 onChange={(e) => setData('company_name', e.target.value)}
+                                                                disabled={!isEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="Your Company Name"
                                                             />
@@ -748,6 +910,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="work_type_needed"
                                                                 value={data.work_type_needed}
                                                                 onChange={(e) => setData('work_type_needed', e.target.value)}
+                                                                disabled={!isEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             >
                                                                 <option value="">Select work type</option>
@@ -771,6 +934,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="budget_range"
                                                                 value={data.budget_range}
                                                                 onChange={(e) => setData('budget_range', e.target.value)}
+                                                                disabled={!isEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             >
                                                                 <option value="">Select budget range</option>
@@ -792,6 +956,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                                 id="project_intent"
                                                                 value={data.project_intent}
                                                                 onChange={(e) => setData('project_intent', e.target.value)}
+                                                                disabled={!isEditing}
                                                                 rows={4}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="Describe the types of projects you typically work on and your business goals..."
@@ -803,128 +968,6 @@ export default function Edit({ mustVerifyEmail, status }) {
                                                         </div>
                                                     </>
                                                 )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Skills & Services Tab */}
-                                {activeTab === 'skills' && isGigWorker && (
-                                    <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Skills & Services</h3>
-                                        <div className="space-y-6">
-                                            {/* Broad Category */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Category
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.broad_category}
-                                                    onChange={(e) => setData('broad_category', e.target.value)}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="e.g., Creative & Design Services"
-                                                />
-                                            </div>
-
-                                            {/* Specific Services */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Specific Services
-                                                </label>
-                                                <div className="space-y-2">
-                                                    {data.specific_services.map((service, index) => (
-                                                        <div key={index} className="flex gap-2">
-                                                            <input
-                                                                type="text"
-                                                                value={service}
-                                                                onChange={(e) => {
-                                                                    const newServices = [...data.specific_services];
-                                                                    newServices[index] = e.target.value;
-                                                                    setData('specific_services', newServices);
-                                                                }}
-                                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
-                                                                placeholder="Service name"
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setData('specific_services', 
-                                                                        data.specific_services.filter((_, i) => i !== index)
-                                                                    );
-                                                                }}
-                                                                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                                                            >
-                                                                Remove
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setData('specific_services', [...data.specific_services, ''])}
-                                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-                                                    >
-                                                        + Add Service
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Skills with Experience */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Skills with Experience Level
-                                                </label>
-                                                <div className="space-y-2">
-                                                    {data.skills_with_experience.map((item, index) => (
-                                                        <div key={index} className="flex gap-2">
-                                                            <input
-                                                                type="text"
-                                                                value={item.skill}
-                                                                onChange={(e) => {
-                                                                    const newSkills = [...data.skills_with_experience];
-                                                                    newSkills[index].skill = e.target.value;
-                                                                    setData('skills_with_experience', newSkills);
-                                                                }}
-                                                                placeholder="Skill name"
-                                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
-                                                            />
-                                                            <select
-                                                                value={item.experience_level}
-                                                                onChange={(e) => {
-                                                                    const newSkills = [...data.skills_with_experience];
-                                                                    newSkills[index].experience_level = e.target.value;
-                                                                    setData('skills_with_experience', newSkills);
-                                                                }}
-                                                                className="px-4 py-2 border border-gray-300 rounded-lg"
-                                                            >
-                                                                <option value="beginner">Beginner</option>
-                                                                <option value="intermediate">Intermediate</option>
-                                                                <option value="expert">Expert</option>
-                                                            </select>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setData('skills_with_experience', 
-                                                                        data.skills_with_experience.filter((_, i) => i !== index)
-                                                                    );
-                                                                }}
-                                                                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                                                            >
-                                                                Remove
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setData('skills_with_experience', [
-                                                            ...data.skills_with_experience, 
-                                                            { skill: '', experience_level: 'intermediate' }
-                                                        ])}
-                                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-                                                    >
-                                                        + Add Skill
-                                                    </button>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>

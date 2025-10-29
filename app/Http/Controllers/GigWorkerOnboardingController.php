@@ -63,7 +63,7 @@ class GigWorkerOnboardingController extends Controller
             'all_files' => array_keys($request->allFiles())
         ]);
 
-        // Validate the onboarding data
+        // Validate the onboarding data with custom error messages
         $validated = $request->validate([
             // Step 1: Basic Info
             'professional_title' => 'required|string|max:255',
@@ -89,12 +89,11 @@ class GigWorkerOnboardingController extends Controller
             'portfolio_items.*.images.*' => 'image|max:2048',
 
             // Step 4: ID Verification & Address
-            'id_type' => 'required|string|in:national_id,drivers_license,passport,philhealth_id,sss_id,umid,voters_id,prc_id',
-            'id_front_image' => 'required|image|max:5120',
-            'id_back_image' => 'required|image|max:5120',
+            'id_type' => 'nullable|string|in:national_id,drivers_license,passport,philhealth_id,sss_id,umid,voters_id,prc_id',
+            'id_front_image' => 'nullable|image|max:5120',
+            'id_back_image' => 'nullable|image|max:5120',
             'street_address' => 'required|string|max:255',
             'city' => 'required|string|max:100',
-            'barangay' => 'nullable|string|max:100',
             'postal_code' => 'required|string|max:20',
             'kyc_country' => 'required|string|max:100',
 
@@ -104,6 +103,38 @@ class GigWorkerOnboardingController extends Controller
             'preferred_communication' => 'required|array|min:1',
             'preferred_communication.*' => 'string|in:email,chat,video_call,phone',
             'availability_notes' => 'nullable|string|max:500',
+        ], [
+            // Custom validation messages
+            'professional_title.required' => 'Professional title is required.',
+            'hourly_rate.required' => 'Hourly rate is required.',
+            'hourly_rate.min' => 'Hourly rate must be at least ₱5.',
+            'hourly_rate.max' => 'Hourly rate cannot exceed ₱10,000.',
+            'bio.required' => 'Professional bio is required.',
+            'bio.min' => 'Bio must be at least 50 characters long.',
+            'profile_picture.image' => 'Profile picture must be an image file.',
+            'profile_picture.max' => 'Profile picture must not exceed 2MB.',
+            
+            'broad_category.required' => 'Service category is required.',
+            'specific_services.required' => 'Please select at least 2 specific services.',
+            'specific_services.min' => 'Please select at least 2 specific services.',
+            'skills_with_experience.required' => 'Please add at least 3 skills with experience levels.',
+            'skills_with_experience.min' => 'Please add at least 3 skills with experience levels.',
+            'skills_with_experience.*.skill.required' => 'Skill name is required.',
+            'skills_with_experience.*.experience_level.required' => 'Experience level is required for each skill.',
+            
+            'id_front_image.image' => 'ID front must be an image file.',
+            'id_front_image.max' => 'ID front image must not exceed 5MB.',
+            'id_back_image.image' => 'ID back must be an image file.',
+            'id_back_image.max' => 'ID back image must not exceed 5MB.',
+            'street_address.required' => 'Street address is required.',
+            'city.required' => 'City is required.',
+            'postal_code.required' => 'Postal code is required.',
+            'kyc_country.required' => 'Country is required.',
+            
+            'working_hours.required' => 'Please set your working hours.',
+            'timezone.required' => 'Timezone selection is required.',
+            'preferred_communication.required' => 'Please select at least one communication method.',
+            'preferred_communication.min' => 'Please select at least one communication method.',
         ]);
 
         // Handle profile picture upload to Cloudinary

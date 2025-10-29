@@ -29,6 +29,8 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\EmployerDashboardController;
 use App\Http\Controllers\GigWorkerDashboardController;
 use App\Http\Controllers\Api\GigWorkerController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\IdVerificationController;
 use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\SimpleTestController;
@@ -256,10 +258,26 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboarding/employer', [ClientOnboardingController::class, 'store']);
     Route::post('/onboarding/employer/skip', [ClientOnboardingController::class, 'skip'])->name('employer.onboarding.skip');
 
+    // Location API routes
+    Route::prefix('api/location')->name('location.')->group(function () {
+        Route::get('/countries', [LocationController::class, 'getCountries'])->name('countries');
+        Route::get('/provinces/{country}', [LocationController::class, 'getProvinces'])->name('provinces');
+        Route::get('/cities/{province}', [LocationController::class, 'getCities'])->name('cities');
+        Route::get('/municipalities/{city}', [LocationController::class, 'getMunicipalities'])->name('municipalities');
+        Route::get('/search', [LocationController::class, 'searchAddress'])->name('search');
+    });
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // ID Verification routes
+    Route::get('/id-verification', function () {
+        return Inertia::render('IdVerification/Upload');
+    })->name('id-verification.show');
+    Route::post('/api/id-verification/upload', [IdVerificationController::class, 'upload'])->name('id-verification.upload');
+    Route::post('/api/id-verification/resubmit', [IdVerificationController::class, 'resubmit'])->name('id-verification.resubmit');
 
     // Employer-only routes (job management)
     Route::middleware(['employer'])->group(function () {
@@ -441,6 +459,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // User analytics and export
     Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export');
     Route::get('/users/analytics', [AdminController::class, 'userAnalytics'])->name('users.analytics');
+
+    // ID Verifications
+    Route::get('/id-verifications', [\App\Http\Controllers\Admin\IdVerificationController::class, 'index'])->name('id-verifications.index');
+    Route::get('/id-verifications/{user}', [\App\Http\Controllers\Admin\IdVerificationController::class, 'show'])->name('id-verifications.show');
+    Route::post('/id-verifications/{user}/approve', [\App\Http\Controllers\Admin\IdVerificationController::class, 'approve'])->name('id-verifications.approve');
+    Route::post('/id-verifications/{user}/reject', [\App\Http\Controllers\Admin\IdVerificationController::class, 'reject'])->name('id-verifications.reject');
 
     // Projects management
     Route::get('/projects', [AdminController::class, 'projects'])->name('projects');

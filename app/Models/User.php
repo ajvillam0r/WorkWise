@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -25,21 +25,15 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'barangay',
         'user_type',
         'profile_completed',
         'profile_status',
         'bio',
-        'location',
         'phone',
         'profile_photo',
         'profile_picture',
         'professional_title',
         'hourly_rate',
-        'experience_level',
-        'skills',
-        'languages',
-        'portfolio_url',
         'company_name',
         'work_type_needed',
         'budget_range',
@@ -68,10 +62,10 @@ class User extends Authenticatable
         'id_verified_at',
         'tutorial_completed',
         'onboarding_step',
-        // KYC Address fields
+        // Location hierarchy fields
         'country',
-        'street_address',
         'city',
+        'street_address',
         'postal_code',
         'address_verified_at',
     ];
@@ -96,8 +90,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'skills' => 'array',
-            'languages' => 'array',
             'hourly_rate' => 'decimal:2',
             'profile_completed' => 'boolean',
             'stripe_account_details' => 'array',
@@ -306,5 +298,21 @@ class User extends Authenticatable
     public function portfolioItems(): HasMany
     {
         return $this->hasMany(PortfolioItem::class)->orderBy('display_order');
+    }
+
+    /**
+     * Check if user's address is verified
+     */
+    public function isAddressVerified(): bool
+    {
+        return $this->address_verified_at !== null;
+    }
+
+    /**
+     * Check if user's ID is verified
+     */
+    public function isIdVerified(): bool
+    {
+        return $this->id_verification_status === 'verified';
     }
 }

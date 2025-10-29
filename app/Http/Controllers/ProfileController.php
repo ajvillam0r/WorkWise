@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Services\CloudinaryService;
+use App\Services\ProfileCompletionService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,11 +18,16 @@ use Inertia\Response;
 class ProfileController extends Controller
 {
     protected $cloudinaryService;
+    protected $profileCompletionService;
 
-    public function __construct(CloudinaryService $cloudinaryService)
-    {
+    public function __construct(
+        CloudinaryService $cloudinaryService,
+        ProfileCompletionService $profileCompletionService
+    ) {
         $this->cloudinaryService = $cloudinaryService;
+        $this->profileCompletionService = $profileCompletionService;
     }
+
     /**
      * Display the user's profile form.
      */
@@ -31,9 +37,16 @@ class ProfileController extends Controller
         $user = $request->user();
         $user->load('portfolioItems');
         
+        // Get profile completion data for gig workers
+        $profileCompletion = null;
+        if ($user->isGigWorker()) {
+            $profileCompletion = $this->profileCompletionService->getCompletionData($user);
+        }
+
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
+            'profileCompletion' => $profileCompletion,
         ]);
     }
 

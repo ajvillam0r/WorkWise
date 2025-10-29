@@ -28,7 +28,8 @@ class AdminUserSeeder extends Seeder
                 'profile_completed' => true,
                 'profile_status' => 'approved',
                 'email_verified_at' => now(),
-                'barangay' => 'System Admin',
+                'country' => 'Philippines',
+                'city' => 'Manila',
             ]);
 
             $this->command->info('Admin user created successfully!');

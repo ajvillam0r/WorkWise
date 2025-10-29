@@ -57,6 +57,21 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const [availableServices, setAvailableServices] = useState([]);
     const [availableSkills, setAvailableSkills] = useState([]);
 
+    // State to track file previews and persist uploads across step navigation
+    const [filePreviews, setFilePreviews] = useState({
+        profile_picture: null,
+        id_front_image: null,
+        id_back_image: null,
+        portfolio_items: {} // Track by index
+    });
+
+    const [fileRefs, setFileRefs] = useState({
+        profile_picture: null,
+        id_front_image: null,
+        id_back_image: null,
+        portfolio_items: {} // Track by index
+    });
+
     // Load categories from taxonomy
     useEffect(() => {
         if (skillsTaxonomy && skillsTaxonomy.services) {
@@ -220,9 +235,8 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                 return data.broad_category && 
                        data.specific_services.length >= 2 && 
                        data.skills_with_experience.length >= 3;
-            case 4: // ID Verification
-                return data.id_type && data.id_front_image && data.id_back_image && 
-                       data.street_address && data.city && data.postal_code && data.kyc_country;
+            case 4: // ID Verification - Address required, ID optional
+                return data.street_address && data.city && data.postal_code && data.kyc_country;
             case 5: // Availability
                 return data.preferred_communication.length >= 1;
             default:
@@ -243,6 +257,76 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const removePortfolioItem = (index) => {
         setData('portfolio_items', data.portfolio_items.filter((_, i) => i !== index));
     };
+
+    // Helper function to handle file uploads with preview persistence
+    const handleFileUpload = (fieldName, file, index = null) => {
+        if (!file) return;
+
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file);
+
+        // Store file reference
+        if (index !== null) {
+            // Portfolio item image
+            setFileRefs(prev => ({
+                ...prev,
+                portfolio_items: {
+                    ...prev.portfolio_items,
+                    [index]: file
+                }
+            }));
+            setFilePreviews(prev => ({
+                ...prev,
+                portfolio_items: {
+                    ...prev.portfolio_items,
+                    [index]: previewUrl
+                }
+            }));
+        } else {
+            // Single file (profile_picture, id_front_image, id_back_image)
+            setFileRefs(prev => ({ ...prev, [fieldName]: file }));
+            setFilePreviews(prev => ({ ...prev, [fieldName]: previewUrl }));
+        }
+
+        // Update form data
+        setData(fieldName, file);
+    };
+
+    // Helper function to update portfolio item images with preview generation
+    const updatePortfolioItemImages = (index, files) => {
+        const updatedItems = [...data.portfolio_items];
+        updatedItems[index].images = Array.from(files);
+        setData('portfolio_items', updatedItems);
+
+        // Store previews for each image
+        Array.from(files).forEach((file, fileIndex) => {
+            const previewUrl = URL.createObjectURL(file);
+            setFilePreviews(prev => ({
+                ...prev,
+                portfolio_items: {
+                    ...prev.portfolio_items,
+                    [`${index}_${fileIndex}`]: previewUrl
+                }
+            }));
+        });
+    };
+
+    // Cleanup preview URLs on unmount to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            // Cleanup preview URLs to prevent memory leaks
+            Object.values(filePreviews).forEach(url => {
+                if (typeof url === 'string' && url.startsWith('blob:')) {
+                    URL.revokeObjectURL(url);
+                }
+            });
+            Object.values(filePreviews.portfolio_items || {}).forEach(url => {
+                if (typeof url === 'string' && url.startsWith('blob:')) {
+                    URL.revokeObjectURL(url);
+                }
+            });
+        };
+    }, []);
 
     const updatePortfolioItem = (index, field, value) => {
         const updated = [...data.portfolio_items];
@@ -473,9 +557,18 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 type="file"
                                                 accept="image/*"
                                                 className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                onChange={(e) => setData('profile_picture', e.target.files[0])}
+                                                onChange={(e) => handleFileUpload('profile_picture', e.target.files[0])}
                                             />
                                             <InputError message={errors.profile_picture} className="mt-2" />
+                                            {filePreviews.profile_picture && (
+                                                <div className="mt-3">
+                                                    <img 
+                                                        src={filePreviews.profile_picture} 
+                                                        alt="Preview" 
+                                                        className="h-24 w-24 rounded-full object-cover border-2 border-gray-300"
+                                                    />
+                                                </div>
+                                            )}
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Profiles with photos get 40% more responses!
                                             </p>
@@ -702,8 +795,20 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                             accept="image/*"
                                                             multiple
                                                             className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                                            onChange={(e) => updatePortfolioItem(index, 'images', Array.from(e.target.files).slice(0, 5))}
+                                                            onChange={(e) => updatePortfolioItemImages(index, e.target.files)}
                                                         />
+                                                        {item.images && item.images.length > 0 && (
+                                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                                {Array.from(item.images).map((img, imgIdx) => (
+                                                                    <img
+                                                                        key={imgIdx}
+                                                                        src={filePreviews.portfolio_items[`${index}_${imgIdx}`] || URL.createObjectURL(img)}
+                                                                        alt={`Portfolio ${imgIdx + 1}`}
+                                                                        className="h-20 w-20 object-cover rounded border shadow-sm"
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -714,59 +819,94 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                 {/* Step 4: ID Verification */}
                                 {currentStep === 4 && (
                                     <div className="space-y-6">
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                            <p className="text-sm text-blue-800">
-                                                <strong>Why verify?</strong> ID verification helps build trust and is required to bid on projects. Your information is kept secure.
-                                            </p>
+                                        {/* ID Images Section - Optional */}
+                                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="font-semibold text-gray-900">ID Verification (Optional)</h4>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setData('id_type', '');
+                                                        setData('id_front_image', null);
+                                                        setData('id_back_image', null);
+                                                    }}
+                                                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                                >
+                                                    Skip ID Upload
+                                                </button>
+                                            </div>
+
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                                <p className="text-sm text-blue-800">
+                                                    <strong>Why verify?</strong> ID verification helps build trust and increases your chances to get hired. You can also upload this later from your profile. Your information is kept secure.
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <InputLabel value="Select ID Type" />
+                                                    <select
+                                                        value={data.id_type}
+                                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                                        onChange={(e) => setData('id_type', e.target.value)}
+                                                    >
+                                                        <option value="">-- Choose an ID type --</option>
+                                                        {idTypes.map((type) => (
+                                                            <option key={type.value} value={type.value}>
+                                                                {type.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <InputError message={errors.id_type} className="mt-2" />
+                                                </div>
+
+                                                <div>
+                                                    <InputLabel value="Front of ID" />
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                                        onChange={(e) => handleFileUpload('id_front_image', e.target.files[0])}
+                                                    />
+                                                    <InputError message={errors.id_front_image} className="mt-2" />
+                                                    {filePreviews.id_front_image && (
+                                                        <div className="mt-3">
+                                                            <img 
+                                                                src={filePreviews.id_front_image} 
+                                                                alt="ID Front Preview" 
+                                                                className="h-32 w-auto border rounded shadow-sm"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        Max size: 5MB. Ensure all details are clearly visible.
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <InputLabel value="Back of ID" />
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                                        onChange={(e) => handleFileUpload('id_back_image', e.target.files[0])}
+                                                    />
+                                                    <InputError message={errors.id_back_image} className="mt-2" />
+                                                    {filePreviews.id_back_image && (
+                                                        <div className="mt-3">
+                                                            <img 
+                                                                src={filePreviews.id_back_image} 
+                                                                alt="ID Back Preview" 
+                                                                className="h-32 w-auto border rounded shadow-sm"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div>
-                                            <InputLabel value="Select ID Type *" />
-                                            <select
-                                                value={data.id_type}
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                onChange={(e) => setData('id_type', e.target.value)}
-                                                required
-                                            >
-                                                <option value="">-- Choose an ID type --</option>
-                                                {idTypes.map((type) => (
-                                                    <option key={type.value} value={type.value}>
-                                                        {type.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <InputError message={errors.id_type} className="mt-2" />
-                                        </div>
-
-                                        <div>
-                                            <InputLabel value="Front of ID *" />
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
-                                                onChange={(e) => setData('id_front_image', e.target.files[0])}
-                                                required
-                                            />
-                                            <InputError message={errors.id_front_image} className="mt-2" />
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Max size: 5MB. Ensure all details are clearly visible.
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <InputLabel value="Back of ID *" />
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
-                                                onChange={(e) => setData('id_back_image', e.target.files[0])}
-                                                required
-                                            />
-                                            <InputError message={errors.id_back_image} className="mt-2" />
-                                        </div>
-
-                                        {/* Address Information Section */}
-                                        <div className="border-t pt-6 mt-6">
+                                        {/* Address Section - Required */}
+                                        <div className="border border-red-200 rounded-lg p-6 bg-red-50 mt-6">
                                             <h4 className="text-lg font-semibold text-gray-800 mb-4">
                                                 Complete Address
                                             </h4>

@@ -19,11 +19,11 @@ class AIJobMatchingService
         $this->aiService = $aiService;
     }
     /**
-     * Find matching freelancers for a job using AI-like algorithm
+     * Find matching gig workers for a job using AI-like algorithm
      */
     public function findMatchingFreelancers(GigJob $job, int $limit = 10): Collection
     {
-        $freelancers = User::where('user_type', 'freelancer')
+        $freelancers = User::where('user_type', 'gig_worker')
             ->where('profile_completed', true)
             ->get();
 
@@ -70,6 +70,29 @@ class AIJobMatchingService
     }
 
     /**
+     * Extract skills from skills_with_experience with experience weighting
+     */
+    private function getFreelancerSkills(User $freelancer): array
+    {
+        if (empty($freelancer->skills_with_experience)) {
+            return [];
+        }
+
+        return array_map(function($item) {
+            return [
+                'skill' => strtolower(trim($item['skill'])),
+                'experience_level' => $item['experience_level'] ?? 'intermediate',
+                'weight' => match($item['experience_level'] ?? 'intermediate') {
+                    'beginner' => 1.0,
+                    'intermediate' => 1.5,
+                    'expert' => 2.0,
+                    default => 1.0
+                }
+            ];
+        }, $freelancer->skills_with_experience);
+    }
+
+    /**
      * Calculate match score between job and freelancer
      */
     private function calculateMatchScore(GigJob $job, User $freelancer): float
@@ -77,12 +100,18 @@ class AIJobMatchingService
         $score = 0.0;
         $maxScore = 1.0;
 
-        // Skills matching (70% weight) - Primary factor
-        $skillsScore = $this->calculateSkillsMatch($job->required_skills, $freelancer->skills ?? []);
+        // Get freelancer skills with experience levels
+        $freelancerSkillsWithExp = $this->getFreelancerSkills($freelancer);
+
+        // Skills matching (70% weight) - Primary factor with experience weighting
+        $skillsScore = $this->calculateSkillsMatchWithExperience(
+            $job->required_skills, 
+            $freelancerSkillsWithExp
+        );
         $score += $skillsScore * 0.7;
 
         // Experience level matching (30% weight) - Secondary factor
-        $experienceScore = $this->calculateExperienceMatch($job->experience_level, $freelancer);
+        $experienceScore = $this->calculateExperienceMatchFromSkills($job->experience_level, $freelancerSkillsWithExp);
         $score += $experienceScore * 0.3;
 
         // Remove all other factors (budget, location, reputation, availability)
@@ -92,7 +121,78 @@ class AIJobMatchingService
     }
 
     /**
-     * Calculate skills matching score
+     * Calculate skills matching score WITH experience level weighting
+     */
+    private function calculateSkillsMatchWithExperience(array $requiredSkills, array $freelancerSkillsWithExp): float
+    {
+        if (empty($requiredSkills) || empty($freelancerSkillsWithExp)) {
+            return 0.0;
+        }
+
+        // Normalize required skills
+        $requiredSkills = array_map(function($skill) {
+            return strtolower(trim($skill));
+        }, $requiredSkills);
+
+        // Extract just the skill names from freelancer skills
+        $freelancerSkillNames = array_column($freelancerSkillsWithExp, 'skill');
+
+        // Direct matches with experience weighting
+        $directMatchScore = 0;
+        $directMatchCount = 0;
+        
+        foreach ($requiredSkills as $required) {
+            foreach ($freelancerSkillsWithExp as $fSkill) {
+                if ($fSkill['skill'] === $required) {
+                    // Apply experience level weight
+                    $directMatchScore += $fSkill['weight'];
+                    $directMatchCount++;
+                    break;
+                }
+            }
+        }
+
+        // Normalize direct match score
+        $maxPossibleScore = count($requiredSkills) * 2.0; // Max weight is 2.0 for expert
+        $normalizedDirectScore = $directMatchCount > 0 ? ($directMatchScore / $maxPossibleScore) : 0;
+
+        // Partial matches (for similar skills) with reduced weight
+        $partialMatches = 0;
+        $partialScore = 0;
+        
+        foreach ($requiredSkills as $required) {
+            $foundDirect = false;
+            foreach ($freelancerSkillsWithExp as $fSkill) {
+                if ($fSkill['skill'] === $required) {
+                    $foundDirect = true;
+                    break;
+                }
+            }
+            
+            if (!$foundDirect) {
+                foreach ($freelancerSkillsWithExp as $fSkill) {
+                    if (str_contains($fSkill['skill'], $required) || str_contains($required, $fSkill['skill'])) {
+                        $partialMatches++;
+                        $partialScore += $fSkill['weight'] * 0.5; // Partial matches worth 50%
+                        break;
+                    }
+                }
+            }
+        }
+
+        $normalizedPartialScore = $partialMatches > 0 ? ($partialScore / $maxPossibleScore) : 0;
+        
+        // Combine scores
+        $totalMatchScore = $normalizedDirectScore + $normalizedPartialScore;
+
+        // Bonus for having more skills than required (up to 20%)
+        $extraSkillsBonus = min(0.2, (count($freelancerSkillsWithExp) - count($requiredSkills)) * 0.02);
+
+        return min(1.0, $totalMatchScore + $extraSkillsBonus);
+    }
+
+    /**
+     * Calculate skills matching score (legacy method for backward compatibility)
      */
     private function calculateSkillsMatch(array $requiredSkills, array $freelancerSkills): float
     {
@@ -136,7 +236,38 @@ class AIJobMatchingService
     }
 
     /**
-     * Calculate experience level match
+     * Calculate experience match from skills_with_experience array
+     */
+    private function calculateExperienceMatchFromSkills(string $requiredLevel, array $freelancerSkillsWithExp): float
+    {
+        if (empty($freelancerSkillsWithExp)) {
+            return 0.5; // Neutral score if no skills provided
+        }
+
+        $levelMap = ['beginner' => 1, 'intermediate' => 2, 'expert' => 3];
+        $required = $levelMap[$requiredLevel] ?? 2;
+
+        // Calculate average experience level from all skills
+        $totalLevel = 0;
+        foreach ($freelancerSkillsWithExp as $skill) {
+            $totalLevel += $levelMap[$skill['experience_level']] ?? 2;
+        }
+        $avgLevel = $totalLevel / count($freelancerSkillsWithExp);
+
+        // Perfect match = 1.0, one level off = 0.7, two levels off = 0.3
+        $difference = abs($required - $avgLevel);
+        
+        if ($difference < 0.5) {
+            return 1.0; // Perfect match
+        } elseif ($difference < 1.5) {
+            return 0.7; // Close match
+        } else {
+            return 0.3; // Distant match
+        }
+    }
+
+    /**
+     * Calculate experience level match (legacy method for backward compatibility)
      */
     private function calculateExperienceMatch(string $requiredLevel, User $freelancer): float
     {
@@ -284,11 +415,14 @@ class AIJobMatchingService
             }
         }
 
+        // Get freelancer skills with experience
+        $freelancerSkillsWithExp = $this->getFreelancerSkills($freelancer);
+        $freelancerSkillNames = array_column($freelancerSkillsWithExp, 'skill');
+
         // Skills match with details (Primary factor)
-        $skillsMatch = $this->calculateSkillsMatch($job->required_skills, $freelancer->skills ?? []);
+        $skillsMatch = $this->calculateSkillsMatchWithExperience($job->required_skills, $freelancerSkillsWithExp);
         $requiredSkills = array_map('strtolower', $job->required_skills);
-        $freelancerSkills = array_map('strtolower', $freelancer->skills ?? []);
-        $matchingSkills = array_intersect($requiredSkills, $freelancerSkills);
+        $matchingSkills = array_intersect($requiredSkills, $freelancerSkillNames);
 
         if ($skillsMatch > 0.8) {
             $reasons[] = "✅ Excellent skills match (" . count($matchingSkills) . "/" . count($requiredSkills) . " skills)";
@@ -302,16 +436,37 @@ class AIJobMatchingService
             $reasons[] = "❌ No direct skills match - consider learning: " . implode(', ', array_slice($job->required_skills, 0, 3));
         }
 
-        // Experience level details (Secondary factor)
-        $experienceMatch = $this->calculateExperienceMatch($job->experience_level, $freelancer);
-        if ($experienceMatch > 0.8) {
-            $reasons[] = "🎯 Perfect experience level match ({$freelancer->experience_level} = {$job->experience_level})";
-        } elseif ($experienceMatch > 0.5) {
-            $reasons[] = "🎯 Good experience level match ({$freelancer->experience_level} ≈ {$job->experience_level})";
-        } elseif ($freelancer->experience_level) {
-            $reasons[] = "📊 Experience level: {$freelancer->experience_level} (required: {$job->experience_level})";
+        // Experience level details (Secondary factor) - from skills_with_experience
+        $experienceMatch = $this->calculateExperienceMatchFromSkills($job->experience_level, $freelancerSkillsWithExp);
+        
+        if (count($freelancerSkillsWithExp) > 0) {
+            // Calculate average experience level
+            $levelMap = ['beginner' => 1, 'intermediate' => 2, 'expert' => 3];
+            $avgLevel = array_sum(array_column($freelancerSkillsWithExp, 'weight')) / count($freelancerSkillsWithExp);
+            $avgLevelName = match(true) {
+                $avgLevel >= 1.75 => 'expert',
+                $avgLevel >= 1.25 => 'intermediate',
+                default => 'beginner'
+            };
+
+            if ($experienceMatch > 0.8) {
+                $reasons[] = "🎯 Perfect experience level match ({$avgLevelName} = {$job->experience_level})";
+            } elseif ($experienceMatch > 0.5) {
+                $reasons[] = "🎯 Good experience level match ({$avgLevelName} ≈ {$job->experience_level})";
+            } else {
+                $reasons[] = "📊 Average experience level: {$avgLevelName} (required: {$job->experience_level})";
+            }
+            
+            // Show skill breakdown
+            $expertCount = count(array_filter($freelancerSkillsWithExp, fn($s) => $s['experience_level'] === 'expert'));
+            $intermediateCount = count(array_filter($freelancerSkillsWithExp, fn($s) => $s['experience_level'] === 'intermediate'));
+            $beginnerCount = count(array_filter($freelancerSkillsWithExp, fn($s) => $s['experience_level'] === 'beginner'));
+            
+            if ($expertCount > 0) {
+                $reasons[] = "⭐ {$expertCount} expert-level " . ($expertCount === 1 ? 'skill' : 'skills');
+            }
         } else {
-            $reasons[] = "📋 Experience level not specified in profile";
+            $reasons[] = "📋 No skills with experience levels in profile";
         }
 
         // Add success prediction if AI is available
@@ -346,11 +501,11 @@ class AIJobMatchingService
                 "₱{$job->budget_min} - ₱{$job->budget_max}" : 'Budget not specified'
         ];
 
+        // Use skills_with_experience for more accurate matching
         $freelancerData = [
             'id' => $freelancer->id,
             'name' => $freelancer->first_name . ' ' . $freelancer->last_name,
-            'skills' => $freelancer->skills ?? [],
-            'experience_level' => $freelancer->experience_level,
+            'skills_with_experience' => $freelancer->skills_with_experience ?? [],
             'bio' => $freelancer->bio
         ];
 
@@ -371,11 +526,11 @@ class AIJobMatchingService
                 "₱{$job->budget_min} - ₱{$job->budget_max}" : 'Budget not specified'
         ];
 
+        // Use skills_with_experience for more accurate prediction
         $freelancerData = [
             'id' => $freelancer->id,
             'name' => $freelancer->first_name . ' ' . $freelancer->last_name,
-            'skills' => $freelancer->skills ?? [],
-            'experience_level' => $freelancer->experience_level
+            'skills_with_experience' => $freelancer->skills_with_experience ?? []
         ];
 
         return $this->aiService->generateSuccessPrediction($jobData, $freelancerData);
@@ -424,8 +579,10 @@ class AIJobMatchingService
     {
         $suggestions = [];
 
-        if (!$freelancer->skills || count($freelancer->skills) < 3) {
-            $suggestions[] = "Add more skills to your profile to increase job matches";
+        $skillsCount = is_array($freelancer->skills_with_experience) ? count($freelancer->skills_with_experience) : 0;
+        
+        if ($skillsCount < 3) {
+            $suggestions[] = "Add more skills with experience levels to your profile to increase job matches";
         }
 
         if (!$freelancer->bio || strlen($freelancer->bio) < 100) {
@@ -439,6 +596,14 @@ class AIJobMatchingService
         $reviewCount = $freelancer->receivedReviews()->count();
         if ($reviewCount < 5) {
             $suggestions[] = "Complete more projects to build your reputation";
+        }
+
+        // Suggest adding expert-level skills
+        if ($skillsCount > 0) {
+            $expertCount = count(array_filter($freelancer->skills_with_experience, fn($s) => $s['experience_level'] === 'expert'));
+            if ($expertCount === 0) {
+                $suggestions[] = "Upgrade some of your skills to expert level as you gain more experience";
+            }
         }
 
         return $suggestions;
@@ -460,8 +625,7 @@ class AIJobMatchingService
         $freelancerData = [
             'id' => $freelancer->id,
             'name' => $freelancer->first_name . ' ' . $freelancer->last_name,
-            'skills' => $freelancer->skills ?? [],
-            'experience_level' => $freelancer->experience_level,
+            'skills_with_experience' => $freelancer->skills_with_experience ?? [],
             'bio' => $freelancer->bio
         ];
 

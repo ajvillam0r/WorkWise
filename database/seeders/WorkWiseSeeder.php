@@ -27,7 +27,8 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Doe',
             'email' => 'john.doe@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Mactan',
+            'country' => 'United States',
+            'city' => 'San Francisco',
             'user_type' => 'employer',
             'profile_completed' => true,
             'profile_status' => 'approved',
@@ -36,7 +37,6 @@ class WorkWiseSeeder extends Seeder
             'budget_range' => '$5,000 - $10,000',
             'project_intent' => 'We need to build a modern web application for our startup.',
             'bio' => 'We are a fast-growing tech startup looking for talented freelancers.',
-            'location' => 'San Francisco, CA',
             'escrow_balance' => 15000.00,
         ]);
 
@@ -45,7 +45,8 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Smith',
             'email' => 'jane.smith@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Poblacion',
+            'country' => 'United States',
+            'city' => 'New York',
             'user_type' => 'employer',
             'profile_completed' => true,
             'profile_status' => 'approved',
@@ -54,7 +55,6 @@ class WorkWiseSeeder extends Seeder
             'budget_range' => '$1,000 - $5,000',
             'project_intent' => 'Looking for ongoing design support for our client projects.',
             'bio' => 'Full-service digital agency specializing in web development and design.',
-            'location' => 'New York, NY',
             'escrow_balance' => 8500.00,
         ]);
 
@@ -63,7 +63,8 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Chen',
             'email' => 'michael.chen@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Lahug',
+            'country' => 'Canada',
+            'city' => 'Toronto',
             'user_type' => 'employer',
             'profile_completed' => true,
             'profile_status' => 'approved',
@@ -72,7 +73,6 @@ class WorkWiseSeeder extends Seeder
             'budget_range' => '$10,000 - $25,000',
             'project_intent' => 'Building mobile apps for e-commerce businesses.',
             'bio' => 'We help e-commerce businesses expand to mobile platforms.',
-            'location' => 'Toronto, Canada',
             'escrow_balance' => 25000.00,
         ]);
 
@@ -82,18 +82,26 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Garcia',
             'email' => 'maria.garcia@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Basak',
+            'country' => 'Philippines',
+            'city' => 'Cebu City',
             'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Senior Full Stack Developer',
-            'experience_level' => 'expert',
             'bio' => 'Full-stack developer with 7+ years of experience in React and Laravel. I specialize in building scalable web applications and have worked with Fortune 500 companies.',
-            'location' => 'Remote',
             'hourly_rate' => 85.00,
-            'skills' => ['React', 'Laravel', 'JavaScript', 'PHP', 'MySQL', 'Node.js', 'Vue.js', 'PostgreSQL'],
-            'languages' => ['English', 'Spanish'],
-            'portfolio_url' => 'https://mariagarcia.dev',
+            'broad_category' => 'Web Development',
+            'specific_services' => ['Full-Stack Development', 'E-commerce Solutions', 'API Development', 'Database Design'],
+            'skills_with_experience' => [
+                ['skill' => 'React', 'experience_level' => 'expert'],
+                ['skill' => 'Laravel', 'experience_level' => 'expert'],
+                ['skill' => 'JavaScript', 'experience_level' => 'expert'],
+                ['skill' => 'PHP', 'experience_level' => 'expert'],
+                ['skill' => 'MySQL', 'experience_level' => 'expert'],
+                ['skill' => 'Node.js', 'experience_level' => 'expert'],
+                ['skill' => 'Vue.js', 'experience_level' => 'expert'],
+                ['skill' => 'PostgreSQL', 'experience_level' => 'expert'],
+            ],
         ]);
 
         $gigWorker2 = User::create([
@@ -101,18 +109,25 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Rodriguez',
             'email' => 'carlos.rodriguez@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Punta Engaño',
+            'country' => 'United States',
+            'city' => 'Los Angeles',
             'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Senior UI/UX Designer',
-            'experience_level' => 'expert',
             'bio' => 'UI/UX designer with 6+ years of experience creating beautiful and functional designs. I help businesses create engaging digital experiences that convert.',
-            'location' => 'Los Angeles, CA',
             'hourly_rate' => 70.00,
-            'skills' => ['UI Design', 'UX Design', 'Figma', 'Adobe Creative Suite', 'Prototyping', 'User Research', 'Wireframing'],
-            'languages' => ['English', 'Spanish'],
-            'portfolio_url' => 'https://carlosdesigns.com',
+            'broad_category' => 'Creative & Design Services',
+            'specific_services' => ['UI/UX Design', 'User Research', 'Prototyping', 'Wireframing'],
+            'skills_with_experience' => [
+                ['skill' => 'UI Design', 'experience_level' => 'expert'],
+                ['skill' => 'UX Design', 'experience_level' => 'expert'],
+                ['skill' => 'Figma', 'experience_level' => 'expert'],
+                ['skill' => 'Adobe Creative Suite', 'experience_level' => 'expert'],
+                ['skill' => 'Prototyping', 'experience_level' => 'expert'],
+                ['skill' => 'User Research', 'experience_level' => 'expert'],
+                ['skill' => 'Wireframing', 'experience_level' => 'expert'],
+            ],
         ]);
 
         $gigWorker3 = User::create([
@@ -120,18 +135,24 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Johnson',
             'email' => 'sarah.johnson@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Agus',
+            'country' => 'United States',
+            'city' => 'Chicago',
             'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Content Writer & SEO Specialist',
-            'experience_level' => 'intermediate',
             'bio' => 'Content writer and copywriter with 4 years of experience specializing in tech and marketing content. I create compelling content that drives results.',
-            'location' => 'Chicago, IL',
             'hourly_rate' => 50.00,
-            'skills' => ['Content Writing', 'Copywriting', 'SEO', 'Blog Writing', 'Technical Writing', 'Social Media'],
-            'languages' => ['English', 'French'],
-            'portfolio_url' => 'https://sarahjohnson.writer',
+            'broad_category' => 'Content & Writing',
+            'specific_services' => ['Content Writing', 'SEO Writing', 'Technical Writing', 'Blog Writing'],
+            'skills_with_experience' => [
+                ['skill' => 'Content Writing', 'experience_level' => 'intermediate'],
+                ['skill' => 'Copywriting', 'experience_level' => 'intermediate'],
+                ['skill' => 'SEO', 'experience_level' => 'intermediate'],
+                ['skill' => 'Blog Writing', 'experience_level' => 'intermediate'],
+                ['skill' => 'Technical Writing', 'experience_level' => 'intermediate'],
+                ['skill' => 'Social Media', 'experience_level' => 'intermediate'],
+            ],
         ]);
 
         // Beginner gig worker for lower match scores
@@ -140,18 +161,23 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Kim',
             'email' => 'alex.kim@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Talamban',
+            'country' => 'Philippines',
+            'city' => 'Cebu City',
             'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Junior Web Developer',
-            'experience_level' => 'beginner',
             'bio' => 'Recent computer science graduate passionate about web development. Eager to learn and grow while delivering quality work.',
-            'location' => 'Remote',
             'hourly_rate' => 25.00,
-            'skills' => ['HTML', 'CSS', 'JavaScript', 'Bootstrap', 'Git'],
-            'languages' => ['English', 'Korean'],
-            'portfolio_url' => 'https://alexkim.dev',
+            'broad_category' => 'Web Development',
+            'specific_services' => ['Front-End Development', 'Responsive Design', 'Website Maintenance'],
+            'skills_with_experience' => [
+                ['skill' => 'HTML', 'experience_level' => 'beginner'],
+                ['skill' => 'CSS', 'experience_level' => 'beginner'],
+                ['skill' => 'JavaScript', 'experience_level' => 'beginner'],
+                ['skill' => 'Bootstrap', 'experience_level' => 'beginner'],
+                ['skill' => 'Git', 'experience_level' => 'beginner'],
+            ],
         ]);
 
         // Mobile developer for specific matches
@@ -160,18 +186,25 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Patel',
             'email' => 'priya.patel@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'IT Park',
+            'country' => 'India',
+            'city' => 'Mumbai',
             'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Mobile App Developer',
-            'experience_level' => 'expert',
             'bio' => 'Mobile app developer with 8+ years of experience in iOS and Android development. Specialized in e-commerce and fintech apps.',
-            'location' => 'Mumbai, India',
             'hourly_rate' => 65.00,
-            'skills' => ['React Native', 'Flutter', 'iOS', 'Android', 'Swift', 'Kotlin', 'Firebase'],
-            'languages' => ['English', 'Hindi'],
-            'portfolio_url' => 'https://priyapatel.mobile',
+            'broad_category' => 'Mobile Development',
+            'specific_services' => ['React Native Development', 'iOS Development', 'Android Development', 'Flutter Development'],
+            'skills_with_experience' => [
+                ['skill' => 'React Native', 'experience_level' => 'expert'],
+                ['skill' => 'Flutter', 'experience_level' => 'expert'],
+                ['skill' => 'iOS', 'experience_level' => 'expert'],
+                ['skill' => 'Android', 'experience_level' => 'expert'],
+                ['skill' => 'Swift', 'experience_level' => 'expert'],
+                ['skill' => 'Kotlin', 'experience_level' => 'expert'],
+                ['skill' => 'Firebase', 'experience_level' => 'expert'],
+            ],
         ]);
 
         // Data scientist for mismatch scenarios
@@ -180,18 +213,25 @@ class WorkWiseSeeder extends Seeder
             'last_name' => 'Wilson',
             'email' => 'david.wilson@example.com',
             'password' => Hash::make('password'),
-            'barangay' => 'Banilad',
+            'country' => 'United States',
+            'city' => 'Seattle',
             'user_type' => 'gig_worker',
             'profile_completed' => true,
             'profile_status' => 'approved',
             'professional_title' => 'Data Scientist',
-            'experience_level' => 'expert',
             'bio' => 'Data scientist with expertise in machine learning, statistical analysis, and data visualization. 6+ years of experience.',
-            'location' => 'Seattle, WA',
             'hourly_rate' => 95.00,
-            'skills' => ['Python', 'R', 'Machine Learning', 'Data Analysis', 'SQL', 'Tableau', 'TensorFlow'],
-            'languages' => ['English'],
-            'portfolio_url' => 'https://davidwilson.data',
+            'broad_category' => 'Data Science & Analytics',
+            'specific_services' => ['Machine Learning', 'Data Analysis', 'Statistical Modeling', 'Data Visualization'],
+            'skills_with_experience' => [
+                ['skill' => 'Python', 'experience_level' => 'expert'],
+                ['skill' => 'R', 'experience_level' => 'expert'],
+                ['skill' => 'Machine Learning', 'experience_level' => 'expert'],
+                ['skill' => 'Data Analysis', 'experience_level' => 'expert'],
+                ['skill' => 'SQL', 'experience_level' => 'expert'],
+                ['skill' => 'Tableau', 'experience_level' => 'expert'],
+                ['skill' => 'TensorFlow', 'experience_level' => 'expert'],
+            ],
         ]);
 
         // Create diverse job postings for different AI match scenarios
@@ -579,7 +619,7 @@ class WorkWiseSeeder extends Seeder
         $this->command->info('   • David → Web Development jobs (Wrong specialization)');
         $this->command->info('   • Web developers → Data Science jobs (Wrong specialization)');
         $this->command->info('');
-        $this->command->info(' SAMPLE DATA INCLUDES:');
+        $this->command->info('📊 SAMPLE DATA INCLUDES:');
         $this->command->info('   • 7 diverse job postings with different requirements');
         $this->command->info('   • 1 completed project with payment released (Sarah\'s content project)');
         $this->command->info('   • 2 completed projects awaiting employer approval (Alex\'s landing page & Maria\'s e-commerce)');
@@ -587,7 +627,7 @@ class WorkWiseSeeder extends Seeder
         $this->command->info('   • Gig workers with different experience levels');
         $this->command->info('   • Employers with funded escrow balances');
         $this->command->info('');
-        $this->command->info(' PAYMENT TESTING:');
+        $this->command->info('💳 PAYMENT TESTING:');
         $this->command->info('   • Log in as jane.smith@example.com to approve Alex\'s completed project (₱427.50)');
         $this->command->info('   • Log in as john.doe@example.com to approve Maria\'s completed project (₱6,840.00)');
         $this->command->info('   • This will test automatic payment release functionality');

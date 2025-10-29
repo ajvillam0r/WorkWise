@@ -49,7 +49,7 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'TechStart Philippines',
                 'bio' => 'CEO of a growing tech startup focused on e-commerce solutions for Filipino businesses.',
-                'location' => 'Makati City, Metro Manila',
+                'country' => 'Philippines', 'city' => '',
                 'phone' => '+639171234567',
                 'work_type_needed' => 'Web Development, Mobile Apps, Digital Marketing',
                 'budget_range' => '₱50,000 - ₱200,000',
@@ -66,7 +66,7 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'Digital Solutions Agency',
                 'bio' => 'Creative director at a digital marketing agency serving local and international clients.',
-                'location' => 'Cebu City, Cebu',
+                'country' => 'Philippines', 'city' => '',
                 'phone' => '+639181234567',
                 'work_type_needed' => 'Graphic Design, Content Writing, Social Media Management',
                 'budget_range' => '₱25,000 - ₱100,000',
@@ -83,7 +83,7 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'E-Commerce Plus',
                 'bio' => 'Operations manager for an online retail company expanding across Southeast Asia.',
-                'location' => 'Davao City, Davao del Sur',
+                'country' => 'Philippines', 'city' => '',
                 'phone' => '+639191234567',
                 'work_type_needed' => 'Data Entry, Customer Service, Virtual Assistance',
                 'budget_range' => '₱15,000 - ₱50,000',
@@ -118,14 +118,10 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'profile_status' => 'active',
                 'professional_title' => 'Senior Full-Stack Developer',
                 'bio' => 'Experienced full-stack developer with 5+ years building web applications for Filipino businesses.',
-                'location' => 'Manila, Metro Manila',
+                'country' => 'Philippines', 'city' => '',
                 'phone' => '+639171234568',
                 'hourly_rate' => 800.00,
-                'experience_level' => 'expert',
-                'skills' => ['PHP', 'Laravel', 'JavaScript', 'Vue.js', 'React', 'MySQL', 'API Development'],
-                'languages' => ['English', 'Filipino'],
-                'portfolio_url' => 'https://carlosmendoza.dev',
-            ],
+                ],
             [
                 'first_name' => 'Michelle',
                 'last_name' => 'Garcia',
@@ -136,14 +132,10 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'profile_status' => 'active',
                 'professional_title' => 'Full-Stack Web Developer',
                 'bio' => 'Passionate web developer with expertise in modern JavaScript frameworks and PHP.',
-                'location' => 'Cebu City, Cebu',
+                'country' => 'Philippines', 'city' => '',
                 'phone' => '+639181234568',
                 'hourly_rate' => 650.00,
-                'experience_level' => 'intermediate',
-                'skills' => ['PHP', 'Laravel', 'JavaScript', 'Vue.js', 'MySQL', 'WordPress'],
-                'languages' => ['English', 'Filipino'],
-                'portfolio_url' => 'https://michellegarcia.portfolio.com',
-            ],
+                ],
             [
                 'first_name' => 'Mark',
                 'last_name' => 'Villanueva',
@@ -154,14 +146,10 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'profile_status' => 'active',
                 'professional_title' => 'Brand Identity & Graphic Designer',
                 'bio' => 'Creative graphic designer with 4+ years of experience in brand identity and marketing materials.',
-                'location' => 'Iloilo City, Iloilo',
+                'country' => 'Philippines', 'city' => '',
                 'phone' => '+639211234568',
                 'hourly_rate' => 450.00,
-                'experience_level' => 'intermediate',
-                'skills' => ['Graphic Design', 'Logo Design', 'Brand Identity', 'Adobe Creative Suite'],
-                'languages' => ['English', 'Filipino'],
-                'portfolio_url' => 'https://markvillanueva.design',
-            ],
+                ],
         ];
 
         $createdWorkers = [];
@@ -187,9 +175,9 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'budget_type' => 'fixed',
                 'budget_min' => 80000,
                 'budget_max' => 120000,
-                'experience_level' => 'expert',
                 'estimated_duration_days' => 45,
                 'is_remote' => true,
+            'experience_level' => 'expert',
             ],
             [
                 'title' => 'Brand Identity Design for Filipino Restaurant',
@@ -198,9 +186,9 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'budget_type' => 'fixed',
                 'budget_min' => 35000,
                 'budget_max' => 55000,
-                'experience_level' => 'intermediate',
                 'estimated_duration_days' => 25,
                 'is_remote' => true,
+            'experience_level' => 'expert',
             ],
             [
                 'title' => 'Virtual Assistant - Customer Service',
@@ -209,9 +197,9 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'budget_type' => 'hourly',
                 'budget_min' => 200,
                 'budget_max' => 350,
-                'experience_level' => 'beginner',
                 'estimated_duration_days' => 90,
                 'is_remote' => true,
+            'experience_level' => 'expert',
             ],
         ];
 
@@ -266,3 +254,5 @@ class WorkWiseComprehensiveSeeder extends Seeder
         }
     }
 }
+
+

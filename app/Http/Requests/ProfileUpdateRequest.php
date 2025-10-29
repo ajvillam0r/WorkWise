@@ -32,14 +32,12 @@ class ProfileUpdateRequest extends FormRequest
             ],
             'phone' => ['nullable', 'string', 'max:20'],
             'bio' => ['nullable', 'string', 'max:1000'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'barangay' => ['nullable', 'string', 'max:255'],
             
-            // Address fields from KYC
-            'street_address' => ['nullable', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
+            // Address fields
             'country' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'street_address' => ['nullable', 'string', 'max:255'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
             
             'profile_photo' => ['nullable', 'image', 'max:2048'], // 2MB max
             'profile_picture' => ['nullable', 'image', 'max:5120'], // 5MB max for Cloudinary
@@ -50,14 +48,8 @@ class ProfileUpdateRequest extends FormRequest
             $rules = array_merge($rules, [
                 'professional_title' => ['nullable', 'string', 'max:255'],
                 'hourly_rate' => ['nullable', 'numeric', 'min:5', 'max:500'],
-                'experience_level' => ['nullable', 'in:beginner,intermediate,expert'],
-                'skills' => ['nullable', 'array', 'max:15'],
-                'skills.*' => ['string', 'max:50'],
-                'languages' => ['nullable', 'array', 'max:10'],
-                'languages.*' => ['string', 'max:50'],
-                'portfolio_url' => ['nullable', 'url', 'max:255'],
                 
-                // Gig worker onboarding fields
+                // Gig worker onboarding fields (AI matching basis)
                 'broad_category' => ['nullable', 'string', 'max:255'],
                 'specific_services' => ['nullable', 'array'],
                 'specific_services.*' => ['string', 'max:255'],

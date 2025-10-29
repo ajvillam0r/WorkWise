@@ -26,7 +26,8 @@ class EmployerSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'TechStart Philippines',
                 'bio' => 'CEO of a growing tech startup focused on e-commerce solutions for Filipino businesses.',
-                'location' => 'Makati City, Metro Manila',
+                'country' => 'Philippines',
+                'city' => 'Makati City',
                 'phone' => '+639171234567',
                 'work_type_needed' => 'Web Development, Mobile Apps, Digital Marketing',
                 'budget_range' => '₱50,000 - ₱200,000',
@@ -43,7 +44,8 @@ class EmployerSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'Digital Solutions Agency',
                 'bio' => 'Creative director at a digital marketing agency serving local and international clients.',
-                'location' => 'Cebu City, Cebu',
+                'country' => 'Philippines',
+                'city' => 'Cebu City',
                 'phone' => '+639181234567',
                 'work_type_needed' => 'Graphic Design, Content Writing, Social Media Management',
                 'budget_range' => '₱25,000 - ₱100,000',
@@ -60,7 +62,8 @@ class EmployerSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'E-Commerce Plus',
                 'bio' => 'Operations manager for an online retail company expanding across Southeast Asia.',
-                'location' => 'Davao City, Davao del Sur',
+                'country' => 'Philippines',
+                'city' => 'Davao City',
                 'phone' => '+639191234567',
                 'work_type_needed' => 'Data Entry, Customer Service, Virtual Assistance',
                 'budget_range' => '₱15,000 - ₱50,000',
@@ -77,7 +80,8 @@ class EmployerSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'Business Consulting Pro',
                 'bio' => 'Senior consultant helping SMEs digitize their operations and improve efficiency.',
-                'location' => 'Quezon City, Metro Manila',
+                'country' => 'Philippines',
+                'city' => 'Quezon City',
                 'phone' => '+639201234567',
                 'work_type_needed' => 'Business Analysis, Process Automation, Training',
                 'budget_range' => '₱75,000 - ₱300,000',
@@ -94,7 +98,8 @@ class EmployerSeeder extends Seeder
                 'profile_status' => 'active',
                 'company_name' => 'Filipino Flavors Restaurant Chain',
                 'bio' => 'Restaurant owner looking to expand online presence and improve customer experience.',
-                'location' => 'Iloilo City, Iloilo',
+                'country' => 'Philippines',
+                'city' => 'Iloilo City',
                 'phone' => '+639211234567',
                 'work_type_needed' => 'Website Development, Online Ordering System, Photography',
                 'budget_range' => '₱30,000 - ₱120,000',
@@ -263,7 +268,7 @@ class EmployerSeeder extends Seeder
                 $jobData = $jobTemplates[$index];
                 $jobData['employer_id'] = $employer->id;
                 $jobData['status'] = 'open';
-                $jobData['location'] = $employer->location;
+                $jobData['location'] = $employer->city . ', ' . $employer->country;
                 $jobData['deadline'] = now()->addDays($jobData['estimated_duration_days'] + 14);
 
                 // Check if job already exists for this employer

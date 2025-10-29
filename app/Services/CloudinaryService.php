@@ -226,7 +226,8 @@ class CloudinaryService
                     'folder' => $this->config['id_verification']['folder'],
                     'type' => 'authenticated', // Secure access
                     'allowed_formats' => $this->config['id_verification']['allowed_formats'],
-                    'resource_type' => 'auto'
+                    'resource_type' => 'auto',
+                    'timeout' => 60 // 60 second timeout per upload
                 ]
             );
 

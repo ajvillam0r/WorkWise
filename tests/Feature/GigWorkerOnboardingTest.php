@@ -366,7 +366,6 @@ class GigWorkerOnboardingTest extends TestCase
             'id_back_image' => $this->fakeImage('id_back.jpg'),
             'street_address' => '789 Remote Worker Street',
             'city' => 'Manila',
-            'barangay' => 'Ermita',
             'postal_code' => '1000',
             'kyc_country' => 'Philippines', // Different from registration country
             'working_hours' => [
@@ -382,7 +381,6 @@ class GigWorkerOnboardingTest extends TestCase
         $this->assertEquals('Philippines', $user->country); // Should be updated with KYC country
         $this->assertEquals('789 Remote Worker Street', $user->street_address);
         $this->assertEquals('Manila', $user->city);
-        $this->assertEquals('Ermita', $user->barangay);
         $this->assertEquals('1000', $user->postal_code);
         $this->assertNotNull($user->address_verified_at);
     }

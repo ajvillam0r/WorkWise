@@ -77,6 +77,15 @@ export default function UsersIndex({ users, filters }) {
         }
     };
 
+    const getUserTypeLabel = (type) => {
+        switch (type) {
+            case 'gig_worker': return 'Gig Worker';
+            case 'employer': return 'Employer';
+            case 'admin': return 'Admin';
+            default: return type;
+        }
+    };
+
     return (
         <AdminLayout>
             <Head title="User Management" />
@@ -384,7 +393,7 @@ export default function UsersIndex({ users, filters }) {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeColor(user.user_type)}`}>
-                                                    {user.user_type}
+                                                    {getUserTypeLabel(user.user_type)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">

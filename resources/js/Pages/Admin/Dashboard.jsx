@@ -205,6 +205,31 @@ export default function Dashboard({ auth, stats, recentUsers, recentReports, rec
                 </div>
             </div>
 
+            {/* ID Verification Alert - Show if there are pending verifications */}
+            {stats.id_pending > 0 && (
+                <div className="mb-6 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 p-6 text-white shadow-lg">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                <span className="material-symbols-outlined text-2xl">badge</span>
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold">ID Verification Review Needed</h3>
+                                <p className="text-white/90">
+                                    {stats.id_pending} {stats.id_pending === 1 ? 'user is' : 'users are'} waiting for ID verification approval
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            href="/admin/id-verifications"
+                            className="rounded-lg bg-white px-6 py-3 font-semibold text-orange-600 shadow-md transition-all hover:bg-orange-50 hover:shadow-lg"
+                        >
+                            Review Now →
+                        </Link>
+                    </div>
+                </div>
+            )}
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div className="transform rounded-xl border border-slate-200 bg-white p-6 shadow-lg transition-transform duration-300 hover:-translate-y-2 dark:border-slate-700 dark:bg-slate-800">
@@ -259,6 +284,17 @@ export default function Dashboard({ auth, stats, recentUsers, recentReports, rec
                     </div>
                     <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.pending_reports || '0'}</p>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Require attention</p>
+                </div>
+
+                <div className="transform rounded-xl border border-slate-200 bg-white p-6 shadow-lg transition-transform duration-300 hover:-translate-y-2 dark:border-slate-700 dark:bg-slate-800">
+                    <div className="flex items-center justify-between">
+                        <p className="text-base font-medium text-slate-500 dark:text-slate-400">ID Pending</p>
+                        <span className="material-symbols-outlined text-orange-500">badge</span>
+                    </div>
+                    <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.id_pending || '0'}</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {stats.id_verified || '0'} verified • {stats.id_rejected || '0'} rejected
+                    </p>
                 </div>
             </div>
 
@@ -382,7 +418,7 @@ export default function Dashboard({ auth, stats, recentUsers, recentReports, rec
                 <ul className="space-y-4">
                     {recentActivities && recentActivities.length > 0 ? (
                         recentActivities.map((activity, index) => (
-                            <li key={activity.id || index} className={`flex animate-[fadeIn_${0.5 + index * 0.2}s_ease-in-out] items-start space-x-4`}>
+                            <li key={`${activity.type}-${activity.id}-${index}`} className={`flex animate-[fadeIn_${0.5 + index * 0.2}s_ease-in-out] items-start space-x-4`}>
                                 <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
                                     activity.color === 'emerald' ? 'bg-emerald-100 dark:bg-emerald-900/50' :
                                     activity.color === 'pink' ? 'bg-pink-100 dark:bg-pink-900/50' :

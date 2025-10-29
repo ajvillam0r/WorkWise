@@ -17,7 +17,19 @@ class IdVerificationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::whereNotNull('id_front_image');
+        $query = User::select([
+                'id',
+                'first_name',
+                'last_name',
+                'email',
+                'id_type',
+                'id_verification_status',
+                'id_front_image',
+                'id_back_image',
+                'created_at',
+                'profile_photo_url'
+            ])
+            ->whereNotNull('id_front_image');
 
         // Filter by status
         if ($request->filled('status')) {
@@ -38,8 +50,19 @@ class IdVerificationController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        // Calculate statistics
+        $stats = [
+            'pending' => User::where('id_verification_status', 'pending')
+                ->whereNotNull('id_front_image')
+                ->count(),
+            'verified' => User::where('id_verification_status', 'verified')->count(),
+            'rejected' => User::where('id_verification_status', 'rejected')->count(),
+            'total' => User::whereNotNull('id_front_image')->count(),
+        ];
+
         return Inertia::render('Admin/IdVerifications/Index', [
             'verifications' => $verifications,
+            'stats' => $stats,
             'filters' => $request->only(['status', 'search']),
         ]);
     }
@@ -51,8 +74,30 @@ class IdVerificationController extends Controller
     {
         $user = User::findOrFail($userId);
 
+        // Check if user has uploaded ID images
+        if (!$user->id_front_image || !$user->id_back_image) {
+            return redirect()->route('admin.id-verifications.index')
+                ->with('error', 'This user has not uploaded ID images yet.');
+        }
+
+        // Add ID type label
+        $idTypeLabels = [
+            'national_id' => 'National ID',
+            'drivers_license' => "Driver's License",
+            'passport' => 'Passport',
+            'philhealth_id' => 'PhilHealth',
+            'sss_id' => 'SSS',
+            'umid' => 'UMID',
+            'voters_id' => "Voter's ID",
+            'prc_id' => 'PRC',
+        ];
+
+        $user->id_type_label = $idTypeLabels[$user->id_type] ?? $user->id_type ?? 'Unknown';
+        $user->id_front_image_url = $user->id_front_image;
+        $user->id_back_image_url = $user->id_back_image;
+
         return Inertia::render('Admin/IdVerifications/Show', [
-            'verificationUser' => $user,
+            'user' => $user,
         ]);
     }
 
@@ -113,6 +158,38 @@ class IdVerificationController extends Controller
         }
 
         return redirect()->back()->with('success', 'ID verification rejected. User has been notified via email.');
+    }
+
+    /**
+     * Request ID resubmission
+     */
+    public function requestResubmit(Request $request, $userId)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500'
+        ], [
+            'reason.required' => 'Please provide a reason for resubmission request.',
+            'reason.max' => 'Reason cannot exceed 500 characters.'
+        ]);
+
+        $user = User::findOrFail($userId);
+
+        $user->update([
+            'id_verification_status' => 'pending',
+            'id_verification_notes' => 'Resubmission requested: ' . $validated['reason'],
+        ]);
+
+        // Send email notification requesting resubmission
+        try {
+            Mail::to($user->email)->send(new IdVerificationRejected($user, $validated['reason']));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send ID resubmission request email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Resubmission request sent. User has been notified via email.');
     }
 }
 

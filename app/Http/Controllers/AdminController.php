@@ -20,13 +20,20 @@ class AdminController extends Controller
     {
         $stats = [
             'total_users' => User::where('is_admin', false)->count(),
-            'total_freelancers' => User::where('user_type', 'freelancer')->count(),
-            'total_clients' => User::where('user_type', 'client')->count(),
+            'total_gig_workers' => User::where('user_type', 'gig_worker')->count(),
+            'total_employers' => User::where('user_type', 'employer')->count(),
             'total_admins' => User::where('is_admin', true)->count(),
             'new_users_this_week' => User::where('is_admin', false)->where('created_at', '>=', now()->startOfWeek())->count(),
             'verified_users' => User::where('profile_status', 'approved')->count(),
             'pending_verification' => User::where('profile_status', 'pending')->count(),
             'suspended_users' => User::where('profile_status', 'rejected')->count(),
+            
+            // ID Verification Statistics
+            'id_pending' => User::where('id_verification_status', 'pending')->whereNotNull('id_front_image')->count(),
+            'id_verified' => User::where('id_verification_status', 'verified')->count(),
+            'id_rejected' => User::where('id_verification_status', 'rejected')->count(),
+            'id_total_submissions' => User::whereNotNull('id_front_image')->count(),
+            
             'total_projects' => Project::count(),
             'active_projects' => Project::whereIn('status', ['active', 'in_progress'])->count(),
             'completed_projects' => Project::where('status', 'completed')->count(),
@@ -234,7 +241,7 @@ class AdminController extends Controller
         $request->validate([
             'profile_status' => 'required|in:pending,approved,rejected',
             'is_admin' => 'boolean',
-            'user_type' => 'required|in:freelancer,client,admin',
+            'user_type' => 'required|in:gig_worker,employer,admin',
         ]);
 
         $user->update([
@@ -442,8 +449,8 @@ class AdminController extends Controller
     {
         $analytics = [
             'total_users' => User::where('is_admin', false)->count(),
-            'freelancers' => User::where('user_type', 'freelancer')->count(),
-            'clients' => User::where('user_type', 'client')->count(),
+            'gig_workers' => User::where('user_type', 'gig_worker')->count(),
+            'employers' => User::where('user_type', 'employer')->count(),
             'verified_users' => User::where('profile_status', 'approved')->count(),
             'pending_users' => User::where('profile_status', 'pending')->count(),
             'suspended_users' => User::where('profile_status', 'rejected')->count(),

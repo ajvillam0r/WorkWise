@@ -47,6 +47,15 @@ export default function UserShow({ user, stats }) {
         }
     };
 
+    const getUserTypeLabel = (type) => {
+        switch (type) {
+            case 'gig_worker': return 'Gig Worker';
+            case 'employer': return 'Employer';
+            case 'admin': return 'Admin';
+            default: return type;
+        }
+    };
+
     const tabs = [
         { id: 'overview', name: 'Overview', icon: 'dashboard' },
         { id: 'projects', name: 'Projects', icon: 'cases' },
@@ -143,10 +152,10 @@ export default function UserShow({ user, stats }) {
                                     </div>
                                     <div className="flex items-center space-x-4">
                                         <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getUserTypeColor(user.user_type)}`}>
-                                            {user.user_type}
+                                            {getUserTypeLabel(user.user_type)}
                                         </span>
                                         <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(user.profile_status)}`}>
-                                            {user.profile_status}
+                                            {user.profile_status.charAt(0).toUpperCase() + user.profile_status.slice(1)}
                                         </span>
                                     </div>
                                     <div className="text-right">
@@ -397,11 +406,11 @@ export default function UserShow({ user, stats }) {
                                             </div>
                                             <div>
                                                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">User Type</dt>
-                                                <dd className="text-sm text-gray-900 dark:text-white">{user.user_type}</dd>
+                                                <dd className="text-sm text-gray-900 dark:text-white">{getUserTypeLabel(user.user_type)}</dd>
                                             </div>
                                             <div>
                                                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Profile Status</dt>
-                                                <dd className="text-sm text-gray-900 dark:text-white">{user.profile_status}</dd>
+                                                <dd className="text-sm text-gray-900 dark:text-white">{user.profile_status.charAt(0).toUpperCase() + user.profile_status.slice(1)}</dd>
                                             </div>
                                             <div>
                                                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Joined Date</dt>

@@ -1,10 +1,16 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-export default function Index({ users, stats, filters }) {
-    const [search, setSearch] = useState(filters.search || '');
-    const [status, setStatus] = useState(filters.status || '');
+export default function Index({ verifications = { data: [], links: [] }, stats = {}, filters = {} }) {
+    const [search, setSearch] = useState(filters?.search || '');
+    const [status, setStatus] = useState(filters?.status || '');
+
+    // Step 5: Verify Ziggy routes are available
+    useEffect(() => {
+        console.log('Available routes:', window.route ? 'Route helper available' : 'Route helper NOT available');
+        console.log('Verifications data:', verifications);
+    }, []);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -79,19 +85,19 @@ export default function Index({ users, stats, filters }) {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                             <div className="text-sm font-medium text-gray-500 mb-2">Pending Review</div>
-                            <div className="text-3xl font-bold text-yellow-600">{stats.pending}</div>
+                            <div className="text-3xl font-bold text-yellow-600">{stats?.pending || 0}</div>
                         </div>
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                             <div className="text-sm font-medium text-gray-500 mb-2">Verified</div>
-                            <div className="text-3xl font-bold text-green-600">{stats.verified}</div>
+                            <div className="text-3xl font-bold text-green-600">{stats?.verified || 0}</div>
                         </div>
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                             <div className="text-sm font-medium text-gray-500 mb-2">Rejected</div>
-                            <div className="text-3xl font-bold text-red-600">{stats.rejected}</div>
+                            <div className="text-3xl font-bold text-red-600">{stats?.rejected || 0}</div>
                         </div>
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                             <div className="text-sm font-medium text-gray-500 mb-2">Total Submissions</div>
-                            <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
+                            <div className="text-3xl font-bold text-blue-600">{stats?.total || 0}</div>
                         </div>
                     </div>
 
@@ -151,14 +157,14 @@ export default function Index({ users, stats, filters }) {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {users.data.length === 0 ? (
+                                {verifications.data.length === 0 ? (
                                     <tr>
                                         <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                                             No ID verifications found
                                         </td>
                                     </tr>
                                 ) : (
-                                    users.data.map((user) => (
+                                    verifications.data.map((user) => (
                                         <tr key={user.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
@@ -196,8 +202,13 @@ export default function Index({ users, stats, filters }) {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <Link
-                                                    href={route('admin.id-verifications.show', user.id)}
+                                                    href={`/admin/id-verifications/${user.id}`}
                                                     className="text-indigo-600 hover:text-indigo-900"
+                                                    onClick={() => {
+                                                        console.log('Review clicked for user:', user.id);
+                                                        console.log('User data:', user);
+                                                        console.log('Generated URL:', `/admin/id-verifications/${user.id}`);
+                                                    }}
                                                 >
                                                     Review
                                                 </Link>
@@ -209,20 +220,20 @@ export default function Index({ users, stats, filters }) {
                         </table>
 
                         {/* Pagination */}
-                        {users.links && users.links.length > 3 && (
+                        {verifications?.links && verifications.links.length > 3 && (
                             <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                                 <div className="flex-1 flex justify-between sm:hidden">
-                                    {users.prev_page_url && (
+                                    {verifications.prev_page_url && (
                                         <Link
-                                            href={users.prev_page_url}
+                                            href={verifications.prev_page_url}
                                             className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                         >
                                             Previous
                                         </Link>
                                     )}
-                                    {users.next_page_url && (
+                                    {verifications.next_page_url && (
                                         <Link
-                                            href={users.next_page_url}
+                                            href={verifications.next_page_url}
                                             className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                         >
                                             Next
@@ -232,14 +243,14 @@ export default function Index({ users, stats, filters }) {
                                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                                     <div>
                                         <p className="text-sm text-gray-700">
-                                            Showing <span className="font-medium">{users.from}</span> to{' '}
-                                            <span className="font-medium">{users.to}</span> of{' '}
-                                            <span className="font-medium">{users.total}</span> results
+                                            Showing <span className="font-medium">{verifications.from}</span> to{' '}
+                                            <span className="font-medium">{verifications.to}</span> of{' '}
+                                            <span className="font-medium">{verifications.total}</span> results
                                         </p>
                                     </div>
                                     <div>
                                         <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                            {users.links.map((link, index) => (
+                                            {verifications.links.map((link, index) => (
                                                 <Link
                                                     key={index}
                                                     href={link.url || '#'}
@@ -248,7 +259,7 @@ export default function Index({ users, stats, filters }) {
                                                             ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
                                                             : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                                                     } ${index === 0 ? 'rounded-l-md' : ''} ${
-                                                        index === users.links.length - 1 ? 'rounded-r-md' : ''
+                                                        index === verifications.links.length - 1 ? 'rounded-r-md' : ''
                                                     } ${!link.url ? 'cursor-not-allowed opacity-50' : ''}`}
                                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                                     preserveState

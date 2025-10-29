@@ -460,12 +460,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export');
     Route::get('/users/analytics', [AdminController::class, 'userAnalytics'])->name('users.analytics');
 
-    // ID Verifications
-    Route::get('/id-verifications', [\App\Http\Controllers\Admin\IdVerificationController::class, 'index'])->name('id-verifications.index');
-    Route::get('/id-verifications/{user}', [\App\Http\Controllers\Admin\IdVerificationController::class, 'show'])->name('id-verifications.show');
-    Route::post('/id-verifications/{user}/approve', [\App\Http\Controllers\Admin\IdVerificationController::class, 'approve'])->name('id-verifications.approve');
-    Route::post('/id-verifications/{user}/reject', [\App\Http\Controllers\Admin\IdVerificationController::class, 'reject'])->name('id-verifications.reject');
-
     // Projects management
     Route::get('/projects', [AdminController::class, 'projects'])->name('projects');
     Route::get('/projects/export', [AdminController::class, 'exportProjects'])->name('projects.export');
@@ -482,11 +476,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('/reports/bulk-update', [AdminReportController::class, 'bulkUpdate'])->name('reports.bulkUpdate');
 
     // ID Verification management
-    Route::get('/id-verifications', [AdminIdVerificationController::class, 'index'])->name('id-verifications.index');
-    Route::get('/id-verifications/{user}', [AdminIdVerificationController::class, 'show'])->name('id-verifications.show');
-    Route::post('/id-verifications/{user}/approve', [AdminIdVerificationController::class, 'approve'])->name('id-verifications.approve');
-    Route::post('/id-verifications/{user}/reject', [AdminIdVerificationController::class, 'reject'])->name('id-verifications.reject');
-    Route::post('/id-verifications/{user}/request-resubmit', [AdminIdVerificationController::class, 'requestResubmit'])->name('id-verifications.requestResubmit');
+    Route::get('/id-verifications', [\App\Http\Controllers\Admin\IdVerificationController::class, 'index'])->name('id-verifications.index');
+    Route::get('/id-verifications/{user}', [\App\Http\Controllers\Admin\IdVerificationController::class, 'show'])->name('id-verifications.show');
+    Route::post('/id-verifications/{user}/approve', [\App\Http\Controllers\Admin\IdVerificationController::class, 'approve'])->name('id-verifications.approve');
+    Route::post('/id-verifications/{user}/reject', [\App\Http\Controllers\Admin\IdVerificationController::class, 'reject'])->name('id-verifications.reject');
+    Route::post('/id-verifications/{user}/request-resubmit', [\App\Http\Controllers\Admin\IdVerificationController::class, 'requestResubmit'])->name('id-verifications.requestResubmit');
 
     // Analytics
     Route::get('/analytics', [AdminAnalyticsController::class, 'overview'])->name('analytics.overview');

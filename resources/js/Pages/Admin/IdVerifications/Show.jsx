@@ -3,7 +3,33 @@ import { useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import IdImageViewer from '@/Components/IdImageViewer';
 
-export default function Show({ user }) {
+export default function Show({ user = {} }) {
+    // Safety check for user data
+    if (!user || !user.id) {
+        return (
+            <AdminLayout>
+                <Head title="ID Verification" />
+                <div className="py-12">
+                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                        <div className="bg-white shadow-sm sm:rounded-lg p-6">
+                            <div className="text-center">
+                                <div className="text-6xl mb-4">⚠️</div>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">User Not Found</h2>
+                                <p className="text-gray-600 mb-6">The requested user verification could not be loaded.</p>
+                                <Link
+                                    href={route('admin.id-verifications.index')}
+                                    className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700"
+                                >
+                                    ← Back to ID Verifications
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </AdminLayout>
+        );
+    }
+
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -13,7 +39,6 @@ export default function Show({ user }) {
     });
 
     const rejectForm = useForm({
-        reason: '',
         notes: '',
     });
 
@@ -23,7 +48,7 @@ export default function Show({ user }) {
 
     const handleApprove = (e) => {
         e.preventDefault();
-        approveForm.post(route('admin.id-verifications.approve', user.id), {
+        approveForm.post(`/admin/id-verifications/${user.id}/approve`, {
             preserveScroll: true,
             onSuccess: () => {
                 setShowApproveModal(false);
@@ -33,7 +58,7 @@ export default function Show({ user }) {
 
     const handleReject = (e) => {
         e.preventDefault();
-        rejectForm.post(route('admin.id-verifications.reject', user.id), {
+        rejectForm.post(`/admin/id-verifications/${user.id}/reject`, {
             preserveScroll: true,
             onSuccess: () => {
                 setShowRejectModal(false);
@@ -43,7 +68,7 @@ export default function Show({ user }) {
 
     const handleRequestResubmit = (e) => {
         e.preventDefault();
-        requestForm.post(route('admin.id-verifications.requestResubmit', user.id), {
+        requestForm.post(`/admin/id-verifications/${user.id}/request-resubmit`, {
             preserveScroll: true,
             onSuccess: () => {
                 setShowRequestModal(false);
@@ -68,7 +93,7 @@ export default function Show({ user }) {
 
     return (
         <AdminLayout>
-            <Head title={`ID Verification - ${user.first_name} ${user.last_name}`} />
+            <Head title={`ID Verification - ${user?.first_name || ''} ${user?.last_name || ''}`} />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -82,12 +107,12 @@ export default function Show({ user }) {
                                 ← Back to ID Verifications
                             </Link>
                             <h1 className="text-3xl font-bold text-gray-900">
-                                {user.first_name} {user.last_name}
+                                {user?.first_name || 'N/A'} {user?.last_name || ''}
                             </h1>
-                            <p className="mt-2 text-sm text-gray-600">{user.email}</p>
+                            <p className="mt-2 text-sm text-gray-600">{user?.email || 'No email'}</p>
                         </div>
                         <div>
-                            {getStatusBadge(user.id_verification_status)}
+                            {getStatusBadge(user?.id_verification_status || 'pending')}
                         </div>
                     </div>
 
@@ -99,17 +124,17 @@ export default function Show({ user }) {
                                 <h2 className="text-xl font-semibold mb-4">ID Images</h2>
                                 <div className="mb-4">
                                     <span className="text-sm font-medium text-gray-700">ID Type: </span>
-                                    <span className="text-sm text-gray-900">{user.id_type_label}</span>
+                                    <span className="text-sm text-gray-900">{user?.id_type_label || 'Unknown'}</span>
                                 </div>
 
                                 <IdImageViewer
-                                    frontImage={user.id_front_image_url}
-                                    backImage={user.id_back_image_url}
+                                    frontImage={user?.id_front_image_url}
+                                    backImage={user?.id_back_image_url}
                                 />
                             </div>
 
                             {/* Action Buttons */}
-                            {user.id_verification_status === 'pending' && (
+                            {user?.id_verification_status === 'pending' && (
                                 <div className="bg-white shadow-sm sm:rounded-lg p-6">
                                     <h2 className="text-xl font-semibold mb-4">Actions</h2>
                                     <div className="flex gap-3">
@@ -136,7 +161,7 @@ export default function Show({ user }) {
                             )}
 
                             {/* Verification Notes */}
-                            {user.id_verification_notes && (
+                            {user?.id_verification_notes && (
                                 <div className="bg-white shadow-sm sm:rounded-lg p-6">
                                     <h2 className="text-xl font-semibold mb-4">Verification Notes</h2>
                                     <p className="text-sm text-gray-700 whitespace-pre-wrap">{user.id_verification_notes}</p>
@@ -150,7 +175,7 @@ export default function Show({ user }) {
                             <div className="bg-white shadow-sm sm:rounded-lg p-6">
                                 <h2 className="text-lg font-semibold mb-4">User Information</h2>
                                 <div className="space-y-3">
-                                    {user.profile_photo_url && (
+                                    {user?.profile_photo_url && (
                                         <div className="flex justify-center">
                                             <img
                                                 src={user.profile_photo_url}
@@ -161,27 +186,27 @@ export default function Show({ user }) {
                                     )}
                                     <div>
                                         <div className="text-xs text-gray-500">Name</div>
-                                        <div className="text-sm font-medium">{user.first_name} {user.last_name}</div>
+                                        <div className="text-sm font-medium">{user?.first_name || 'N/A'} {user?.last_name || ''}</div>
                                     </div>
                                     <div>
                                         <div className="text-xs text-gray-500">Email</div>
-                                        <div className="text-sm">{user.email}</div>
+                                        <div className="text-sm">{user?.email || 'N/A'}</div>
                                     </div>
                                     <div>
                                         <div className="text-xs text-gray-500">Professional Title</div>
-                                        <div className="text-sm">{user.professional_title || 'N/A'}</div>
+                                        <div className="text-sm">{user?.professional_title || 'N/A'}</div>
                                     </div>
                                     <div>
                                         <div className="text-xs text-gray-500">Hourly Rate</div>
-                                        <div className="text-sm">₱{user.hourly_rate ? parseFloat(user.hourly_rate).toFixed(2) : '0.00'}/hour</div>
+                                        <div className="text-sm">₱{user?.hourly_rate ? parseFloat(user.hourly_rate).toFixed(2) : '0.00'}/hour</div>
                                     </div>
                                     <div>
                                         <div className="text-xs text-gray-500">Profile Status</div>
-                                        <div className="text-sm capitalize">{user.profile_status}</div>
+                                        <div className="text-sm capitalize">{user?.profile_status || 'N/A'}</div>
                                     </div>
                                     <div>
                                         <div className="text-xs text-gray-500">Member Since</div>
-                                        <div className="text-sm">{new Date(user.created_at).toLocaleDateString()}</div>
+                                        <div className="text-sm">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</div>
                                     </div>
                                 </div>
                             </div>
@@ -190,28 +215,28 @@ export default function Show({ user }) {
                             <div className="bg-white shadow-sm sm:rounded-lg p-6">
                                 <h2 className="text-lg font-semibold mb-4">Address Information</h2>
                                 <div className="space-y-3">
-                                    {user.country && (
+                                    {user?.country && (
                                         <div>
                                             <div className="text-xs text-gray-500">Registration Country</div>
                                             <div className="text-sm font-medium">{user.country}</div>
                                         </div>
                                     )}
                                     
-                                    {user.street_address && (
+                                    {user?.street_address && (
                                         <>
                                             <div className="border-t pt-3">
                                                 <div className="text-xs text-gray-500 font-semibold mb-2">KYC Address</div>
                                             </div>
                                             <div>
                                                 <div className="text-xs text-gray-500">Street Address</div>
-                                                <div className="text-sm">{user.street_address}</div>
+                                                <div className="text-sm">{user?.street_address}</div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <div className="text-xs text-gray-500">City</div>
-                                                    <div className="text-sm">{user.city}</div>
+                                                    <div className="text-sm">{user?.city}</div>
                                                 </div>
-                                                {user.barangay && (
+                                                {user?.barangay && (
                                                     <div>
                                                         <div className="text-xs text-gray-500">Barangay</div>
                                                         <div className="text-sm">{user.barangay}</div>
@@ -221,14 +246,14 @@ export default function Show({ user }) {
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <div className="text-xs text-gray-500">Postal Code</div>
-                                                    <div className="text-sm">{user.postal_code}</div>
+                                                    <div className="text-sm">{user?.postal_code}</div>
                                                 </div>
                                                 <div>
                                                     <div className="text-xs text-gray-500">Country</div>
-                                                    <div className="text-sm">{user.country}</div>
+                                                    <div className="text-sm">{user?.country}</div>
                                                 </div>
                                             </div>
-                                            {user.address_verified_at && (
+                                            {user?.address_verified_at && (
                                                 <div>
                                                     <div className="text-xs text-gray-500">Verified On</div>
                                                     <div className="text-sm">{new Date(user.address_verified_at).toLocaleDateString()}</div>
@@ -236,7 +261,7 @@ export default function Show({ user }) {
                                             )}
                                             
                                             {/* Country Mismatch Warning */}
-                                            {user.country && user.street_address && (
+                                            {user?.country && user?.street_address && (
                                                 (() => {
                                                     // Extract country from full address or compare with registration country
                                                     const registrationCountry = user.country;
@@ -248,7 +273,7 @@ export default function Show({ user }) {
                                         </>
                                     )}
                                     
-                                    {!user.street_address && (
+                                    {!user?.street_address && (
                                         <div className="text-sm text-gray-500 italic">
                                             No complete address provided yet
                                         </div>
@@ -257,7 +282,7 @@ export default function Show({ user }) {
                             </div>
 
                             {/* Skills */}
-                            {user.skills_with_experience && user.skills_with_experience.length > 0 && (
+                            {user?.skills_with_experience && user.skills_with_experience.length > 0 && (
                                 <div className="bg-white shadow-sm sm:rounded-lg p-6">
                                     <h2 className="text-lg font-semibold mb-4">Skills</h2>
                                     <div className="flex flex-wrap gap-2">
@@ -266,7 +291,7 @@ export default function Show({ user }) {
                                                 key={index}
                                                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                                             >
-                                                {skill.skill}
+                                                {skill?.skill}
                                             </span>
                                         ))}
                                     </div>
@@ -274,7 +299,7 @@ export default function Show({ user }) {
                             )}
 
                             {/* Portfolio */}
-                            {user.portfolio_items && user.portfolio_items.length > 0 && (
+                            {user?.portfolio_items && user.portfolio_items.length > 0 && (
                                 <div className="bg-white shadow-sm sm:rounded-lg p-6">
                                     <h2 className="text-lg font-semibold mb-4">Portfolio</h2>
                                     <div className="text-sm text-gray-600">
@@ -341,28 +366,16 @@ export default function Show({ user }) {
                                     Rejection Reason *
                                 </label>
                                 <textarea
-                                    value={rejectForm.data.reason}
-                                    onChange={(e) => rejectForm.setData('reason', e.target.value)}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    rows="3"
-                                    placeholder="e.g., Image is blurry, ID expired, etc."
-                                    required
-                                />
-                                {rejectForm.errors.reason && (
-                                    <p className="mt-1 text-sm text-red-600">{rejectForm.errors.reason}</p>
-                                )}
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Internal Notes (Optional)
-                                </label>
-                                <textarea
                                     value={rejectForm.data.notes}
                                     onChange={(e) => rejectForm.setData('notes', e.target.value)}
                                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    rows="2"
-                                    placeholder="Add any internal notes..."
+                                    rows="4"
+                                    placeholder="e.g., Image is blurry, ID expired, document not valid, etc. This message will be sent to the user."
+                                    required
                                 />
+                                {rejectForm.errors.notes && (
+                                    <p className="mt-1 text-sm text-red-600">{rejectForm.errors.notes}</p>
+                                )}
                             </div>
                             <div className="flex gap-3">
                                 <button

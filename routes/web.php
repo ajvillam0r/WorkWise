@@ -10,6 +10,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\GigWorkerOnboardingController;
 use App\Http\Controllers\ClientOnboardingController;
+use App\Http\Controllers\EmployerOnboardingController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIRecommendationController;
 use App\Http\Controllers\ClientWalletController;
@@ -254,9 +255,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'store']);
     Route::post('/onboarding/gig-worker/skip', [GigWorkerOnboardingController::class, 'skip'])->name('gig-worker.onboarding.skip');
 
-    Route::get('/onboarding/employer', [ClientOnboardingController::class, 'show'])->name('employer.onboarding');
-    Route::post('/onboarding/employer', [ClientOnboardingController::class, 'store']);
-    Route::post('/onboarding/employer/skip', [ClientOnboardingController::class, 'skip'])->name('employer.onboarding.skip');
+    Route::get('/onboarding/employer', [EmployerOnboardingController::class, 'show'])->name('employer.onboarding');
+    Route::post('/onboarding/employer', [EmployerOnboardingController::class, 'store'])->name('employer.onboarding.store');
+    Route::post('/onboarding/employer/skip', [EmployerOnboardingController::class, 'skip'])->name('employer.onboarding.skip');
 
     // Location API routes
     Route::prefix('api/location')->name('location.')->group(function () {

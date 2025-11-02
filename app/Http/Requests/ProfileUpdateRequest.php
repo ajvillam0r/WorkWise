@@ -66,6 +66,18 @@ class ProfileUpdateRequest extends FormRequest
                 'work_type_needed' => ['nullable', 'string', 'max:255'],
                 'budget_range' => ['nullable', 'string', 'max:255'],
                 'project_intent' => ['nullable', 'string', 'max:1000'],
+                
+                // Employer onboarding fields
+                'company_size' => ['nullable', 'in:individual,2-10,11-50,51-200,200+'],
+                'industry' => ['nullable', 'string', 'max:255'],
+                'company_website' => ['nullable', 'url', 'max:255'],
+                'company_description' => ['nullable', 'string', 'max:1000'],
+                'primary_hiring_needs' => ['nullable', 'array'],
+                'typical_project_budget' => ['nullable', 'in:under_500,500-2000,2000-5000,5000-10000,10000+'],
+                'typical_project_duration' => ['nullable', 'in:short_term,medium_term,long_term,ongoing'],
+                'preferred_experience_level' => ['nullable', 'in:any,beginner,intermediate,expert'],
+                'hiring_frequency' => ['nullable', 'in:one_time,occasional,regular,ongoing'],
+                'tax_id' => ['nullable', 'string', 'max:50'],
             ]);
         }
 

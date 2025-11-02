@@ -4,22 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\PortfolioItem;
 use App\Mail\ProfileSubmitted;
-use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class GigWorkerOnboardingController extends Controller
 {
-    protected $cloudinaryService;
-
-    public function __construct(CloudinaryService $cloudinaryService)
-    {
-        $this->cloudinaryService = $cloudinaryService;
-    }
     /**
      * Show the gig worker onboarding page
      */
@@ -137,39 +131,55 @@ class GigWorkerOnboardingController extends Controller
             'preferred_communication.min' => 'Please select at least one communication method.',
         ]);
 
-        // Handle profile picture upload to Cloudinary
+        // Handle profile picture upload to R2
         if ($request->hasFile('profile_picture')) {
-            \Log::info('Uploading profile picture to Cloudinary', ['user_id' => $user->id]);
-            $result = $this->cloudinaryService->uploadProfilePicture($request->file('profile_picture'), $user->id);
-            if ($result) {
-                $validated['profile_picture'] = $result['secure_url'];
-                \Log::info('Profile picture uploaded successfully', ['url' => $result['secure_url']]);
-            } else {
-                \Log::error('Failed to upload profile picture', ['user_id' => $user->id]);
+            try {
+                \Log::info('Uploading profile picture to R2', ['user_id' => $user->id]);
+                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
+                if ($path) {
+                    // Use app proxy URL as fallback while R2 DNS propagates
+                    $validated['profile_picture'] = '/r2/' . $path;
+                    \Log::info('Profile picture uploaded successfully', ['url' => $validated['profile_picture']]);
+                } else {
+                    \Log::error('Failed to upload profile picture', ['user_id' => $user->id]);
+                    return back()->withErrors(['profile_picture' => 'Failed to upload profile picture. Please try again.'])->withInput();
+                }
+            } catch (\Exception $e) {
+                \Log::error('Profile picture upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
                 return back()->withErrors(['profile_picture' => 'Failed to upload profile picture. Please try again.'])->withInput();
             }
         }
 
-        // Handle ID images upload with secure storage to Cloudinary
+        // Handle ID images upload to R2
         if ($request->hasFile('id_front_image')) {
-            \Log::info('Uploading ID front image to Cloudinary', ['user_id' => $user->id]);
-            $result = $this->cloudinaryService->uploadIdVerification($request->file('id_front_image'), $user->id, 'front');
-            if ($result) {
-                $validated['id_front_image'] = $result['secure_url'];
-                \Log::info('ID front image uploaded successfully', ['url' => $result['secure_url']]);
-            } else {
-                \Log::error('Failed to upload ID front image', ['user_id' => $user->id]);
+            try {
+                \Log::info('Uploading ID front image to R2', ['user_id' => $user->id]);
+                $path = Storage::disk('r2')->putFile('id_verification/' . $user->id, $request->file('id_front_image'));
+                if ($path) {
+                    $validated['id_front_image'] = Storage::disk('r2')->url($path);
+                    \Log::info('ID front image uploaded successfully', ['url' => $validated['id_front_image']]);
+                } else {
+                    \Log::error('Failed to upload ID front image', ['user_id' => $user->id]);
+                    return back()->withErrors(['id_front_image' => 'Failed to upload ID front image. Please try again.'])->withInput();
+                }
+            } catch (\Exception $e) {
+                \Log::error('ID front image upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
                 return back()->withErrors(['id_front_image' => 'Failed to upload ID front image. Please try again.'])->withInput();
             }
         }
         if ($request->hasFile('id_back_image')) {
-            \Log::info('Uploading ID back image to Cloudinary', ['user_id' => $user->id]);
-            $result = $this->cloudinaryService->uploadIdVerification($request->file('id_back_image'), $user->id, 'back');
-            if ($result) {
-                $validated['id_back_image'] = $result['secure_url'];
-                \Log::info('ID back image uploaded successfully', ['url' => $result['secure_url']]);
-            } else {
-                \Log::error('Failed to upload ID back image', ['user_id' => $user->id]);
+            try {
+                \Log::info('Uploading ID back image to R2', ['user_id' => $user->id]);
+                $path = Storage::disk('r2')->putFile('id_verification/' . $user->id, $request->file('id_back_image'));
+                if ($path) {
+                    $validated['id_back_image'] = Storage::disk('r2')->url($path);
+                    \Log::info('ID back image uploaded successfully', ['url' => $validated['id_back_image']]);
+                } else {
+                    \Log::error('Failed to upload ID back image', ['user_id' => $user->id]);
+                    return back()->withErrors(['id_back_image' => 'Failed to upload ID back image. Please try again.'])->withInput();
+                }
+            } catch (\Exception $e) {
+                \Log::error('ID back image upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
                 return back()->withErrors(['id_back_image' => 'Failed to upload ID back image. Please try again.'])->withInput();
             }
         }
@@ -202,41 +212,99 @@ class GigWorkerOnboardingController extends Controller
             return back()->withErrors(['error' => 'Failed to save profile. Please try again.'])->withInput();
         }
 
-        // Create portfolio items
+        // Create portfolio items with sequential image uploads
         if (!empty($validated['portfolio_items'])) {
             \Log::info('Uploading portfolio items', [
                 'user_id' => $user->id,
                 'count' => count($validated['portfolio_items'])
             ]);
             
-            foreach ($validated['portfolio_items'] as $index => $portfolioData) {
-                // Handle portfolio images upload to Cloudinary
-                $imageUrls = [];
-                if (isset($portfolioData['images'])) {
+            // Step 1: Collect all images that need to be uploaded
+            $allImagesToUpload = [];
+            foreach ($validated['portfolio_items'] as $itemIndex => $portfolioData) {
+                if (isset($portfolioData['images']) && is_array($portfolioData['images'])) {
                     foreach ($portfolioData['images'] as $imageIndex => $image) {
                         if ($image instanceof \Illuminate\Http\UploadedFile) {
-                            // Use combined index as integer (portfolio index * 100 + image index for uniqueness)
-                            $combinedIndex = ($index * 100) + $imageIndex;
-                            \Log::info('Uploading portfolio image', [
-                                'user_id' => $user->id,
-                                'portfolio_index' => $index,
-                                'image_index' => $imageIndex
-                            ]);
-                            $result = $this->cloudinaryService->uploadPortfolioItem($image, $user->id, $combinedIndex);
-                            if ($result) {
-                                $imageUrls[] = $result['secure_url'];
-                                \Log::info('Portfolio image uploaded successfully', ['url' => $result['secure_url']]);
-                            } else {
-                                \Log::warning('Portfolio image upload failed', [
-                                    'user_id' => $user->id,
-                                    'portfolio_index' => $index,
-                                    'image_index' => $imageIndex
-                                ]);
-                            }
+                            $combinedIndex = ($itemIndex * 100) + $imageIndex;
+                            $allImagesToUpload[] = [
+                                'file' => $image,
+                                'itemIndex' => $itemIndex,
+                                'imageIndex' => $imageIndex,
+                                'combinedIndex' => $combinedIndex,
+                            ];
                         }
                     }
                 }
-
+            }
+            
+            \Log::info('Total portfolio images to upload', ['count' => count($allImagesToUpload)]);
+            
+            // Step 2: Upload all images sequentially (one at a time)
+            $uploadedUrls = []; // Indexed by itemIndex
+            $uploadedCount = 0;
+            $failedCount = 0;
+            
+            foreach ($allImagesToUpload as $imageData) {
+                try {
+                    \Log::info('Uploading portfolio image sequentially', [
+                        'user_id' => $user->id,
+                        'portfolio_index' => $imageData['itemIndex'],
+                        'image_index' => $imageData['imageIndex'],
+                        'progress' => ($uploadedCount + $failedCount + 1) . '/' . count($allImagesToUpload)
+                    ]);
+                    
+                    // Upload to R2
+                    $path = Storage::disk('r2')->putFile('portfolios/' . $user->id, $imageData['file']);
+                    
+                    if ($path) {
+                        $url = Storage::disk('r2')->url($path);
+                        
+                        // Store URL indexed by portfolio item
+                        if (!isset($uploadedUrls[$imageData['itemIndex']])) {
+                            $uploadedUrls[$imageData['itemIndex']] = [];
+                        }
+                        $uploadedUrls[$imageData['itemIndex']][] = $url;
+                        $uploadedCount++;
+                        
+                        \Log::info('Portfolio image uploaded successfully', [
+                            'url' => $url,
+                            'item_index' => $imageData['itemIndex']
+                        ]);
+                        
+                        // Small delay to avoid rate limiting (100ms)
+                        usleep(100000);
+                    } else {
+                        $failedCount++;
+                        \Log::warning('Portfolio image upload returned no result', [
+                            'user_id' => $user->id,
+                            'portfolio_index' => $imageData['itemIndex'],
+                            'image_index' => $imageData['imageIndex']
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    $failedCount++;
+                    \Log::error('Portfolio image upload exception', [
+                        'user_id' => $user->id,
+                        'portfolio_index' => $imageData['itemIndex'],
+                        'image_index' => $imageData['imageIndex'],
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Continue with other images even if one fails
+                }
+            }
+            
+            \Log::info('Portfolio upload summary', [
+                'user_id' => $user->id,
+                'total' => count($allImagesToUpload),
+                'uploaded' => $uploadedCount,
+                'failed' => $failedCount
+            ]);
+            
+            // Step 3: Create portfolio items with their uploaded image URLs
+            foreach ($validated['portfolio_items'] as $index => $portfolioData) {
+                $imageUrls = $uploadedUrls[$index] ?? [];
+                
                 PortfolioItem::create([
                     'user_id' => $user->id,
                     'title' => $portfolioData['title'],
@@ -246,6 +314,12 @@ class GigWorkerOnboardingController extends Controller
                     'images' => $imageUrls,
                     'tags' => $validated['skills_with_experience'] ? array_column($validated['skills_with_experience'], 'skill') : [],
                     'display_order' => $index,
+                ]);
+                
+                \Log::info('Portfolio item created', [
+                    'user_id' => $user->id,
+                    'item_index' => $index,
+                    'images_count' => count($imageUrls)
                 ]);
             }
         }

@@ -93,6 +93,39 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
+     * Get profile picture URL with fallback
+     * Returns profile_picture if set, otherwise profile_photo
+     */
+    public function getProfilePictureUrlAttribute(): ?string
+    {
+        return $this->profile_picture ?? $this->profile_photo ?? $this->avatar;
+    }
+
+    /**
+     * Set profile picture and sync with profile_photo for backward compatibility
+     */
+    public function setProfilePictureAttribute($value): void
+    {
+        $this->attributes['profile_picture'] = $value;
+        // Sync to profile_photo for backward compatibility
+        if ($value) {
+            $this->attributes['profile_photo'] = $value;
+        }
+    }
+
+    /**
+     * Set profile photo and sync with profile_picture for forward compatibility
+     */
+    public function setProfilePhotoAttribute($value): void
+    {
+        $this->attributes['profile_photo'] = $value;
+        // Sync to profile_picture for forward compatibility
+        if ($value) {
+            $this->attributes['profile_picture'] = $value;
+        }
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -311,6 +344,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function portfolioItems(): HasMany
     {
         return $this->hasMany(PortfolioItem::class)->orderBy('display_order');
+    }
+
+    /**
+     * Get job templates created by this employer
+     */
+    public function jobTemplates(): HasMany
+    {
+        return $this->hasMany(JobTemplate::class, 'employer_id');
     }
 
     /**

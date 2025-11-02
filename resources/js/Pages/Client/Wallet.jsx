@@ -5,7 +5,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '@/Components/CheckoutForm';
 
-export default function ClientWallet({ deposits, paidProjects, transactions, totalSpent, escrowBalance, stripe_key, currency }) {
+export default function EmployerWallet({ deposits, paidProjects, transactions, totalSpent, escrowBalance, stripe_key, currency }) {
     const [showAmountModal, setShowAmountModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [amount, setAmount] = useState('');

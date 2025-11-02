@@ -3,7 +3,6 @@ import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Transition } from '@headlessui/react';
 import SuccessModal from '@/Components/SuccessModal';
-import AvatarUploadOverlay from '@/Components/AvatarUploadOverlay';
 import VerificationBadge, { VerificationBadges } from '@/Components/VerificationBadge';
 
 export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
@@ -25,7 +24,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         return 'from-orange-500 to-orange-600';
     };
 
-    const { data, setData, patch, processing, errors, recentlySuccessful, reset } = useForm({
+    const { data, setData, patch, post, processing, errors, recentlySuccessful, reset } = useForm({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
@@ -37,9 +36,6 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         street_address: user.street_address || '',
         city: user.city || '',
         postal_code: user.postal_code || '',
-        profile_photo: null,
-        profile_picture: null,
-
         // Freelancer fields
         professional_title: user.professional_title || '',
         hourly_rate: user.hourly_rate || '',
@@ -61,31 +57,32 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         preferred_communication: user.preferred_communication || [],
         availability_notes: user.availability_notes || '',
 
-        // Client fields
+        // Client/Employer fields
         company_name: user.company_name || '',
         work_type_needed: user.work_type_needed || '',
         budget_range: user.budget_range || '',
         project_intent: user.project_intent || '',
+        
+        // Employer onboarding fields
+        company_size: user.company_size || '',
+        industry: user.industry || '',
+        company_website: user.company_website || '',
+        company_description: user.company_description || '',
+        primary_hiring_needs: user.primary_hiring_needs || [],
+        typical_project_budget: user.typical_project_budget || '',
+        typical_project_duration: user.typical_project_duration || '',
+        preferred_experience_level: user.preferred_experience_level || '',
+        hiring_frequency: user.hiring_frequency || '',
+        tax_id: user.tax_id || '',
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // Create a clean data object without null/undefined values for files
-        const submitData = { ...data };
-        
-        // Remove file fields if they're null to avoid sending empty files
-        if (!submitData.profile_photo) {
-            delete submitData.profile_photo;
-        }
-        if (!submitData.profile_picture) {
-            delete submitData.profile_picture;
-        }
 
-        patch(route('profile.update'), submitData, {
+        // Submit form (without profile picture - upload removed)
+        patch(route('profile.update'), data, {
             preserveScroll: true,
             preserveState: true,
-            forceFormData: true, // This ensures proper handling of file uploads
             onError: (errors) => {
                 console.error('Profile update errors:', errors);
             },
@@ -95,7 +92,6 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
             },
         });
     };
-
 
     const getUserAvatar = () => {
         // Check for Cloudinary profile picture first
@@ -203,27 +199,22 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                         <div className="lg:col-span-1">
                             <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
                                 <div className="p-8">
-                                    {/* Profile Photo */}
+                                    {/* Profile Photo - Display Only */}
                                     <div className="text-center mb-6">
                                         <div className="flex justify-center mb-4">
-                                            <AvatarUploadOverlay
-                                                currentImage={user.profile_picture || user.profile_photo}
-                                                userName={`${user.first_name} ${user.last_name}`}
-                                                size="lg"
-                                                onUpload={async (file) => {
-                                                    setData('profile_picture', file);
-                                                    // Automatically submit the form to upload
-                                                    patch(route('profile.update'), {
-                                                        profile_picture: file,
-                                                    }, {
-                                                        preserveScroll: true,
-                                                        forceFormData: true,
-                                                        onSuccess: () => {
-                                                            console.log('Profile picture updated');
-                                                        },
-                                                    });
-                                                }}
-                                            />
+                                            {user.profile_picture || user.profile_photo ? (
+                                                <img 
+                                                    src={user.profile_picture || user.profile_photo}
+                                                    alt={`${user.first_name} ${user.last_name}`}
+                                                    className="h-24 w-24 rounded-full object-cover ring-2 ring-gray-200"
+                                                />
+                                            ) : (
+                                                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold ring-2 ring-gray-200">
+                                                    <span className="text-lg">
+                                                        {user.first_name?.[0] || ''}{user.last_name?.[0] || ''}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-900 mb-2">
                                             {user.first_name} {user.last_name}
@@ -329,71 +320,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                             </div>
 
                                             <div className="space-y-6">
-                                                {/* Profile Photo Upload */}
-                                                {/* <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-4">
-                                                        Profile Picture
-                                                    </label>
-                                                    <div className="flex items-center space-x-6">
-                                                        <div className="flex-shrink-0">
-                                                            <AvatarUploadOverlay
-                                                                currentImage={user.profile_picture || user.profile_photo}
-                                                                userName={`${user.first_name} ${user.last_name}`}
-                                                                size="lg"
-                                                                onUpload={async (file) => {
-                                                                    setData('profile_picture', file);
-                                                                    // Automatically submit the form to upload
-                                                                    patch(route('profile.update'), {
-                                                                        profile_picture: file,
-                                                                    }, {
-                                                                        preserveScroll: true,
-                                                                        forceFormData: true,
-                                                                        onSuccess: () => {
-                                                                            console.log('Profile picture updated');
-                                                                        },
-                                                                    });
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <div className="space-y-4">
-                                                                
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-blue-700 mb-2">
-                                                                        🌟 Recommended: High-Quality Upload
-                                                                    </label>
-                                                                    <input
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        onChange={(e) => setData('profile_picture', e.target.files[0])}
-                                                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                                    />
-                                                                    <p className="mt-1 text-xs text-blue-600">
-                                                                        JPG, PNG or GIF. Max size 5MB. Auto-optimized for best quality.
-                                                                    </p>
-                                                                </div>
-                                                                
-                                                                
-                                                                <div className="pt-2 border-t border-gray-200">
-                                                                    <label className="block text-xs font-medium text-gray-600 mb-2">
-                                                                        Legacy Upload (Basic)
-                                                                    </label>
-                                                                    <input
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        onChange={(e) => setData('profile_photo', e.target.files[0])}
-                                                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
-                                                                    />
-                                                                    <p className="mt-1 text-xs text-gray-500">
-                                                                        JPG, PNG or GIF. Max size 2MB. Basic storage.
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {errors.profile_picture && <p className="mt-2 text-sm text-red-600">{errors.profile_picture}</p>}
-                                                    {errors.profile_photo && <p className="mt-2 text-sm text-red-600">{errors.profile_photo}</p>}
-                                                </div> */}
+                                                {/* Profile Picture upload functionality has been removed */}
 
                                                 {/* Name Fields */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -598,14 +525,14 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                         ✓ Verified
                                                                     </span>
                                                                 ) : (
-                                                                    <a
+                                                                    <Link
                                                                         href={route('verification.send')}
                                                                         method="post"
                                                                         as="button"
                                                                         className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
                                                                     >
                                                                         Verify Email
-                                                                    </a>
+                                                                    </Link>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -652,19 +579,23 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     <p className="font-medium text-gray-900">Address Verification</p>
                                                                     <p className="text-sm text-gray-600">
                                                                         {user.address_verified_at 
-                                                                            ? `Auto-verified on ${new Date(user.address_verified_at).toLocaleDateString()}`
-                                                                            : 'Not verified'}
+                                                                            ? `Verified via ID submission on ${new Date(user.address_verified_at).toLocaleDateString()}`
+                                                                            : (user.country ? `Location auto-detected (${user.country}). Submit ID to verify address.` : 'Location not detected')}
                                                                     </p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 {user.address_verified_at ? (
-                                                                    <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                                                                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
                                                                         ✓ Verified
+                                                                    </span>
+                                                                ) : user.country ? (
+                                                                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                                                        📍 Auto-detected
                                                                     </span>
                                                                 ) : (
                                                                     <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-sm">
-                                                                        Auto-detected
+                                                                        Not detected
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -965,6 +896,192 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 Help gig workers understand your business needs and project requirements
                                                             </p>
                                                             {errors.project_intent && <p className="mt-2 text-sm text-red-600">{errors.project_intent}</p>}
+                                                        </div>
+
+                                                        {/* === EMPLOYER ONBOARDING FIELDS === */}
+                                                        <div className="border-t border-gray-200 pt-6 mt-6">
+                                                            <h4 className="text-lg font-semibold text-gray-900 mb-4">Company Details</h4>
+                                                            
+                                                            {/* Company Size */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="company_size" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Company Size
+                                                                </label>
+                                                                <select
+                                                                    id="company_size"
+                                                                    value={data.company_size}
+                                                                    onChange={(e) => setData('company_size', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                >
+                                                                    <option value="">Select company size</option>
+                                                                    <option value="individual">Individual / Sole Proprietor</option>
+                                                                    <option value="2-10">2-10 employees</option>
+                                                                    <option value="11-50">11-50 employees</option>
+                                                                    <option value="51-200">51-200 employees</option>
+                                                                    <option value="200+">200+ employees</option>
+                                                                </select>
+                                                                {errors.company_size && <p className="mt-2 text-sm text-red-600">{errors.company_size}</p>}
+                                                            </div>
+
+                                                            {/* Industry */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Industry
+                                                                </label>
+                                                                <input
+                                                                    type="text"
+                                                                    id="industry"
+                                                                    value={data.industry}
+                                                                    onChange={(e) => setData('industry', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                    placeholder="e.g., Technology & IT, Healthcare, E-commerce"
+                                                                />
+                                                                {errors.industry && <p className="mt-2 text-sm text-red-600">{errors.industry}</p>}
+                                                            </div>
+
+                                                            {/* Company Website */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="company_website" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Company Website
+                                                                </label>
+                                                                <input
+                                                                    type="url"
+                                                                    id="company_website"
+                                                                    value={data.company_website}
+                                                                    onChange={(e) => setData('company_website', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                    placeholder="https://example.com"
+                                                                />
+                                                                {errors.company_website && <p className="mt-2 text-sm text-red-600">{errors.company_website}</p>}
+                                                            </div>
+
+                                                            {/* Company Description */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="company_description" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Company Description
+                                                                </label>
+                                                                <textarea
+                                                                    id="company_description"
+                                                                    value={data.company_description}
+                                                                    onChange={(e) => setData('company_description', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    rows={4}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                    placeholder="Tell us about your company or business..."
+                                                                />
+                                                                {errors.company_description && <p className="mt-2 text-sm text-red-600">{errors.company_description}</p>}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* === HIRING PREFERENCES === */}
+                                                        <div className="border-t border-gray-200 pt-6 mt-6">
+                                                            <h4 className="text-lg font-semibold text-gray-900 mb-4">Hiring Preferences</h4>
+                                                            
+                                                            {/* Typical Project Budget */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="typical_project_budget" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Typical Project Budget
+                                                                </label>
+                                                                <select
+                                                                    id="typical_project_budget"
+                                                                    value={data.typical_project_budget}
+                                                                    onChange={(e) => setData('typical_project_budget', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                >
+                                                                    <option value="">Select budget range</option>
+                                                                    <option value="under_500">Under ₱500</option>
+                                                                    <option value="500-2000">₱500 - ₱2,000</option>
+                                                                    <option value="2000-5000">₱2,000 - ₱5,000</option>
+                                                                    <option value="5000-10000">₱5,000 - ₱10,000</option>
+                                                                    <option value="10000+">₱10,000+</option>
+                                                                </select>
+                                                                {errors.typical_project_budget && <p className="mt-2 text-sm text-red-600">{errors.typical_project_budget}</p>}
+                                                            </div>
+
+                                                            {/* Typical Project Duration */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="typical_project_duration" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Typical Project Duration
+                                                                </label>
+                                                                <select
+                                                                    id="typical_project_duration"
+                                                                    value={data.typical_project_duration}
+                                                                    onChange={(e) => setData('typical_project_duration', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                >
+                                                                    <option value="">Select duration</option>
+                                                                    <option value="short_term">Short-term (1-4 weeks)</option>
+                                                                    <option value="medium_term">Medium-term (1-3 months)</option>
+                                                                    <option value="long_term">Long-term (3+ months)</option>
+                                                                    <option value="ongoing">Ongoing / Retainer</option>
+                                                                </select>
+                                                                {errors.typical_project_duration && <p className="mt-2 text-sm text-red-600">{errors.typical_project_duration}</p>}
+                                                            </div>
+
+                                                            {/* Preferred Experience Level */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="preferred_experience_level" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Preferred Experience Level
+                                                                </label>
+                                                                <select
+                                                                    id="preferred_experience_level"
+                                                                    value={data.preferred_experience_level}
+                                                                    onChange={(e) => setData('preferred_experience_level', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                >
+                                                                    <option value="">Select experience level</option>
+                                                                    <option value="any">Any level</option>
+                                                                    <option value="beginner">Beginner</option>
+                                                                    <option value="intermediate">Intermediate</option>
+                                                                    <option value="expert">Expert</option>
+                                                                </select>
+                                                                {errors.preferred_experience_level && <p className="mt-2 text-sm text-red-600">{errors.preferred_experience_level}</p>}
+                                                            </div>
+
+                                                            {/* Hiring Frequency */}
+                                                            <div className="mb-6">
+                                                                <label htmlFor="hiring_frequency" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Hiring Frequency
+                                                                </label>
+                                                                <select
+                                                                    id="hiring_frequency"
+                                                                    value={data.hiring_frequency}
+                                                                    onChange={(e) => setData('hiring_frequency', e.target.value)}
+                                                                    disabled={!isEditing}
+                                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                >
+                                                                    <option value="">Select frequency</option>
+                                                                    <option value="one_time">One-time project</option>
+                                                                    <option value="occasional">Occasional (few times a year)</option>
+                                                                    <option value="regular">Regular (monthly)</option>
+                                                                    <option value="ongoing">Ongoing (weekly/daily)</option>
+                                                                </select>
+                                                                {errors.hiring_frequency && <p className="mt-2 text-sm text-red-600">{errors.hiring_frequency}</p>}
+                                                            </div>
+
+                                                            {/* Tax ID */}
+                                                            {data.tax_id && (
+                                                                <div className="mb-6">
+                                                                    <label htmlFor="tax_id" className="block text-sm font-medium text-gray-700 mb-2">
+                                                                        Tax ID / Business Registration
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        id="tax_id"
+                                                                        value={data.tax_id}
+                                                                        disabled={true}
+                                                                        className="w-full border-gray-300 rounded-md shadow-sm bg-gray-100"
+                                                                        placeholder="Tax ID (if provided during onboarding)"
+                                                                    />
+                                                                    <p className="mt-2 text-xs text-gray-500">Tax ID cannot be edited from profile. Contact support for changes.</p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </>
                                                 )}
@@ -1437,10 +1554,11 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
 
             {/* Success Modal */}
             <SuccessModal 
-                show={showSuccessModal} 
+                isOpen={showSuccessModal} 
                 onClose={() => setShowSuccessModal(false)}
-                message="Profile updated successfully!"
+                message="Profile picture updated successfully!"
             />
+
         </AuthenticatedLayout>
     );
 }

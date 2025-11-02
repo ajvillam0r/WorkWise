@@ -2,11 +2,14 @@
 
 use App\Http\Controllers\BidController;
 use App\Http\Controllers\GigJobController;
+use App\Http\Controllers\JobTemplateController;
+use App\Http\Controllers\WorkerDiscoveryController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\GigWorkerOnboardingController;
 use App\Http\Controllers\ClientOnboardingController;
@@ -107,11 +110,11 @@ Route::get('/dashboard', function () {
             'user_type' => $user->user_type,
         ]
     ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth'])->name('dashboard');
 
 // Gig Worker Dashboard Route
 Route::get('/gig-worker/dashboard', [GigWorkerDashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('gig-worker.dashboard');
 
 // Job Invitations Route
@@ -136,7 +139,7 @@ Route::get('/freelancers', function () {
 
 // Employer Dashboard Route
 Route::get('/employer/dashboard', [EmployerDashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('employer.dashboard');
 
 // Search Routes
@@ -176,8 +179,8 @@ Route::get('/test-admin', function () {
     return Inertia::render('Admin/Dashboard', [
         'stats' => [
             'total_users' => 100,
-            'total_freelancers' => 50,
-            'total_clients' => 50,
+            'total_gig_workers' => 50,
+            'total_employers' => 50,
             'total_projects' => 25,
             'active_projects' => 10,
             'completed_projects' => 15,
@@ -271,7 +274,13 @@ Route::middleware('auth')->group(function () {
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile', [ProfileController::class, 'update']); // For file uploads with method spoofing
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // R2 Proxy route (fallback while DNS propagates)
+    Route::get('/r2/{path}', [ProfileController::class, 'proxyR2File'])
+        ->where('path', '.*')
+        ->name('r2.proxy');
 
     // ID Verification routes
     Route::get('/id-verification', function () {
@@ -287,6 +296,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/jobs/{job}/edit', [GigJobController::class, 'edit'])->name('jobs.edit');
         Route::patch('/jobs/{job}', [GigJobController::class, 'update'])->name('jobs.update');
         Route::delete('/jobs/{job}', [GigJobController::class, 'destroy'])->name('jobs.destroy');
+
+        // Job templates
+        Route::resource('job-templates', JobTemplateController::class);
+        Route::post('/job-templates/{jobTemplate}/create-job', [JobTemplateController::class, 'createJobFromTemplate'])->name('job-templates.create-job');
+        Route::post('/job-templates/{jobTemplate}/toggle-favorite', [JobTemplateController::class, 'toggleFavorite'])->name('job-templates.toggle-favorite');
+
+        // Worker discovery
+        Route::get('/discover-workers', [WorkerDiscoveryController::class, 'index'])->name('worker-discovery.index');
+        Route::get('/workers/{user}', [WorkerDiscoveryController::class, 'show'])->name('worker-discovery.show');
+        Route::post('/workers/{user}/invite', [WorkerDiscoveryController::class, 'inviteToJob'])->name('worker-discovery.invite');
     });
 
     // Job show route (public for authenticated users)
@@ -370,6 +389,7 @@ Route::middleware('auth')->group(function () {
     // Contract signing (both roles can sign)
     Route::get('/contracts/{contract}/sign', [ContractController::class, 'sign'])->name('contracts.sign');
     Route::post('/contracts/{contract}/signature', [ContractController::class, 'processSignature'])->name('contracts.processSignature');
+    Route::patch('/contracts/{contract}/sign', [ContractController::class, 'updateSignature'])->name('contracts.updateSignature');
 
     // Contract cancellation (both roles can cancel)
     Route::post('/contracts/{contract}/cancel', [ContractController::class, 'cancel'])->name('contracts.cancel');
@@ -380,6 +400,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/payment/confirm', [PaymentController::class, 'confirmPayment'])->name('payment.confirm');
     Route::get('/payment/history', [PaymentController::class, 'history'])->name('payment.history');
     Route::get('/transactions/{transaction}', [PaymentController::class, 'transaction'])->name('transactions.show');
+    Route::post('/payments/deposit', [PaymentController::class, 'deposit'])->name('payments.deposit');
+
+    // Review routes
+    Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
     // AI Recommendation Routes
     Route::get('/ai/recommendations', [AIRecommendationController::class, 'index'])->name('ai.recommendations');
@@ -482,13 +507,19 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/id-verifications/{user}/approve', [\App\Http\Controllers\Admin\IdVerificationController::class, 'approve'])->name('id-verifications.approve');
     Route::post('/id-verifications/{user}/reject', [\App\Http\Controllers\Admin\IdVerificationController::class, 'reject'])->name('id-verifications.reject');
     Route::post('/id-verifications/{user}/request-resubmit', [\App\Http\Controllers\Admin\IdVerificationController::class, 'requestResubmit'])->name('id-verifications.requestResubmit');
+    
+    // Bulk ID Verification operations
+    Route::post('/id-verifications/bulk-approve', [\App\Http\Controllers\Admin\IdVerificationController::class, 'bulkApprove'])->name('id-verifications.bulkApprove');
+    Route::post('/id-verifications/bulk-reject', [\App\Http\Controllers\Admin\IdVerificationController::class, 'bulkReject'])->name('id-verifications.bulkReject');
+    Route::post('/id-verifications/bulk-request-resubmit', [\App\Http\Controllers\Admin\IdVerificationController::class, 'bulkRequestResubmit'])->name('id-verifications.bulkRequestResubmit');
+    Route::get('/id-verifications/export-csv', [\App\Http\Controllers\Admin\IdVerificationController::class, 'exportCsv'])->name('id-verifications.exportCsv');
+    Route::get('/id-verifications/statistics', [\App\Http\Controllers\Admin\IdVerificationController::class, 'getStatistics'])->name('id-verifications.statistics');
 
     // Analytics
-    Route::get('/analytics', [AdminAnalyticsController::class, 'overview'])->name('analytics.overview');
-    Route::get('/analytics/users', [AdminAnalyticsController::class, 'userGrowth'])->name('analytics.users');
-    Route::get('/analytics/financial', [AdminAnalyticsController::class, 'financial'])->name('analytics.financial');
-    Route::get('/analytics/projects', [AdminAnalyticsController::class, 'projects'])->name('analytics.projects');
-    Route::get('/analytics/export', [AdminAnalyticsController::class, 'export'])->name('analytics.export');
+    Route::get('/analytics', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'overview'])->name('analytics.overview');
+    Route::get('/analytics/jobs-contracts', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'jobsContracts'])->name('analytics.jobsContracts');
+    Route::get('/analytics/financial', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'financial'])->name('analytics.financial');
+    Route::get('/analytics/quality', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'quality'])->name('analytics.quality');
 
     // User Verifications
     Route::get('/verifications', [AdminVerificationController::class, 'index'])->name('verifications');

@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 export default function AvatarUploadOverlay({ 
     currentImage, 
     onUpload, 
+    onFileSelected, // New callback for confirmation flow
     userName = 'User',
     size = 'lg',
     className = '' 
@@ -34,16 +35,27 @@ export default function AvatarUploadOverlay({
     const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
         if (file) {
-            setUploading(true);
-            try {
-                await onUpload(file);
-            } catch (error) {
-                console.error('Upload failed:', error);
-            } finally {
-                setUploading(false);
+            // If onFileSelected is provided, use confirmation flow
+            if (onFileSelected) {
+                const previewUrl = URL.createObjectURL(file);
+                onFileSelected(file, previewUrl);
                 // Reset input to allow re-uploading the same file
                 if (fileInputRef.current) {
                     fileInputRef.current.value = '';
+                }
+            } else if (onUpload) {
+                // Otherwise use immediate upload (backwards compatibility)
+                setUploading(true);
+                try {
+                    await onUpload(file);
+                } catch (error) {
+                    console.error('Upload failed:', error);
+                } finally {
+                    setUploading(false);
+                    // Reset input to allow re-uploading the same file
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
                 }
             }
         }

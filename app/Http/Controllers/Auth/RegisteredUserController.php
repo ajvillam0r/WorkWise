@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\GeolocationService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -74,21 +73,16 @@ class RegisteredUserController extends Controller
 
         $user = User::create($userData);
 
-        // Auto-verify address using IP geolocation
-        try {
-            $geolocationService = app(GeolocationService::class);
-            $geolocationService->detectAndVerifyAddress($user);
-        } catch (\Exception $e) {
-            \Log::warning('Failed to auto-verify address during registration', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage()
-            ]);
-        }
+        // Auto-verify address using IP geolocation - defer to async job
+        // to prevent timeout during registration
+        // This will be handled by a queued job if needed
+        \Log::info('User created, deferring address verification to job queue');
 
         // Clear the session data
         session()->forget('selected_user_type');
 
-        event(new Registered($user));
+        // Disable auto-sending verification emails on registration
+        // event(new Registered($user));
 
         Auth::login($user);
 

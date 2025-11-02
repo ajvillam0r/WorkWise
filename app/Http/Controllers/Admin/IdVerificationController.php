@@ -191,6 +191,189 @@ class IdVerificationController extends Controller
 
         return redirect()->back()->with('success', 'Resubmission request sent. User has been notified via email.');
     }
+
+    /**
+     * Bulk approve multiple ID verifications
+     */
+    public function bulkApprove(Request $request)
+    {
+        $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'integer|exists:users,id'
+        ]);
+
+        $count = User::whereIn('id', $request->user_ids)
+            ->whereNotNull('id_front_image')
+            ->update([
+                'id_verification_status' => 'verified',
+                'id_verified_at' => now(),
+                'id_verification_notes' => null,
+            ]);
+
+        // Send approval emails to each user (in queue for performance)
+        foreach ($request->user_ids as $userId) {
+            $user = User::find($userId);
+            if ($user) {
+                \Log::info('Sending ID verification approval email', ['user_id' => $user->id]);
+                try {
+                    Mail::to($user->email)->send(new IdVerificationApproved($user));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send ID verification approval email', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        }
+
+        return back()->with('success', "{$count} ID verification(s) approved successfully.");
+    }
+
+    /**
+     * Bulk reject multiple ID verifications
+     */
+    public function bulkReject(Request $request)
+    {
+        $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'integer|exists:users,id',
+            'reason' => 'required|string|max:500'
+        ]);
+
+        $count = User::whereIn('id', $request->user_ids)
+            ->whereNotNull('id_front_image')
+            ->update([
+                'id_verification_status' => 'rejected',
+                'id_verification_notes' => $request->reason,
+                'id_verified_at' => null,
+            ]);
+
+        // Send rejection emails
+        foreach ($request->user_ids as $userId) {
+            $user = User::find($userId);
+            if ($user) {
+                try {
+                    Mail::to($user->email)->send(new IdVerificationRejected($user, $request->reason));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send ID verification rejection email', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        }
+
+        return back()->with('success', "{$count} ID verification(s) rejected.");
+    }
+
+    /**
+     * Bulk request resubmission
+     */
+    public function bulkRequestResubmit(Request $request)
+    {
+        $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'integer|exists:users,id',
+            'reason' => 'required|string|max:500'
+        ]);
+
+        $count = User::whereIn('id', $request->user_ids)
+            ->whereNotNull('id_front_image')
+            ->update([
+                'id_verification_status' => 'pending',
+                'id_verification_notes' => 'Resubmission requested: ' . $request->reason,
+            ]);
+
+        // Send resubmission request emails
+        foreach ($request->user_ids as $userId) {
+            $user = User::find($userId);
+            if ($user) {
+                try {
+                    Mail::to($user->email)->send(new IdVerificationRejected($user, $request->reason));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send ID resubmission request email', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        }
+
+        return back()->with('success', "{$count} resubmission request(s) sent.");
+    }
+
+    /**
+     * Get verification statistics
+     */
+    public function getStatistics()
+    {
+        return response()->json([
+            'pending' => User::where('id_verification_status', 'pending')
+                ->whereNotNull('id_front_image')->count(),
+            'verified' => User::where('id_verification_status', 'verified')->count(),
+            'rejected' => User::where('id_verification_status', 'rejected')->count(),
+            'total' => User::whereNotNull('id_front_image')->count(),
+        ]);
+    }
+
+    /**
+     * Export ID verifications to CSV
+     */
+    public function exportCsv(Request $request)
+    {
+        $query = User::select([
+            'id', 'first_name', 'last_name', 'email', 'id_type',
+            'id_verification_status', 'created_at'
+        ])->whereNotNull('id_front_image');
+
+        // Apply filters from request
+        if ($request->filled('status')) {
+            $query->where('id_verification_status', $request->status);
+        }
+
+        if ($request->filled('id_type')) {
+            $query->where('id_type', $request->id_type);
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('created_at', '>=', $request->from_date);
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('created_at', '<=', $request->to_date);
+        }
+
+        $verifications = $query->orderBy('created_at', 'desc')->get();
+
+        $fileName = 'id_verifications_' . now()->format('Y-m-d_His') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\""
+        ];
+
+        $callback = function() use ($verifications) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, ['ID', 'Name', 'Email', 'ID Type', 'Status', 'Submitted Date']);
+
+            // CSV Rows
+            foreach ($verifications as $user) {
+                fputcsv($file, [
+                    $user->id,
+                    $user->first_name . ' ' . $user->last_name,
+                    $user->email,
+                    ucwords(str_replace('_', ' ', $user->id_type ?? '')),
+                    ucfirst($user->id_verification_status),
+                    $user->created_at->format('Y-m-d H:i:s')
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
 
 

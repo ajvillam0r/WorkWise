@@ -2,20 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class EmployerOnboardingController extends Controller
 {
-    protected $cloudinaryService;
-
-    public function __construct(CloudinaryService $cloudinaryService)
-    {
-        $this->cloudinaryService = $cloudinaryService;
-    }
 
     /**
      * Show the employer onboarding page
@@ -91,43 +86,45 @@ class EmployerOnboardingController extends Controller
             'hiring_frequency.required' => 'Please select how frequently you hire.',
         ]);
 
-        // Handle profile picture upload
+        // Handle profile picture upload to R2
         if ($request->hasFile('profile_picture')) {
             try {
-                $result = $this->cloudinaryService->uploadProfilePicture(
-                    $request->file('profile_picture'),
-                    $user->id
-                );
-                $validated['profile_picture'] = $result['secure_url'];
-                
-                \Log::info('Profile picture uploaded successfully', [
-                    'user_id' => $user->id,
-                    'url' => $result['secure_url']
-                ]);
+                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
+                if ($path) {
+                    // Use app proxy URL as fallback while R2 DNS propagates
+                    $validated['profile_picture'] = '/r2/' . $path;
+                    
+                    \Log::info('Profile picture uploaded successfully', [
+                        'user_id' => $user->id,
+                        'url' => $validated['profile_picture']
+                    ]);
+                }
             } catch (\Exception $e) {
                 \Log::error('Failed to upload profile picture: ' . $e->getMessage());
                 // Continue without profile picture
             }
         }
 
-        // Handle business registration document upload
+        // Handle business registration document upload to R2
         if ($request->hasFile('business_registration_document')) {
             try {
-                $file = $request->file('business_registration_document');
-                $result = $this->cloudinaryService->uploadDocument(
-                    $file,
-                    $user->id,
-                    'business_registration'
-                );
-                $validated['business_registration_document'] = $result['secure_url'];
+                // Set longer timeout for large file uploads
+                set_time_limit(120);
                 
-                \Log::info('Business registration document uploaded successfully', [
-                    'user_id' => $user->id,
-                    'url' => $result['secure_url']
-                ]);
+                $file = $request->file('business_registration_document');
+                $path = Storage::disk('r2')->putFile('business_documents/' . $user->id, $file);
+                if ($path) {
+                    $validated['business_registration_document'] = Storage::disk('r2')->url($path);
+                    
+                    \Log::info('Business registration document uploaded successfully', [
+                        'user_id' => $user->id,
+                        'url' => $validated['business_registration_document']
+                    ]);
+                }
             } catch (\Exception $e) {
                 \Log::error('Failed to upload business registration document: ' . $e->getMessage());
-                // Continue without document
+                // Continue without document - don't block onboarding for failed upload
+                unset($validated['business_registration_document']);
             }
         }
 

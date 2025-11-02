@@ -298,6 +298,112 @@ export default function Dashboard({ auth, stats, recentUsers, recentReports, rec
                 </div>
             </div>
 
+            {/* Platform Health Section */}
+            <div className="mt-8 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-6 shadow-lg dark:border-slate-700 dark:from-slate-800 dark:to-slate-800">
+                <h2 className="mb-6 text-2xl font-bold text-slate-900 dark:text-slate-100">Platform Health Overview</h2>
+                
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Active Contracts */}
+                    <div className="flex items-center rounded-lg bg-white p-4 shadow dark:bg-slate-700">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                            <span className="material-symbols-outlined text-blue-600">description</span>
+                        </div>
+                        <div className="ml-4 flex-1">
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Active Contracts</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.active_contracts || '0'}</p>
+                            <p className="text-xs text-slate-400">Out of {stats.total_contracts || '0'} total</p>
+                        </div>
+                    </div>
+
+                    {/* Pending Bids */}
+                    <div className="flex items-center rounded-lg bg-white p-4 shadow dark:bg-slate-700">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                            <span className="material-symbols-outlined text-purple-600">local_offer</span>
+                        </div>
+                        <div className="ml-4 flex-1">
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Bids</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.pending_bids || '0'}</p>
+                            <p className="text-xs text-slate-400">Out of {stats.total_bids || '0'} total</p>
+                        </div>
+                    </div>
+
+                    {/* Email Verified */}
+                    <div className="flex items-center rounded-lg bg-white p-4 shadow dark:bg-slate-700">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/50">
+                            <span className="material-symbols-outlined text-green-600">mail_lock</span>
+                        </div>
+                        <div className="ml-4 flex-1">
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Email Verified</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.email_verified || '0'}</p>
+                            <p className="text-xs text-slate-400">{stats.email_unverified || '0'} unverified</p>
+                        </div>
+                    </div>
+
+                    {/* Total Transaction Value */}
+                    <div className="flex items-center rounded-lg bg-white p-4 shadow dark:bg-slate-700">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                            <span className="material-symbols-outlined text-emerald-600">trending_up</span>
+                        </div>
+                        <div className="ml-4 flex-1">
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Transaction Value</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">₱{number_format(stats.total_transaction_value || 0)}</p>
+                            <p className="text-xs text-slate-400">Total completed</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Actions Section */}
+            <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                <h2 className="mb-6 text-xl font-bold text-slate-900 dark:text-slate-100">Quick Actions</h2>
+                
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Link
+                        href="/admin/id-verifications"
+                        className="flex items-center justify-between rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                    >
+                        <div>
+                            <p className="font-semibold">Review ID Verifications</p>
+                            <p className="text-sm text-orange-100">{stats.id_pending} pending</p>
+                        </div>
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </Link>
+
+                    <Link
+                        href="/admin/users"
+                        className="flex items-center justify-between rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                    >
+                        <div>
+                            <p className="font-semibold">Manage Users</p>
+                            <p className="text-sm text-blue-100">{stats.pending_verification} pending approval</p>
+                        </div>
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </Link>
+
+                    <Link
+                        href="/admin/reports"
+                        className="flex items-center justify-between rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-600 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                    >
+                        <div>
+                            <p className="font-semibold">Review Disputes</p>
+                            <p className="text-sm text-yellow-100">{stats.pending_reports} open</p>
+                        </div>
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </Link>
+
+                    <Link
+                        href="/admin/settings"
+                        className="flex items-center justify-between rounded-lg bg-gradient-to-r from-indigo-500 to-indigo-600 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                    >
+                        <div>
+                            <p className="font-semibold">System Settings</p>
+                            <p className="text-sm text-indigo-100">Configure platform</p>
+                        </div>
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </Link>
+                </div>
+            </div>
+
             {/* Charts Section */}
             <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-700 dark:bg-slate-800 lg:col-span-2">

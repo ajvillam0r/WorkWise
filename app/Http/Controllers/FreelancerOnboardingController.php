@@ -2,20 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class FreelancerOnboardingController extends Controller
 {
-    protected $cloudinaryService;
-
-    public function __construct(CloudinaryService $cloudinaryService)
-    {
-        $this->cloudinaryService = $cloudinaryService;
-    }
 
     /**
      * Show the freelancer onboarding page
@@ -60,11 +55,17 @@ class FreelancerOnboardingController extends Controller
             'profile_photo' => 'nullable|image|max:2048',
         ]);
 
-        // Handle profile photo upload to Cloudinary
+        // Handle profile photo upload to R2
         if ($request->hasFile('profile_photo')) {
-            $result = $this->cloudinaryService->uploadProfilePicture($request->file('profile_photo'), $user->id);
-            if ($result) {
-                $validated['profile_photo'] = $result['secure_url'];
+            try {
+                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_photo'));
+                if ($path) {
+                    // Use app proxy URL as fallback while R2 DNS propagates
+                    $validated['profile_photo'] = '/r2/' . $path;
+                }
+            } catch (\Exception $e) {
+                Log::error('Profile photo upload failed: ' . $e->getMessage());
+                // Continue without profile photo
             }
         }
 

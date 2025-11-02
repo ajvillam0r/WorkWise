@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
+import SkillExperienceSelector from '@/Components/SkillExperienceSelector';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function JobEdit({ job }) {
@@ -28,11 +29,15 @@ export default function JobEdit({ job }) {
     const { data, setData, processing, errors } = useForm({
         title: job.title || '',
         description: job.description || '',
+        project_category: job.project_category || '',
         required_skills: parseSkills(job.required_skills),
+        skills_requirements: job.skills_requirements || [],
+        nice_to_have_skills: job.nice_to_have_skills || [],
         budget_type: job.budget_type || 'fixed',
         budget_min: job.budget_min || '',
         budget_max: job.budget_max || '',
         experience_level: job.experience_level || 'intermediate',
+        job_complexity: job.job_complexity || '',
         estimated_duration_days: job.estimated_duration_days || '',
         deadline: job.deadline ? job.deadline.split('T')[0] : '',
         location: job.location || 'Lapu-Lapu City',
@@ -226,6 +231,69 @@ export default function JobEdit({ job }) {
                                     </p>
                                     {errors.required_skills && <p className="mt-2 text-sm text-red-600">{errors.required_skills}</p>}
                                 </div>
+
+                                {/* Project Category */}
+                                <div>
+                                    <label htmlFor="project_category" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Project Category *
+                                    </label>
+                                    <select
+                                        id="project_category"
+                                        value={data.project_category}
+                                        onChange={(e) => setData('project_category', e.target.value)}
+                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                        <option value="">Select a category</option>
+                                        <option value="Web Development">Web Development</option>
+                                        <option value="Mobile App Development">Mobile App Development</option>
+                                        <option value="UI/UX Design">UI/UX Design</option>
+                                        <option value="Graphic Design">Graphic Design</option>
+                                        <option value="Content Writing">Content Writing</option>
+                                        <option value="Video Editing">Video Editing</option>
+                                        <option value="Data Analysis">Data Analysis</option>
+                                        <option value="Virtual Assistant">Virtual Assistant</option>
+                                    </select>
+                                    {errors.project_category && <p className="mt-2 text-sm text-red-600">{errors.project_category}</p>}
+                                </div>
+
+                                {/* Job Complexity */}
+                                <div>
+                                    <label htmlFor="job_complexity" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Job Complexity *
+                                    </label>
+                                    <select
+                                        id="job_complexity"
+                                        value={data.job_complexity}
+                                        onChange={(e) => setData('job_complexity', e.target.value)}
+                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                        <option value="">Select complexity</option>
+                                        <option value="simple">Simple (e.g., basic website)</option>
+                                        <option value="moderate">Moderate (e.g., medium-sized app)</option>
+                                        <option value="complex">Complex (e.g., large-scale enterprise solution)</option>
+                                    </select>
+                                    {errors.job_complexity && <p className="mt-2 text-sm text-red-600">{errors.job_complexity}</p>}
+                                </div>
+
+                                {/* Skills Requirements */}
+                                <SkillExperienceSelector
+                                    label="Skills Requirements"
+                                    description="Select the skills and experience levels required for this job"
+                                    skills={data.skills_requirements}
+                                    onChange={(skills) => setData('skills_requirements', skills)}
+                                    type="required"
+                                    maxSkills={10}
+                                />
+
+                                {/* Nice to Have Skills */}
+                                <SkillExperienceSelector
+                                    label="Nice to Have Skills"
+                                    description="Select optional skills that would be a bonus to have"
+                                    skills={data.nice_to_have_skills}
+                                    onChange={(skills) => setData('nice_to_have_skills', skills)}
+                                    type="nice_to_have"
+                                    maxSkills={5}
+                                />
 
                                 {/* Budget */}
                                 <div>

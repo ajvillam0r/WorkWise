@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Report;
 use App\Models\Project;
 use App\Models\Transaction;
+use App\Models\Bid;
+use App\Models\Contract;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
@@ -28,21 +30,48 @@ class AdminController extends Controller
             'pending_verification' => User::where('profile_status', 'pending')->count(),
             'suspended_users' => User::where('profile_status', 'rejected')->count(),
             
+            // Email Verification Statistics
+            'email_verified' => User::whereNotNull('email_verified_at')->count(),
+            'email_unverified' => User::whereNull('email_verified_at')->count(),
+            
             // ID Verification Statistics
             'id_pending' => User::where('id_verification_status', 'pending')->whereNotNull('id_front_image')->count(),
             'id_verified' => User::where('id_verification_status', 'verified')->count(),
             'id_rejected' => User::where('id_verification_status', 'rejected')->count(),
             'id_total_submissions' => User::whereNotNull('id_front_image')->count(),
             
+            // Job Statistics
             'total_projects' => Project::count(),
             'active_projects' => Project::whereIn('status', ['active', 'in_progress'])->count(),
             'completed_projects' => Project::where('status', 'completed')->count(),
+            
+            // Bid Statistics
+            'total_bids' => Bid::count(),
+            'pending_bids' => Bid::where('status', 'pending')->count(),
+            'accepted_bids' => Bid::where('status', 'accepted')->count(),
+            
+            // Transaction Statistics
+            'total_transactions' => Transaction::count(),
+            'completed_transactions' => Transaction::where('status', 'completed')->count(),
+            'pending_transactions' => Transaction::where('status', 'pending')->count(),
+            'total_transaction_value' => Transaction::where('status', 'completed')->sum('amount') ?? 0,
+            'platform_earnings' => Transaction::where('type', 'release')->where('status', 'completed')->sum('platform_fee') ?? 0,
+            
+            // Report Statistics
             'total_reports' => Report::count(),
             'pending_reports' => Report::where('status', 'pending')->count(),
-            'total_transactions' => Transaction::count(),
-            'platform_earnings' => Transaction::where('type', 'release')->where('status', 'completed')->sum('platform_fee'),
+            'resolved_reports' => Report::where('status', 'resolved')->count(),
+            
+            // Contract Statistics
+            'total_contracts' => Contract::count(),
+            'active_contracts' => Contract::where('status', 'active')->count(),
+            'completed_contracts' => Contract::where('status', 'completed')->count(),
         ];
 
+        // Calculate average match quality (if applicable)
+        // This is a placeholder - implement based on your matching algorithm
+        $stats['average_match_quality'] = 85; // 85% as default, replace with actual calculation
+        
         // Get recent activities for the dashboard
         $recentUsers = User::latest()->limit(10)->get();
         $recentReports = Report::with(['reporter', 'reportedUser'])->latest()->limit(5)->get();
@@ -70,13 +99,13 @@ class AdminController extends Controller
         // Add recent completed projects
         $recentProjects->where('status', 'completed')->take(2)->each(function ($project) use ($recentActivities) {
             $jobTitle = $project->job ? $project->job->title : 'Untitled Project';
-            $clientName = $project->client ? $project->client->first_name . ' ' . $project->client->last_name : 'Unknown Client';
-            $freelancerName = $project->freelancer ? $project->freelancer->first_name . ' ' . $project->freelancer->last_name : 'Unknown Freelancer';
+            $employerName = $project->employer ? $project->employer->first_name . ' ' . $project->employer->last_name : 'Unknown Employer';
+            $gigWorkerName = $project->gig_worker ? $project->gig_worker->first_name . ' ' . $project->gig_worker->last_name : 'Unknown Gig Worker';
             $recentActivities->push([
                 'id' => $project->id,
                 'type' => 'project_completed',
                 'title' => "Project '{$jobTitle}' completed",
-                'subtitle' => "Client: {$clientName} • Freelancer: {$freelancerName}",
+                'subtitle' => "Employer: {$employerName} • Gig Worker: {$gigWorkerName}",
                 'time' => $project->updated_at->diffForHumans(),
                 'icon' => 'task_alt',
                 'color' => 'pink',
@@ -203,10 +232,10 @@ class AdminController extends Controller
     public function showUser(User $user): Response
     {
         $user->load([
-            'clientProjects' => function ($query) {
+            'employerProjects' => function ($query) {
                 $query->latest()->limit(5);
             },
-            'freelancerProjects' => function ($query) {
+            'gigWorkerProjects' => function ($query) {
                 $query->latest()->limit(5);
             },
             'reportsSubmitted' => function ($query) {
@@ -218,11 +247,11 @@ class AdminController extends Controller
         ]);
 
         $stats = [
-            'total_projects' => $user->clientProjects()->count() + $user->freelancerProjects()->count(),
-            'completed_projects' => $user->clientProjects()->where('status', 'completed')->count() +
-                                  $user->freelancerProjects()->where('status', 'completed')->count(),
-            'total_earnings' => $user->isFreelancer() ? $user->total_earnings : 0,
-            'total_spent' => $user->isClient() ? $user->paymentsMade()->where('status', 'completed')->sum('amount') : 0,
+            'total_projects' => $user->employerProjects()->count() + $user->gigWorkerProjects()->count(),
+            'completed_projects' => $user->employerProjects()->where('status', 'completed')->count() +
+                                  $user->gigWorkerProjects()->where('status', 'completed')->count(),
+            'total_earnings' => $user->isGigWorker() ? $user->total_earnings : 0,
+            'total_spent' => $user->isEmployer() ? $user->paymentsMade()->where('status', 'completed')->sum('amount') : 0,
             'reports_submitted' => $user->reportsSubmitted()->count(),
             'reports_received' => $user->reportsReceived()->count(),
         ];
@@ -476,21 +505,21 @@ class AdminController extends Controller
      */
     public function projects(Request $request): Response
     {
-        $query = Project::with(['client', 'freelancer', 'job']);
+        $query = Project::with(['employer', 'gigWorker', 'job']);
 
         // Filter by status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by client
-        if ($request->filled('client_id')) {
-            $query->where('client_id', $request->client_id);
+        // Filter by employer
+        if ($request->filled('employer_id')) {
+            $query->where('employer_id', $request->employer_id);
         }
 
-        // Filter by freelancer
-        if ($request->filled('freelancer_id')) {
-            $query->where('freelancer_id', $request->freelancer_id);
+        // Filter by gig worker
+        if ($request->filled('gig_worker_id')) {
+            $query->where('gig_worker_id', $request->gig_worker_id);
         }
 
         // Search by project title
@@ -513,7 +542,7 @@ class AdminController extends Controller
         return Inertia::render('Admin/Projects/Index', [
             'projects' => $projects,
             'stats' => $stats,
-            'filters' => $request->only(['status', 'client_id', 'freelancer_id', 'search']),
+            'filters' => $request->only(['status', 'employer_id', 'gig_worker_id', 'search']),
             'url' => request()->path(),
         ]);
     }
@@ -580,7 +609,7 @@ class AdminController extends Controller
     public function exportProjects(Request $request)
     {
         $format = $request->get('format', 'csv');
-        $query = Project::with(['job', 'client', 'freelancer']);
+        $query = Project::with(['job', 'employer', 'gigWorker']);
 
         // Apply filters if provided
         if ($request->filled('status')) {
@@ -607,7 +636,7 @@ class AdminController extends Controller
 
                 // Add headers
                 fputcsv($file, [
-                    'ID', 'Project Title', 'Client', 'Freelancer', 'Amount', 'Status',
+                    'ID', 'Project Title', 'Employer', 'Gig Worker', 'Amount', 'Status',
                     'Started', 'Completed', 'Created', 'Updated'
                 ]);
 
@@ -616,8 +645,8 @@ class AdminController extends Controller
                     fputcsv($file, [
                         $project->id,
                         $project->job->title ?? 'N/A',
-                        $project->client->first_name . ' ' . $project->client->last_name ?? 'N/A',
-                        $project->freelancer->first_name . ' ' . $project->freelancer->last_name ?? 'N/A',
+                        $project->employer->first_name . ' ' . $project->employer->last_name ?? 'N/A',
+                        $project->gigWorker->first_name . ' ' . $project->gigWorker->last_name ?? 'N/A',
                         $project->agreed_amount ?? '0',
                         $project->status,
                         $project->started_at?->format('Y-m-d') ?? 'N/A',

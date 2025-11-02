@@ -354,4 +354,39 @@ class ContractController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Update contract signature (simplified for testing)
+     */
+    public function updateSignature(Request $request, Contract $contract)
+    {
+        $user = auth()->user();
+
+        // Validate request
+        $validated = $request->validate([
+            'status' => 'nullable|string|in:pending_employer_signature,pending_gig_worker_signature,fully_executed,cancelled',
+            'agree' => 'required|boolean',
+        ]);
+
+        // Check if user is authorized
+        if ($contract->employer_id !== $user->id && $contract->gig_worker_id !== $user->id) {
+            abort(403, 'Unauthorized to sign this contract');
+        }
+
+        // Update signature timestamp based on user role
+        if ($validated['agree'] === true) {
+            $userRole = $contract->getUserRole($user->id);
+            
+            if ($userRole === 'employer') {
+                $contract->employer_signed_at = now();
+                $contract->save();
+            } elseif ($userRole === 'gig_worker') {
+                $contract->gig_worker_signed_at = now();
+                $contract->save();
+            }
+        }
+
+        return redirect()->route('contracts.show', $contract)
+            ->with('success', 'Contract signed successfully');
+    }
 }

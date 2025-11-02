@@ -21,7 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
-export default function BrowseFreelancers({ auth }) {
+export default function BrowseGigWorkers({ auth }) {
     // State management
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
@@ -85,28 +85,28 @@ export default function BrowseFreelancers({ auth }) {
     }, [searchTerm, filterBy, sortBy, sortOrder, fetchGigWorkers]);
 
     // Gig Worker Profile Card Component
-    const FreelancerCard = ({ freelancer, viewMode }) => {
+    const GigWorkerCard = ({ gigWorker, viewMode }) => {
         // Helper function to get full name
-        const getFullName = (freelancer) => {
-            return `${freelancer.first_name || ''} ${freelancer.last_name || ''}`.trim() || freelancer.name || 'Unknown User';
+        const getFullName = (gigWorker) => {
+            return `${gigWorker.first_name || ''} ${gigWorker.last_name || ''}`.trim() || gigWorker.name || 'Unknown User';
         };
 
         // Helper function to get profile photo
-        const getProfilePhoto = (freelancer) => {
-            return freelancer.profile_photo || freelancer.avatar || "/api/placeholder/80/80";
+        const getProfilePhoto = (gigWorker) => {
+            return gigWorker.profile_photo || gigWorker.avatar || "/api/placeholder/80/80";
         };
 
         // Helper function to get skills array
-        const getSkills = (freelancer) => {
-            if (Array.isArray(freelancer.skills)) {
-                return freelancer.skills;
+        const getSkills = (gigWorker) => {
+            if (Array.isArray(gigWorker.skills)) {
+                return gigWorker.skills;
             }
-            return freelancer.skills ? freelancer.skills.split(',').map(s => s.trim()) : [];
+            return gigWorker.skills ? gigWorker.skills.split(',').map(s => s.trim()) : [];
         };
 
         // Helper function to format member since date
-        const getMemberSince = (freelancer) => {
-            const date = freelancer.created_at || freelancer.memberSince;
+        const getMemberSince = (gigWorker) => {
+            const date = gigWorker.created_at || gigWorker.memberSince;
             if (!date) return 'Recently joined';
             try {
                 return format(new Date(date), 'MMM yyyy');
@@ -123,8 +123,8 @@ export default function BrowseFreelancers({ auth }) {
                             <div className="flex items-start space-x-4">
                                 <div className="relative">
                                     <img 
-                                        src={getProfilePhoto(freelancer)} 
-                                        alt={getFullName(freelancer)}
+                                        src={getProfilePhoto(gigWorker)} 
+                                        alt={getFullName(gigWorker)}
                                         className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
                                         onError={(e) => {
                                             e.target.src = "/api/placeholder/80/80";
@@ -135,64 +135,64 @@ export default function BrowseFreelancers({ auth }) {
                                     <div className="flex items-center justify-between mb-2">
                                         <div>
                                             <h3 className="text-xl font-semibold text-gray-900 hover:text-blue-600 cursor-pointer">
-                                                {getFullName(freelancer)}
+                                                {getFullName(gigWorker)}
                                             </h3>
-                                            <p className="text-gray-600 font-medium">{freelancer.professional_title || freelancer.title || 'Gig Worker'}</p>
+                                            <p className="text-gray-600 font-medium">{gigWorker.professional_title || gigWorker.title || 'Gig Worker'}</p>
                                         </div>
                                         <div className="flex items-center">
                                             <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
-                                            <span className="ml-1 text-sm font-medium">{freelancer.average_rating || freelancer.rating || '0.0'}</span>
-                                            <span className="ml-1 text-sm text-gray-500">({freelancer.reviews_count || freelancer.reviewCount || 0})</span>
+                                            <span className="ml-1 text-sm font-medium">{gigWorker.average_rating || gigWorker.rating || '0.0'}</span>
+                                            <span className="ml-1 text-sm text-gray-500">({gigWorker.reviews_count || gigWorker.reviewCount || 0})</span>
                                         </div>
                                     </div>
                                     
                                     <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                                         <span className="flex items-center">
                                             <BriefcaseIcon className="w-4 h-4 mr-1" />
-                                            {freelancer.completed_projects || freelancer.completedProjects || 0} projects completed
+                                            {gigWorker.completed_projects || gigWorker.completedProjects || 0} projects completed
                                         </span>
                                         <span className="flex items-center">
                                             <AcademicCapIcon className="w-4 h-4 mr-1" />
-                                            {freelancer.experience_level || freelancer.experienceLevel || 'Entry Level'}
+                                            {gigWorker.experience_level || gigWorker.experienceLevel || 'Entry Level'}
                                         </span>
-                                        {freelancer.hourly_rate && (
+                                        {gigWorker.hourly_rate && (
                                             <span className="flex items-center">
                                                 <CurrencyDollarIcon className="w-4 h-4 mr-1" />
-                                                ₱{freelancer.hourly_rate}/hr
+                                                ₱{gigWorker.hourly_rate}/hr
                                             </span>
                                         )}
                                         <span className="flex items-center">
                                             <CalendarDaysIcon className="w-4 h-4 mr-1" />
-                                            Member since {getMemberSince(freelancer)}
+                                            Member since {getMemberSince(gigWorker)}
                                         </span>
                                     </div>
 
                                     <p className="text-gray-700 mb-4 line-clamp-2">
-                                        {freelancer.bio || freelancer.description || 'No description available.'}
+                                        {gigWorker.bio || gigWorker.description || 'No description available.'}
                                     </p>
 
                                     <div className="flex flex-wrap gap-2 mb-4">
-                                        {getSkills(freelancer).slice(0, 6).map((skill, index) => (
+                                        {getSkills(gigWorker).slice(0, 6).map((skill, index) => (
                                             <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                                 {skill}
                                             </span>
                                         ))}
-                                        {getSkills(freelancer).length > 6 && (
+                                        {getSkills(gigWorker).length > 6 && (
                                             <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                                +{getSkills(freelancer).length - 6} more
+                                                +{getSkills(gigWorker).length - 6} more
                                             </span>
                                         )}
                                     </div>
 
                                     <div className="flex items-center justify-between">
-                                        {freelancer.location && (
+                                        {gigWorker.location && (
                                             <div className="flex items-center text-sm text-gray-600">
                                                 <MapPinIcon className="w-4 h-4 mr-1" />
-                                                {freelancer.location}
+                                                {gigWorker.location}
                                             </div>
                                         )}
                                         <Link
-                                            href={`/freelancer/${freelancer.id}`}
+                                            href={`/gig_worker/${gigWorker.id}`}
                                             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                                         >
                                             <EyeIcon className="w-4 h-4 mr-2" />
@@ -214,8 +214,8 @@ export default function BrowseFreelancers({ auth }) {
                     <div className="flex items-start justify-between mb-4">
                         <div className="relative">
                             <img 
-                                src={getProfilePhoto(freelancer)} 
-                                alt={getFullName(freelancer)}
+                                src={getProfilePhoto(gigWorker)} 
+                                alt={getFullName(gigWorker)}
                                 className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
                                 onError={(e) => {
                                     e.target.src = "/api/placeholder/80/80";
@@ -224,50 +224,50 @@ export default function BrowseFreelancers({ auth }) {
                         </div>
                         <div className="flex items-center">
                             <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="ml-1 text-sm font-medium">{freelancer.average_rating || freelancer.rating || '0.0'}</span>
-                            <span className="ml-1 text-sm text-gray-500">({freelancer.reviews_count || freelancer.reviewCount || 0})</span>
+                            <span className="ml-1 text-sm font-medium">{gigWorker.average_rating || gigWorker.rating || '0.0'}</span>
+                            <span className="ml-1 text-sm text-gray-500">({gigWorker.reviews_count || gigWorker.reviewCount || 0})</span>
                         </div>
                     </div>
 
                     <div className="flex-1">
                         <div className="mb-3">
                             <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-pointer">
-                                {getFullName(freelancer)}
+                                {getFullName(gigWorker)}
                             </h3>
-                            <p className="text-gray-600 text-sm font-medium">{freelancer.professional_title || freelancer.title || 'Gig Worker'}</p>
+                            <p className="text-gray-600 text-sm font-medium">{gigWorker.professional_title || gigWorker.title || 'Gig Worker'}</p>
                         </div>
 
                         <div className="flex items-center space-x-3 text-sm text-gray-600 mb-3">
                             <span className="flex items-center">
                                 <BriefcaseIcon className="w-4 h-4 mr-1" />
-                                {freelancer.completed_projects || freelancer.completedProjects || 0} projects
+                                {gigWorker.completed_projects || gigWorker.completedProjects || 0} projects
                             </span>
                             <span className="flex items-center">
                                 <AcademicCapIcon className="w-4 h-4 mr-1" />
-                                {freelancer.experience_level || freelancer.experienceLevel || 'Entry Level'}
+                                {gigWorker.experience_level || gigWorker.experienceLevel || 'Entry Level'}
                             </span>
                         </div>
 
-                        {freelancer.hourly_rate && (
+                        {gigWorker.hourly_rate && (
                             <div className="flex items-center text-sm text-gray-600 mb-3">
                                 <CurrencyDollarIcon className="w-4 h-4 mr-1" />
-                                <span className="font-medium">₱{freelancer.hourly_rate}/hr</span>
+                                <span className="font-medium">₱{gigWorker.hourly_rate}/hr</span>
                             </div>
                         )}
 
                         <p className="text-gray-700 text-sm mb-4 line-clamp-3">
-                            {freelancer.bio || freelancer.description || 'No description available.'}
+                            {gigWorker.bio || gigWorker.description || 'No description available.'}
                         </p>
 
                         <div className="flex flex-wrap gap-1 mb-4">
-                            {getSkills(freelancer).slice(0, 4).map((skill, index) => (
+                            {getSkills(gigWorker).slice(0, 4).map((skill, index) => (
                                 <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                     {skill}
                                 </span>
                             ))}
-                            {getSkills(freelancer).length > 4 && (
+                            {getSkills(gigWorker).length > 4 && (
                                 <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                    +{getSkills(freelancer).length - 4}
+                                    +{getSkills(gigWorker).length - 4}
                                 </span>
                             )}
                         </div>
@@ -276,12 +276,12 @@ export default function BrowseFreelancers({ auth }) {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center">
                                     <CalendarDaysIcon className="w-4 h-4 mr-1" />
-                                    Member since {getMemberSince(freelancer)}
+                                    Member since {getMemberSince(gigWorker)}
                                 </div>
-                                {freelancer.location && (
+                                {gigWorker.location && (
                                     <div className="flex items-center">
                                         <MapPinIcon className="w-4 h-4 mr-1" />
-                                        {freelancer.location}
+                                        {gigWorker.location}
                                     </div>
                                 )}
                             </div>
@@ -290,7 +290,7 @@ export default function BrowseFreelancers({ auth }) {
 
                     <div className="mt-auto">
                         <Link
-                            href={`/freelancer/${freelancer.id}`}
+                            href={`/gig_worker/${gigWorker.id}`}
                             className="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                         >
                             <EyeIcon className="w-4 h-4 mr-2" />
@@ -305,11 +305,11 @@ export default function BrowseFreelancers({ auth }) {
     // Calculate current page statistics
     const currentPageGigWorkers = gigWorkers?.length || 0;
     const currentPageSkills = gigWorkers ? gigWorkers.reduce((total, worker) => {
-        const getSkills = (freelancer) => {
-            if (Array.isArray(freelancer.skills)) {
-                return freelancer.skills;
+        const getSkills = (gigWorker) => {
+            if (Array.isArray(gigWorker.skills)) {
+                return gigWorker.skills;
             }
-            return freelancer.skills ? freelancer.skills.split(',').map(s => s.trim()) : [];
+            return gigWorker.skills ? gigWorker.skills.split(',').map(s => s.trim()) : [];
         };
         return total + getSkills(worker).length;
     }, 0) : 0;
@@ -596,10 +596,10 @@ export default function BrowseFreelancers({ auth }) {
                                     ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                                     : "space-y-6 mb-8"
                                 }>
-                                    {gigWorkers.map((freelancer) => (
-                                        <FreelancerCard 
-                                            key={freelancer.id} 
-                                            freelancer={freelancer} 
+                                    {gigWorkers.map((gigWorker) => (
+                                        <GigWorkerCard 
+                                            key={gigWorker.id} 
+                                            gigWorker={gigWorker} 
                                             viewMode={viewMode} 
                                         />
                                     ))}

@@ -7,7 +7,7 @@ import {
     ClockIcon
 } from '@heroicons/react/24/outline';
 
-export default function ClientPerformance() {
+export default function EmployerPerformance() {
     return (
         <AuthenticatedLayout
             header={
@@ -39,7 +39,7 @@ export default function ClientPerformance() {
                                 Advanced Hiring Analytics
                             </h3>
                             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                                Comprehensive hiring performance metrics including freelancer success rates, 
+                                Comprehensive hiring performance metrics including gig worker success rates, 
                                 budget optimization insights, project ROI analysis, and market intelligence are coming soon.
                             </p>
                             
@@ -48,7 +48,7 @@ export default function ClientPerformance() {
                                     <UserGroupIcon className="h-8 w-8 text-blue-500 mx-auto mb-3" />
                                     <h4 className="font-medium text-gray-900 mb-2">Gig Worker Analytics</h4>
                                     <p className="text-sm text-gray-600">
-                                        Analyze freelancer performance and identify top talent
+                                        Analyze gig worker performance and identify top talent
                                     </p>
                                 </div>
                                 

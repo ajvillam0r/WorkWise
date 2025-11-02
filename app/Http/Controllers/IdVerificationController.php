@@ -2,19 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class IdVerificationController extends Controller
 {
-    protected $cloudinaryService;
-
-    public function __construct(CloudinaryService $cloudinaryService)
-    {
-        $this->cloudinaryService = $cloudinaryService;
-    }
 
     /**
      * Upload ID images for verification
@@ -43,39 +37,35 @@ class IdVerificationController extends Controller
 
         try {
             \DB::beginTransaction();
-            // Upload front image to Cloudinary
+            // Upload front image to R2
             Log::info('Uploading ID front image', ['user_id' => $user->id]);
-            $frontResult = $this->cloudinaryService->uploadIdVerification(
-                $request->file('id_front_image'),
-                $user->id,
-                'front'
-            );
+            $frontPath = Storage::disk('r2')->putFile('id_verification/' . $user->id, $request->file('id_front_image'));
 
-            if (!$frontResult) {
+            if (!$frontPath) {
                 return back()
                     ->withErrors(['id_front_image' => 'Failed to upload front image. Please try again.'])
                     ->withInput();
             }
 
-            // Upload back image to Cloudinary
-            Log::info('Uploading ID back image', ['user_id' => $user->id]);
-            $backResult = $this->cloudinaryService->uploadIdVerification(
-                $request->file('id_back_image'),
-                $user->id,
-                'back'
-            );
+            $frontUrl = Storage::disk('r2')->url($frontPath);
 
-            if (!$backResult) {
+            // Upload back image to R2
+            Log::info('Uploading ID back image', ['user_id' => $user->id]);
+            $backPath = Storage::disk('r2')->putFile('id_verification/' . $user->id, $request->file('id_back_image'));
+
+            if (!$backPath) {
                 return back()
                     ->withErrors(['id_back_image' => 'Failed to upload back image. Please try again.'])
                     ->withInput();
             }
 
+            $backUrl = Storage::disk('r2')->url($backPath);
+
             // Update user record with ID information
             $user->update([
                 'id_type' => $validated['id_type'],
-                'id_front_image' => $frontResult['secure_url'],
-                'id_back_image' => $backResult['secure_url'],
+                'id_front_image' => $frontUrl,
+                'id_back_image' => $backUrl,
                 'id_verification_status' => 'pending',
                 'id_verification_notes' => null, // Clear any previous rejection notes
             ]);

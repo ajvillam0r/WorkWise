@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Picture Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .error { color: #f44336; }
+        .success { color: #4CAF50; }
+        .info { color: #2196F3; }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Profile Picture Upload Debug</h1>
+        
+        <div class="test-section">
+            <h2>Instructions:</h2>
+            <ol>
+                <li>Open your profile page in another tab</li>
+                <li>Open the browser console (F12 → Console)</li>
+                <li>Try to upload a profile picture</li>
+                <li>Look for these things:</li>
+                <ul>
+                    <li><strong>Network tab:</strong> Check if the POST request to /profile completes</li>
+                    <li><strong>Console tab:</strong> Look for JavaScript errors (red text)</li>
+                    <li><strong>Response tab:</strong> Check what the server returns</li>
+                </ul>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>Common Issues:</h2>
+            
+            <h3>1. Request Never Completes (Infinite Loading)</h3>
+            <p class="info">Check Network tab → Find the request → Look at:</p>
+            <ul>
+                <li><strong>Status:</strong> Should be 302 (redirect) or 200</li>
+                <li><strong>Response time:</strong> Should complete in 1-5 seconds</li>
+                <li><strong>Response:</strong> Should return HTML or Inertia response</li>
+            </ul>
+
+            <h3>2. JavaScript Error</h3>
+            <p class="error">Console shows: "Uncaught TypeError" or similar</p>
+            <ul>
+                <li>Check if `preserveState: false` is causing issues</li>
+                <li>Check if success modal state is working</li>
+            </ul>
+
+            <h3>3. Server Error</h3>
+            <p class="error">Network tab shows: 500 or 422 error</p>
+            <ul>
+                <li>422: Validation error - check required fields</li>
+                <li>500: Server error - check Laravel logs</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Quick Test:</h2>
+            <p>Open the browser console on your profile page and run this:</p>
+            <pre>// Check if Inertia is working
+console.log('Inertia available:', typeof Inertia !== 'undefined');
+
+// Check current user data
+console.log('Current user:', window.page?.props?.auth?.user);
+
+// Monitor Inertia requests
+if (typeof Inertia !== 'undefined') {
+    Inertia.on('start', () => console.log('Inertia request started'));
+    Inertia.on('finish', () => console.log('Inertia request finished'));
+    Inertia.on('error', (errors) => console.error('Inertia errors:', errors));
+    Inertia.on('success', () => console.log('Inertia request succeeded'));
+}</pre>
+        </div>
+
+        <div class="test-section">
+            <h2>What to Look For:</h2>
+            <ol>
+                <li><strong>In Network Tab:</strong>
+                    <ul>
+                        <li>POST request to `/profile`</li>
+                        <li>Request payload includes the image file</li>
+                        <li>Response status (should be 302 or 200)</li>
+                        <li>Response time (should complete)</li>
+                    </ul>
+                </li>
+                <li><strong>In Console Tab:</strong>
+                    <ul>
+                        <li>"Profile picture updated successfully" message</li>
+                        <li>Any error messages in red</li>
+                        <li>Inertia lifecycle logs if you added the monitor code</li>
+                    </ul>
+                </li>
+                <li><strong>In Laravel Logs:</strong>
+                    <ul>
+                        <li>Check `storage/logs/laravel.log` for "Profile update started"</li>
+                        <li>Look for "Uploading profile picture to R2"</li>
+                        <li>Check for "Profile updated successfully"</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>Expected Log Sequence:</h2>
+            <pre>[INFO] Profile update started
+[INFO] Uploading profile picture to R2
+[INFO] Profile picture uploaded successfully
+[INFO] Profile updated successfully</pre>
+            <p class="info">If you don't see these logs, the request isn't reaching the server.</p>
+        </div>
+
+        <div class="test-section">
+            <h2>Next Steps:</h2>
+            <button onclick="window.open('/profile', '_blank')">Open Profile Page</button>
+            <button onclick="window.open('storage/logs/laravel.log', '_blank')">Try to View Logs</button>
+        </div>
+    </div>
+
+    <script>
+        console.log('%c Profile Upload Debug Page Loaded ', 'background: #4CAF50; color: white; padding: 5px; font-size: 16px');
+        console.log('Copy the monitoring code above and paste it in your profile page console');
+    </script>
+</body>
+</html>
+

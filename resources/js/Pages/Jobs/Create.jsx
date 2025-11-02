@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import taxonomy from '../../../../full_freelance_services_taxonomy.json';
+import SkillExperienceSelector from '@/Components/SkillExperienceSelector';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function JobCreate() {
@@ -149,6 +150,17 @@ export default function JobCreate() {
         'civil engineer': 'Civil Engineering'
     }), []);
 
+    // Get service categories from taxonomy for project_category
+    const PROJECT_CATEGORIES = useMemo(() => {
+        const categories = new Set();
+        (taxonomy.services || []).forEach(service => {
+            (service.categories || []).forEach(cat => {
+                categories.add(cat.name);
+            });
+        });
+        return Array.from(categories).sort();
+    }, []);
+
     const normalize = (str) => (str || '')
         .toLowerCase()
         .replace(/[^a-z0-9+.# ]/g, ' ')
@@ -271,11 +283,15 @@ export default function JobCreate() {
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
         description: '',
+        project_category: '',
         required_skills: [],
+        skills_requirements: [],
+        nice_to_have_skills: [],
         budget_type: 'fixed',
         budget_min: '',
         budget_max: '',
         experience_level: 'intermediate',
+        job_complexity: '',
         estimated_duration_days: '',
         deadline: '',
         location: 'Lapu-Lapu City',
@@ -765,6 +781,68 @@ export default function JobCreate() {
                                         {errors.estimated_duration_days && <p className="mt-2 text-sm text-red-600">{errors.estimated_duration_days}</p>}
                                     </div>
                                 </div>
+
+                                {/* Project Category */}
+                                <div>
+                                    <label htmlFor="project_category" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Project Category *
+                                    </label>
+                                    <select
+                                        id="project_category"
+                                        value={data.project_category}
+                                        onChange={(e) => setData('project_category', e.target.value)}
+                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    >
+                                        <option value="">Select a category</option>
+                                        {PROJECT_CATEGORIES.map((category) => (
+                                            <option key={category} value={category}>
+                                                {category}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {errors.project_category && <p className="mt-2 text-sm text-red-600">{errors.project_category}</p>}
+                                </div>
+
+                                {/* Job Complexity */}
+                                <div>
+                                    <label htmlFor="job_complexity" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Job Complexity *
+                                    </label>
+                                    <select
+                                        id="job_complexity"
+                                        value={data.job_complexity}
+                                        onChange={(e) => setData('job_complexity', e.target.value)}
+                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    >
+                                        <option value="">Select complexity</option>
+                                        <option value="simple">Simple (e.g., basic website)</option>
+                                        <option value="moderate">Moderate (e.g., medium-sized app)</option>
+                                        <option value="complex">Complex (e.g., large-scale enterprise solution)</option>
+                                    </select>
+                                    {errors.job_complexity && <p className="mt-2 text-sm text-red-600">{errors.job_complexity}</p>}
+                                </div>
+
+                                {/* Skills Requirements */}
+                                <SkillExperienceSelector
+                                    label="Skills Requirements"
+                                    description="Select the skills and experience levels required for this job"
+                                    skills={data.skills_requirements}
+                                    onChange={(skills) => setData('skills_requirements', skills)}
+                                    type="required"
+                                    maxSkills={10}
+                                />
+
+                                {/* Nice to Have Skills */}
+                                <SkillExperienceSelector
+                                    label="Nice to Have Skills"
+                                    description="Select optional skills that would be a bonus to have"
+                                    skills={data.nice_to_have_skills}
+                                    onChange={(skills) => setData('nice_to_have_skills', skills)}
+                                    type="nice_to_have"
+                                    maxSkills={5}
+                                />
 
                                 {/* Location & Remote
                                 <div>

@@ -139,6 +139,7 @@ class BidController extends Controller
                 // Check client balance
                 $client = auth()->user();
                 if ($client->escrow_balance < $bid->bid_amount) {
+                    DB::rollBack();
                     return back()->with([
                         'error' => 'Insufficient escrow balance to accept this proposal.',
                         'error_type' => 'insufficient_escrow',

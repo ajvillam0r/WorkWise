@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
-use App\Services\CloudinaryService;
 use App\Services\ProfileCompletionService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -17,14 +16,11 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
-    protected $cloudinaryService;
     protected $profileCompletionService;
 
     public function __construct(
-        CloudinaryService $cloudinaryService,
         ProfileCompletionService $profileCompletionService
     ) {
-        $this->cloudinaryService = $cloudinaryService;
         $this->profileCompletionService = $profileCompletionService;
     }
 
@@ -56,54 +52,82 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();
+        
+        Log::info('Profile update started', [
+            'user_id' => $user->id,
+            'has_profile_picture' => $request->hasFile('profile_picture'),
+            'has_profile_photo' => $request->hasFile('profile_photo'),
+            'all_files' => array_keys($request->allFiles()),
+        ]);
+        
         $validated = $request->validated();
 
-        // Handle profile picture upload to Cloudinary
+        // Handle profile picture upload to R2
         if ($request->hasFile('profile_picture')) {
             try {
-                // Delete old profile picture from Cloudinary if exists
+                Log::info('Uploading profile picture to R2', ['user_id' => $user->id]);
+                
+                // Delete old profile picture from R2 if it exists
                 if ($user->profile_picture) {
-                    $publicId = $this->cloudinaryService->extractPublicId($user->profile_picture);
-                    if ($publicId) {
-                        $this->cloudinaryService->deleteImage($publicId);
+                    try {
+                        // Extract path from URL (remove '/r2/' prefix if present)
+                        $oldPath = str_replace('/r2/', '', $user->profile_picture);
+                        if (Storage::disk('r2')->exists($oldPath)) {
+                            Storage::disk('r2')->delete($oldPath);
+                            Log::info('Old profile picture deleted from R2', [
+                                'user_id' => $user->id,
+                                'old_path' => $oldPath
+                            ]);
+                        }
+                    } catch (\Exception $deleteException) {
+                        // Log but don't fail the upload if old file deletion fails
+                        Log::warning('Failed to delete old profile picture: ' . $deleteException->getMessage(), [
+                            'user_id' => $user->id
+                        ]);
                     }
                 }
-
-                // Upload new profile picture to Cloudinary
-                $uploadResult = $this->cloudinaryService->uploadProfilePicture(
-                    $request->file('profile_picture'), 
-                    $user->id
-                );
-
-                if ($uploadResult) {
-                    $validated['profile_picture'] = $uploadResult['secure_url'];
+                
+                // Upload new profile picture to R2
+                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
+                
+                if ($path) {
+                    // Use app proxy URL as fallback while R2 DNS propagates
+                    $validated['profile_picture'] = '/r2/' . $path;
+                    // Also sync to profile_photo for backward compatibility
+                    $validated['profile_photo'] = '/r2/' . $path;
+                    
+                    Log::info('Profile picture uploaded successfully', [
+                        'user_id' => $user->id,
+                        'path' => $path,
+                        'url' => $validated['profile_picture']
+                    ]);
                 } else {
+                    Log::error('Profile picture upload returned null path', ['user_id' => $user->id]);
                     return Redirect::route('profile.edit')->with('error', 'Failed to upload profile picture. Please try again.');
                 }
             } catch (\Exception $e) {
-                Log::error('Profile picture upload failed: ' . $e->getMessage());
+                Log::error('Profile picture upload failed: ' . $e->getMessage(), [
+                    'user_id' => $user->id,
+                    'exception' => get_class($e),
+                    'trace' => $e->getTraceAsString()
+                ]);
                 return Redirect::route('profile.edit')->with('error', 'Failed to upload profile picture. Please try again.');
             }
         } else {
             // Remove profile_picture from validated data if no file uploaded
             unset($validated['profile_picture']);
+            // Don't unset profile_photo if it already exists (preserve existing)
         }
 
-        // Handle legacy profile photo upload (migrate to Cloudinary)
+        // Handle legacy profile photo upload (migrate to R2)
         if ($request->hasFile('profile_photo')) {
             try {
-                // Delete old profile photo from Cloudinary if exists
-                if ($user->profile_photo && str_contains($user->profile_photo, 'cloudinary')) {
-                    $publicId = $this->cloudinaryService->extractPublicId($user->profile_photo);
-                    if ($publicId) {
-                        $this->cloudinaryService->deleteImage($publicId);
-                    }
-                }
-
-                // Upload new profile photo to Cloudinary
-                $result = $this->cloudinaryService->uploadProfilePicture($request->file('profile_photo'), $user->id);
-                if ($result) {
-                    $validated['profile_photo'] = $result['secure_url'];
+                // Upload new profile photo to R2
+                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_photo'));
+                
+                if ($path) {
+                    // Use app proxy URL as fallback while R2 DNS propagates
+                    $validated['profile_photo'] = '/r2/' . $path;
                 } else {
                     return Redirect::route('profile.edit')->with('error', 'Failed to upload profile photo. Please try again.');
                 }
@@ -140,6 +164,12 @@ class ProfileController extends Controller
 
         // Fill user with validated data
         try {
+            // Ensure profile_picture is included in fill if it was uploaded
+            if (isset($validated['profile_picture'])) {
+                $user->profile_picture = $validated['profile_picture'];
+                $user->profile_photo = $validated['profile_picture']; // Sync both fields
+            }
+            
             $user->fill($validated);
 
             // Handle email verification reset
@@ -150,12 +180,27 @@ class ProfileController extends Controller
             // Update profile completion status
             $user->profile_completed = $this->calculateProfileCompletion($user);
 
-            // Save the user
+            // Force save to ensure database update
             $user->save();
+            
+            // Refresh user to ensure we have latest data
+            $user->refresh();
+
+            Log::info('Profile updated successfully', [
+                'user_id' => $user->id,
+                'updated_profile_picture' => $user->profile_picture,
+                'updated_profile_photo' => $user->profile_photo,
+                'is_dirty_profile_picture' => $user->isDirty('profile_picture'),
+                'was_changed' => $user->wasChanged('profile_picture'),
+            ]);
 
             return Redirect::route('profile.edit')->with('status', 'profile-updated');
         } catch (\Exception $e) {
-            Log::error('Profile update failed: ' . $e->getMessage());
+            Log::error('Profile update failed: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
             return Redirect::route('profile.edit')->with('error', 'Failed to update profile. Please try again.');
         }
     }
@@ -209,5 +254,32 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    /**
+     * Proxy R2 files through the application
+     * This serves as a fallback while R2 public URL DNS propagates
+     */
+    public function proxyR2File($path)
+    {
+        try {
+            $disk = Storage::disk('r2');
+            
+            if (!$disk->exists($path)) {
+                abort(404);
+            }
+
+            $file = $disk->get($path);
+            $mimeType = $disk->mimeType($path);
+            
+            return response($file, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Cache-Control', 'public, max-age=31536000')
+                ->header('Access-Control-Allow-Origin', '*');
+                
+        } catch (\Exception $e) {
+            Log::error('R2 proxy failed: ' . $e->getMessage(), ['path' => $path]);
+            abort(404);
+        }
     }
 }

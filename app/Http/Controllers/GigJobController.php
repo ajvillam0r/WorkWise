@@ -126,12 +126,20 @@ class GigJobController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string|min:100',
+            'project_category' => 'nullable|string|max:255',
             'required_skills' => 'required|array|min:1',
             'required_skills.*' => 'string|max:50',
+            'skills_requirements' => 'nullable|array',
+            'skills_requirements.*.skill' => 'required|string|max:100',
+            'skills_requirements.*.experience_level' => 'required|in:beginner,intermediate,expert',
+            'skills_requirements.*.importance' => 'required|in:required,preferred',
+            'nice_to_have_skills' => 'nullable|array',
+            'nice_to_have_skills.*' => 'string|max:100',
             'budget_type' => 'required|in:fixed,hourly',
             'budget_min' => 'required|numeric|min:5',
             'budget_max' => 'required|numeric|min:5|gte:budget_min',
             'experience_level' => 'required|in:beginner,intermediate,expert',
+            'job_complexity' => 'nullable|in:simple,moderate,complex,expert',
             'estimated_duration_days' => 'required|integer|min:1',
             'deadline' => 'nullable|date|after:today',
             'location' => 'nullable|string|max:255',
@@ -140,6 +148,18 @@ class GigJobController extends Controller
 
         $validated['employer_id'] = auth()->id();
         $validated['status'] = 'open';
+
+        // If skills_requirements is not provided but required_skills is, create skills_requirements from required_skills
+        if (empty($validated['skills_requirements']) && !empty($validated['required_skills'])) {
+            $experienceLevel = $validated['experience_level'];
+            $validated['skills_requirements'] = array_map(function($skill) use ($experienceLevel) {
+                return [
+                    'skill' => $skill,
+                    'experience_level' => $experienceLevel,
+                    'importance' => 'required'
+                ];
+            }, $validated['required_skills']);
+        }
 
         $job = GigJob::create($validated);
 
@@ -190,18 +210,38 @@ class GigJobController extends Controller
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|required|string',
+            'project_category' => 'sometimes|nullable|string|max:255',
             'required_skills' => 'sometimes|required|array|min:1',
             'required_skills.*' => 'string',
+            'skills_requirements' => 'sometimes|nullable|array',
+            'skills_requirements.*.skill' => 'required|string|max:100',
+            'skills_requirements.*.experience_level' => 'required|in:beginner,intermediate,expert',
+            'skills_requirements.*.importance' => 'required|in:required,preferred',
+            'nice_to_have_skills' => 'sometimes|nullable|array',
+            'nice_to_have_skills.*' => 'string|max:100',
             'budget_type' => 'sometimes|required|in:fixed,hourly',
             'budget_min' => 'sometimes|required|numeric|min:0',
             'budget_max' => 'sometimes|nullable|numeric|min:0|gte:budget_min',
             'experience_level' => 'sometimes|required|in:beginner,intermediate,expert',
+            'job_complexity' => 'sometimes|nullable|in:simple,moderate,complex,expert',
             'estimated_duration_days' => 'sometimes|nullable|integer|min:1',
             'deadline' => 'sometimes|nullable|date|after:today',
             'location' => 'sometimes|nullable|string|max:255',
             'is_remote' => 'sometimes|boolean',
             'status' => 'sometimes|in:open,closed,cancelled',
         ]);
+
+        // If skills_requirements is not provided but required_skills is being updated, create skills_requirements
+        if (!isset($validated['skills_requirements']) && isset($validated['required_skills'])) {
+            $experienceLevel = $validated['experience_level'] ?? $job->experience_level ?? 'intermediate';
+            $validated['skills_requirements'] = array_map(function($skill) use ($experienceLevel) {
+                return [
+                    'skill' => $skill,
+                    'experience_level' => $experienceLevel,
+                    'importance' => 'required'
+                ];
+            }, $validated['required_skills']);
+        }
 
         $job->update($validated);
 

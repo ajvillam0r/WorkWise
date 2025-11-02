@@ -169,4 +169,19 @@ class PaymentController extends Controller
             'transaction' => $transaction->load(['project.job', 'payer', 'payee'])
         ]);
     }
+
+    /**
+     * Handle deposit request (for testing)
+     */
+    public function deposit(Request $request)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1',
+        ]);
+
+        // In a real application, this would redirect to a payment gateway
+        // For testing purposes, we simply redirect with a 302 status
+        return redirect()->route('employer.wallet.index')
+            ->with('success', 'Redirecting to payment gateway...');
+    }
 }

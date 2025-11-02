@@ -340,14 +340,14 @@ class SmartEscrowService
     }
 
     /**
-     * Analyze client history for risk assessment
+     * Analyze employer history for risk assessment
      */
-    private function analyzeClientHistory(User $client): float
+    private function analyzeClientHistory(User $employer): float
     {
-        $completedProjects = $client->clientProjects()->where('status', 'completed')->count();
-        $disputedProjects = $client->clientProjects()->where('status', 'disputed')->count();
-        $avgRating = $client->givenReviews()->avg('rating') ?? 3.0;
-        $accountAge = $client->created_at->diffInDays(now());
+        $completedProjects = $employer->employerProjects()->where('status', 'completed')->count();
+        $disputedProjects = $employer->employerProjects()->where('status', 'disputed')->count();
+        $avgRating = $employer->givenReviews()->avg('rating') ?? 3.0;
+        $accountAge = $employer->created_at->diffInDays(now());
 
         $riskScore = 0.5; // Base risk
 
@@ -381,13 +381,13 @@ class SmartEscrowService
     }
 
     /**
-     * Analyze freelancer history for risk assessment
+     * Analyze gig worker history for risk assessment
      */
-    private function analyzeFreelancerHistory(User $freelancer): float
+    private function analyzeFreelancerHistory(User $gigWorker): float
     {
-        $completedProjects = $freelancer->freelancerProjects()->where('status', 'completed')->count();
-        $avgRating = $freelancer->receivedReviews()->avg('rating') ?? 3.0;
-        $verificationLevel = $freelancer->verification_level ?? 'none';
+        $completedProjects = $gigWorker->gigWorkerProjects()->where('status', 'completed')->count();
+        $avgRating = $gigWorker->receivedReviews()->avg('rating') ?? 3.0;
+        $verificationLevel = $gigWorker->verification_level ?? 'none';
 
         $riskScore = 0.4; // Base risk
 

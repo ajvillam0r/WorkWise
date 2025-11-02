@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Notifications\VerifyEmailReminder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +35,26 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = $request->user();
+
+        // Notify unverified users to verify email via in-app notification
+        if ($user && ! $user->hasVerifiedEmail()) {
+            try {
+                $actionUrl = url('/profile?tab=basic#verification');
+                // Avoid flooding: send only if no unread reminder exists
+                $hasUnreadReminder = $user->unreadNotifications()
+                    ->where('type', VerifyEmailReminder::class)
+                    ->exists();
+                if (! $hasUnreadReminder) {
+                    $user->notify(new VerifyEmailReminder($actionUrl));
+                }
+            } catch (\Throwable $e) {
+                // Swallow notification errors to not block login
+                \Log::warning('Failed to send VerifyEmailReminder notification', [
+                    'user_id' => $user?->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         // Check if user is admin and redirect to admin dashboard
         if ($user && $user->isAdmin()) {

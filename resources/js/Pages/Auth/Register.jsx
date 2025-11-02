@@ -231,7 +231,7 @@ export default function Register({ selectedUserType }) {
 
                             {/* Checkboxes */}
                             <div className="space-y-3">
-                                <label className="flex items-start">
+                                {/* <label className="flex items-start">
                                     <input
                                         type="checkbox"
                                         checked={data.marketing_emails}
@@ -241,7 +241,7 @@ export default function Register({ selectedUserType }) {
                                     <span className="ml-3 text-sm text-gray-700">
                                         Send me emails with tips on how to find talent that fits my needs.
                                     </span>
-                                </label>
+                                </label> */}
 
                                 <label className="flex items-start">
                                     <input
@@ -289,9 +289,9 @@ export default function Register({ selectedUserType }) {
                             </div>
 
                             {/* Google Sign Up Button */}
-                            <GoogleAuthButton action="register" className="w-full">
+                            {/* <GoogleAuthButton action="register" className="w-full">
                                 Sign up with Google
-                            </GoogleAuthButton>
+                            </GoogleAuthButton> */}
 
                             {/* Login Link */}
                             <div className="text-center">

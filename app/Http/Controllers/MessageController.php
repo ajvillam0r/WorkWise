@@ -4,20 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\User;
-use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
-    protected $cloudinaryService;
-
-    public function __construct(CloudinaryService $cloudinaryService)
-    {
-        $this->cloudinaryService = $cloudinaryService;
-    }
 
     /**
      * Display message inbox
@@ -112,8 +106,9 @@ class MessageController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'receiver_id' => 'required|exists:users,id',
-            'message' => 'required_without:attachment|string|max:2000',
+            'receiver_id' => 'required_without:recipient_id|exists:users,id',
+            'recipient_id' => 'required_without:receiver_id|exists:users,id',
+            'message' => 'required_without:attachment|string|min:1|max:2000',
             'attachment' => 'nullable|file|max:10240', // 10MB max
             'project_id' => 'nullable|exists:projects,id'
         ]);
@@ -121,22 +116,32 @@ class MessageController extends Controller
         $attachmentPath = null;
         $attachmentName = null;
 
-        // Handle file attachment upload to Cloudinary
+        // Handle file attachment upload to R2
         if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $attachmentName = $file->getClientOriginalName();
-            $result = $this->cloudinaryService->uploadMessageAttachment($file, auth()->id(), null);
-            if ($result) {
-                $attachmentPath = $result['secure_url'];
-                $attachmentName = $result['original_filename'];
-            } else {
+            try {
+                $file = $request->file('attachment');
+                $attachmentName = $file->getClientOriginalName();
+                
+                // Upload to R2
+                $path = Storage::disk('r2')->putFile('messages/' . auth()->id(), $file);
+                
+                if ($path) {
+                    $attachmentPath = Storage::disk('r2')->url($path);
+                } else {
+                    return back()->withErrors(['attachment' => 'Failed to upload attachment. Please try again.']);
+                }
+            } catch (\Exception $e) {
+                Log::error('Message attachment upload failed: ' . $e->getMessage());
                 return back()->withErrors(['attachment' => 'Failed to upload attachment. Please try again.']);
             }
         }
 
+        // Support both receiver_id and recipient_id for backwards compatibility
+        $receiverId = $request->receiver_id ?? $request->recipient_id;
+
         $message = Message::create([
             'sender_id' => auth()->id(),
-            'receiver_id' => $request->receiver_id,
+            'receiver_id' => $receiverId,
             'project_id' => $request->project_id,
             'message' => $request->message ?? '',
             'attachment_path' => $attachmentPath,
@@ -218,10 +223,8 @@ class MessageController extends Controller
             abort(404, 'Attachment not found');
         }
 
-        return Storage::disk('public')->download(
-            $message->attachment_path,
-            $message->attachment_name
-        );
+        // Redirect to R2 public URL (attachment_path already contains full URL)
+        return redirect()->away($message->attachment_path);
     }
 
     /**

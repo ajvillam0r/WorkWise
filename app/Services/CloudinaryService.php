@@ -15,6 +15,8 @@ class CloudinaryService
 {
     protected $cloudinary;
     protected $config;
+    protected $maxRetries = 3;
+    protected $retryDelay = 1000000; // 1 second in microseconds
 
     public function __construct()
     {
@@ -31,6 +33,73 @@ class CloudinaryService
     }
 
     /**
+     * Check if Cloudinary connection is working
+     *
+     * @return bool
+     */
+    public function checkConnection(): bool
+    {
+        try {
+            // Try to list resources as a simple connection test
+            $this->cloudinary->adminApi()->ping();
+            return true;
+        } catch (Exception $e) {
+            Log::error('Cloudinary connection check failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Upload with retry logic
+     *
+     * @param callable $uploadFunction
+     * @param string $context
+     * @return array|null
+     */
+    protected function uploadWithRetry(callable $uploadFunction, string $context): ?array
+    {
+        $attempts = 0;
+        $lastException = null;
+
+        while ($attempts < $this->maxRetries) {
+            try {
+                $attempts++;
+                Log::info("Cloudinary upload attempt {$attempts}/{$this->maxRetries}", ['context' => $context]);
+                
+                $result = $uploadFunction();
+                
+                if ($result) {
+                    if ($attempts > 1) {
+                        Log::info("Cloudinary upload succeeded after {$attempts} attempts", ['context' => $context]);
+                    }
+                    return $result;
+                }
+            } catch (Exception $e) {
+                $lastException = $e;
+                Log::warning("Cloudinary upload attempt {$attempts} failed", [
+                    'context' => $context,
+                    'error' => $e->getMessage(),
+                    'attempt' => $attempts
+                ]);
+
+                if ($attempts < $this->maxRetries) {
+                    // Exponential backoff: wait longer between each retry
+                    $delay = $this->retryDelay * pow(2, $attempts - 1);
+                    usleep($delay);
+                }
+            }
+        }
+
+        Log::error('Cloudinary upload failed after all retries', [
+            'context' => $context,
+            'attempts' => $attempts,
+            'last_error' => $lastException ? $lastException->getMessage() : 'Unknown'
+        ]);
+
+        return null;
+    }
+
+    /**
      * Upload profile picture to Cloudinary
      *
      * @param UploadedFile $file
@@ -39,14 +108,14 @@ class CloudinaryService
      */
     public function uploadProfilePicture(UploadedFile $file, int $userId): ?array
     {
-        try {
-            // Validate file
-            if (!$this->validateProfilePicture($file)) {
-                return null;
-            }
+        // Validate file first
+        if (!$this->validateProfilePicture($file)) {
+            return null;
+        }
 
-            $publicId = "workwise/profile_pictures/user_{$userId}_" . time();
+        $publicId = "workwise/profile_pictures/user_{$userId}_" . time();
 
+        return $this->uploadWithRetry(function() use ($file, $publicId) {
             $result = $this->cloudinary->uploadApi()->upload(
                 $file->getPathname(),
                 [
@@ -60,7 +129,8 @@ class CloudinaryService
                         'quality' => $this->config['profile_pictures']['transformation']['quality'],
                         'format' => $this->config['profile_pictures']['transformation']['format']
                     ],
-                    'allowed_formats' => $this->config['profile_pictures']['allowed_formats']
+                    'allowed_formats' => $this->config['profile_pictures']['allowed_formats'],
+                    'timeout' => 60 // 60 second timeout
                 ]
             );
 
@@ -73,17 +143,7 @@ class CloudinaryService
                 'format' => $result['format'],
                 'bytes' => $result['bytes']
             ];
-
-        } catch (Exception $e) {
-            Log::error('Cloudinary profile picture upload failed', [
-                'error' => $e->getMessage(),
-                'file' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'mime' => $file->getMimeType(),
-                'user_id' => $userId
-            ]);
-            return null;
-        }
+        }, "profile_picture_user_{$userId}");
     }
 
     /**

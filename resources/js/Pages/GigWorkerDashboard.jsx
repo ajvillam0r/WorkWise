@@ -387,23 +387,25 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                                             {job.matchScore}% match
                                         </span>
                                     </div>
-                                    <p className="text-sm text-gray-600 mb-2">{job.description.substring(0, 100)}...</p>
+                                    {job.description && <p className="text-sm text-gray-600 mb-2">{job.description.substring(0, 100)}...</p>}
                                     <div className="flex items-center space-x-4 mb-2">
                                         <span className="text-sm text-indigo-600 font-medium">
-                                            {formatCurrency(job.budgetMin)} - {formatCurrency(job.budgetMax)}
+                                            {formatCurrency(job.budgetMin || 0)} - {formatCurrency(job.budgetMax || 0)}
                                         </span>
-                                        <span className="text-sm text-gray-500 flex items-center">
-                                            <CalendarDaysIcon className="w-4 h-4 mr-1" />
-                                            {job.estimatedDuration} days
-                                        </span>
+                                        {job.estimatedDuration && (
+                                            <span className="text-sm text-gray-500 flex items-center">
+                                                <CalendarDaysIcon className="w-4 h-4 mr-1" />
+                                                {job.estimatedDuration} days
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex flex-wrap gap-1">
-                                        {job.requiredSkills.slice(0, 3).map((skill, skillIndex) => (
+                                        {job.requiredSkills && job.requiredSkills.slice(0, 3).map((skill, skillIndex) => (
                                             <span key={skillIndex} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full">
                                                 {skill}
                                             </span>
                                         ))}
-                                        {job.requiredSkills.length > 3 && (
+                                        {job.requiredSkills && job.requiredSkills.length > 3 && (
                                             <span className="px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded-full">
                                                 +{job.requiredSkills.length - 3} more
                                             </span>
@@ -592,10 +594,10 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                                 <div>
                                     <h1 className="text-3xl font-bold mb-2 flex items-center">
                                         <GiftIcon className="w-8 h-8 mr-3" />
-                                        Welcome back, Freelancer!
+                                        Welcome back, {user?.name || 'Freelancer'}!
                                     </h1>
                                     <p className="text-blue-100 text-lg">
-                                        Ready to take on new challenges and grow your career?
+                                        {user?.professional_title || 'Ready to take on new challenges and grow your career?'}
                                     </p>
                                     <div className="flex items-center mt-4 space-x-6">
                                         <div className="flex items-center">
@@ -606,12 +608,32 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                                             <TrophyIcon className="w-5 h-5 mr-2 text-yellow-300" />
                                             <span className="text-sm">Level: {stats?.level || 'Professional'}</span>
                                         </div>
+                                        {user?.hourly_rate && (
+                                            <div className="flex items-center">
+                                                <CurrencyDollarIcon className="w-5 h-5 mr-2 text-yellow-300" />
+                                                <span className="text-sm">Rate: ₱{user.hourly_rate}/hr</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="hidden md:block">
-                                    <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                                        <UserGroupIcon className="w-12 h-12 text-white" />
-                                    </div>
+                                    {user?.profile_picture ? (
+                                        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white/30 shadow-xl">
+                                            <img 
+                                                src={user.profile_picture} 
+                                                alt={user.name || 'Profile'} 
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"%3E%3Cpath d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/%3E%3C/svg%3E';
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-4 border-white/30">
+                                            <UserIcon className="w-12 h-12 text-white" />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             {/* Decorative elements */}

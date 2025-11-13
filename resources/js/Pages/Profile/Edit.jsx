@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Transition } from '@headlessui/react';
 import SuccessModal from '@/Components/SuccessModal';
 import VerificationBadge, { VerificationBadges } from '@/Components/VerificationBadge';
+import { ToastContainer } from '@/Components/Toast';
+import useToast from '@/Hooks/useToast';
+import { validateSection, validateField } from '@/utils/validation';
+import BasicInfoTab from './Tabs/BasicInfoTab';
+import ProfessionalTab from './Tabs/ProfessionalTab';
+import AvailabilityTab from './Tabs/AvailabilityTab';
 
 export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
     const { auth } = usePage().props;
@@ -11,7 +17,45 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
     const [activeTab, setActiveTab] = useState('basic');
     const [skillInput, setSkillInput] = useState('');
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
+    
+    // Toast notifications
+    const toast = useToast();
+    
+    // Section-level editing states
+    const [editingSections, setEditingSections] = useState({
+        basic: false,
+        professional: false,
+        availability: false,
+        security: false,
+    });
+    
+    // Section-level loading states
+    const [savingSections, setSavingSections] = useState({
+        basic: false,
+        professional: false,
+        availability: false,
+        security: false,
+    });
+    
+    // Client-side validation errors
+    const [clientErrors, setClientErrors] = useState({});
+    
+    // Real-time field validation on blur
+    const validateFieldOnBlur = useCallback((fieldName, value) => {
+        const error = validateField(fieldName, value);
+        setClientErrors(prev => {
+            if (error) {
+                return { ...prev, [fieldName]: error };
+            } else {
+                const updated = { ...prev };
+                delete updated[fieldName];
+                return updated;
+            }
+        });
+    }, []);
+    
+    // Track original values for comparison
+    const [originalData, setOriginalData] = useState(null);
 
     const isGigWorker = user.user_type === 'gig_worker';
     const isEmployer = user.user_type === 'employer';
@@ -24,7 +68,8 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         return 'from-orange-500 to-orange-600';
     };
 
-    const { data, setData, patch, post, processing, errors, recentlySuccessful, reset } = useForm({
+    // Initialize form data
+    const initialFormData = useMemo(() => ({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
@@ -74,24 +119,240 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         preferred_experience_level: user.preferred_experience_level || '',
         hiring_frequency: user.hiring_frequency || '',
         tax_id: user.tax_id || '',
-    });
+    }), [user]);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+    const { data, setData, patch, post, processing, errors, recentlySuccessful, reset } = useForm(initialFormData);
 
-        // Submit form (without profile picture - upload removed)
-        patch(route('profile.update'), data, {
+    // Initialize original data on mount and sync when user data changes
+    useEffect(() => {
+        const newOriginalData = JSON.parse(JSON.stringify(initialFormData));
+        setOriginalData(newOriginalData);
+    }, [user.id]); // Only reset when user changes (e.g., after successful save)
+
+    // Helper function to deeply compare values
+    const deepEqual = useCallback((obj1, obj2) => {
+        if (obj1 === obj2) return true;
+        if (obj1 == null || obj2 == null) return false;
+        if (typeof obj1 !== typeof obj2) return false;
+        
+        if (Array.isArray(obj1) && Array.isArray(obj2)) {
+            if (obj1.length !== obj2.length) return false;
+            return obj1.every((val, idx) => deepEqual(val, obj2[idx]));
+        }
+        
+        if (typeof obj1 === 'object') {
+            const keys1 = Object.keys(obj1);
+            const keys2 = Object.keys(obj2);
+            if (keys1.length !== keys2.length) return false;
+            return keys1.every(key => deepEqual(obj1[key], obj2[key]));
+        }
+        
+        return obj1 === obj2;
+    }, []);
+
+    // Get only changed fields (dirty fields)
+    const getChangedFields = useCallback(() => {
+        if (!originalData) return {};
+        
+        const changed = {};
+        Object.keys(data).forEach(key => {
+            if (!deepEqual(data[key], originalData[key])) {
+                changed[key] = data[key];
+            }
+        });
+        return changed;
+    }, [data, originalData, deepEqual]);
+
+    // Check if any fields are dirty
+    const hasChanges = useMemo(() => {
+        if (!originalData) return false;
+        return Object.keys(getChangedFields()).length > 0;
+    }, [data, originalData, getChangedFields]);
+
+    // Helper to get editing state for current active tab
+    const isCurrentTabEditing = useMemo(() => {
+        if (activeTab === 'basic') return editingSections.basic;
+        if (activeTab === 'professional') return editingSections.professional;
+        if (activeTab === 'availability') return editingSections.availability;
+        if (activeTab === 'security') return editingSections.security;
+        return false;
+    }, [activeTab, editingSections]);
+
+    // Get fields for a specific section
+    const getSectionFields = useCallback((section) => {
+        const fieldMap = {
+            basic: ['first_name', 'last_name', 'email', 'phone', 'bio', 'country', 'province', 'municipality', 'street_address', 'city', 'postal_code'],
+            professional: isGigWorker 
+                ? ['professional_title', 'hourly_rate', 'broad_category', 'specific_services', 'skills_with_experience']
+                : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description', 'primary_hiring_needs', 'typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'tax_id'],
+            availability: ['working_hours', 'timezone', 'preferred_communication', 'availability_notes'],
+            security: [], // Password change handled separately
+        };
+        return fieldMap[section] || [];
+    }, [isGigWorker]);
+
+    // Section-level edit handlers
+    const startEditingSection = useCallback((section) => {
+        setEditingSections(prev => ({ ...prev, [section]: true }));
+    }, []);
+
+    const cancelEditingSection = useCallback((section) => {
+        setEditingSections(prev => ({ ...prev, [section]: false }));
+        // Reset only fields related to this section
+        if (originalData) {
+            const sectionFields = getSectionFields(section);
+            sectionFields.forEach(field => {
+                setData(field, originalData[field]);
+            });
+        }
+    }, [originalData, setData, getSectionFields]);
+
+    // Get changed fields for a specific section
+    const getSectionChanges = useCallback((section) => {
+        const changedFields = getChangedFields();
+        const sectionFields = getSectionFields(section);
+        const sectionChanges = {};
+        sectionFields.forEach(field => {
+            if (changedFields[field] !== undefined) {
+                sectionChanges[field] = changedFields[field];
+            }
+        });
+        return sectionChanges;
+    }, [getChangedFields, getSectionFields]);
+
+    // Save a specific section
+    const saveSection = useCallback((section) => {
+        const sectionChanges = getSectionChanges(section);
+        
+        if (Object.keys(sectionChanges).length === 0) {
+            setEditingSections(prev => ({ ...prev, [section]: false }));
+            return;
+        }
+
+        // Client-side validation
+        const validationErrors = validateSection(data, section);
+        setClientErrors(validationErrors);
+        
+        if (Object.keys(validationErrors).length > 0) {
+            toast.error('Please fix the errors before saving');
+            return;
+        }
+
+        // Clear client errors for this section
+        setClientErrors(prev => {
+            const updated = { ...prev };
+            Object.keys(validationErrors).forEach(key => delete updated[key]);
+            return updated;
+        });
+
+        // Set loading state
+        setSavingSections(prev => ({ ...prev, [section]: true }));
+
+        patch(route('profile.update'), sectionChanges, {
             preserveScroll: true,
             preserveState: true,
-            onError: (errors) => {
-                console.error('Profile update errors:', errors);
+            only: Object.keys(sectionChanges),
+            onError: (serverErrors) => {
+                console.error('Profile update errors:', serverErrors);
+                setSavingSections(prev => ({ ...prev, [section]: false }));
+                toast.error('Failed to save changes. Please check the errors below.');
             },
             onSuccess: () => {
-                console.log('Profile updated successfully');
-                setShowSuccessModal(true);
+                // Update original data with saved changes (deep merge for nested objects)
+                setOriginalData(prev => {
+                    const updated = JSON.parse(JSON.stringify(prev || {}));
+                    Object.keys(sectionChanges).forEach(key => {
+                        if (typeof sectionChanges[key] === 'object' && !Array.isArray(sectionChanges[key]) && sectionChanges[key] !== null) {
+                            updated[key] = JSON.parse(JSON.stringify(sectionChanges[key]));
+                        } else {
+                            updated[key] = sectionChanges[key];
+                        }
+                    });
+                    return updated;
+                });
+                setEditingSections(prev => ({ ...prev, [section]: false }));
+                setSavingSections(prev => ({ ...prev, [section]: false }));
+                
+                const sectionNames = {
+                    basic: 'Basic Information',
+                    professional: 'Professional Details',
+                    availability: 'Availability',
+                    security: 'Security Settings',
+                };
+                toast.success(`${sectionNames[section]} saved successfully!`);
             },
         });
-    };
+    }, [getSectionChanges, data, patch, toast]);
+
+    // Handle global submit (for backward compatibility or full form saves)
+    const handleSubmit = useCallback((e) => {
+        e?.preventDefault();
+
+        const changedFields = getChangedFields();
+        
+        if (Object.keys(changedFields).length === 0) {
+            toast.info('No changes to save');
+            return;
+        }
+
+        // Validate all sections that have changes
+        const allErrors = {};
+        Object.keys(changedFields).forEach(key => {
+            // Determine which section this field belongs to
+            const sectionMap = {
+                basic: ['first_name', 'last_name', 'email', 'phone', 'bio', 'country', 'province', 'municipality', 'street_address', 'city', 'postal_code'],
+                professional: isGigWorker 
+                    ? ['professional_title', 'hourly_rate', 'broad_category', 'specific_services', 'skills_with_experience']
+                    : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description', 'primary_hiring_needs', 'typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'tax_id'],
+                availability: ['working_hours', 'timezone', 'preferred_communication', 'availability_notes'],
+            };
+            
+            let section = null;
+            for (const [sec, fields] of Object.entries(sectionMap)) {
+                if (fields.includes(key)) {
+                    section = sec;
+                    break;
+                }
+            }
+            
+            if (section) {
+                const sectionErrors = validateSection(data, section);
+                Object.assign(allErrors, sectionErrors);
+            }
+        });
+
+        setClientErrors(allErrors);
+        
+        if (Object.keys(allErrors).length > 0) {
+            toast.error('Please fix the errors before saving');
+            return;
+        }
+
+        patch(route('profile.update'), changedFields, {
+            preserveScroll: true,
+            preserveState: true,
+            only: Object.keys(changedFields),
+            onError: (serverErrors) => {
+                console.error('Profile update errors:', serverErrors);
+                toast.error('Failed to save changes. Please check the errors below.');
+            },
+            onSuccess: () => {
+                // Update original data with saved changes (deep merge for nested objects)
+                setOriginalData(prev => {
+                    const updated = JSON.parse(JSON.stringify(prev || {}));
+                    Object.keys(changedFields).forEach(key => {
+                        if (typeof changedFields[key] === 'object' && !Array.isArray(changedFields[key]) && changedFields[key] !== null) {
+                            updated[key] = JSON.parse(JSON.stringify(changedFields[key]));
+                        } else {
+                            updated[key] = changedFields[key];
+                        }
+                    });
+                    return updated;
+                });
+                toast.success(`Profile updated successfully! (${Object.keys(changedFields).length} field${Object.keys(changedFields).length > 1 ? 's' : ''})`);
+            },
+        });
+    }, [getChangedFields, data, isGigWorker, patch, toast]);
 
     const getUserAvatar = () => {
         // Check for Cloudinary profile picture first
@@ -153,31 +414,27 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                         </p>
                     </div>
                     <div className="flex gap-3">
-                        {!isEditing ? (
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 font-medium shadow-md hover:shadow-lg"
-                            >
-                                Edit Profile
-                            </button>
-                        ) : (
+                        {hasChanges && (
                             <>
                                 <button
                                     onClick={() => {
-                                        setIsEditing(false);
-                                        // Reset form to original user values
-                                        reset();
+                                        // Reset all changes
+                                        if (originalData) {
+                                            Object.keys(data).forEach(key => {
+                                                setData(key, originalData[key]);
+                                            });
+                                        }
                                     }}
                                     className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-300 font-medium"
                                 >
-                                    Cancel
+                                    Discard Changes
                                 </button>
                                 <button
                                     onClick={handleSubmit}
                                     disabled={processing}
                                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 font-medium shadow-md hover:shadow-lg disabled:opacity-50"
                                 >
-                                    {processing ? 'Saving...' : 'Save Changes'}
+                                    {processing ? 'Saving...' : `Save All Changes (${Object.keys(getChangedFields()).length})`}
                                 </button>
                             </>
                         )}
@@ -310,13 +567,68 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                             <form onSubmit={handleSubmit}>
                                 {/* Basic Information Tab */}
                                 {activeTab === 'basic' && (
+                                    <BasicInfoTab
+                                        data={data}
+                                        setData={setData}
+                                        errors={{ ...errors, ...clientErrors }}
+                                        user={user}
+                                        mustVerifyEmail={mustVerifyEmail}
+                                        isGigWorker={isGigWorker}
+                                        isEditing={editingSections.basic}
+                                        processing={savingSections.basic}
+                                        hasChanges={Object.keys(getSectionChanges('basic')).length > 0}
+                                        onEdit={() => startEditingSection('basic')}
+                                        onCancel={() => cancelEditingSection('basic')}
+                                        onSave={() => saveSection('basic')}
+                                    />
+                                )}
+                                
+                                {/* Legacy Basic Tab Code - Remove after migration */}
+                                {false && activeTab === 'basic' && (
                                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
                                         <div className="p-8">
-                                            <div className="mb-8">
-                                                <h3 className="text-2xl font-bold text-gray-900 mb-3">Basic Information</h3>
-                                                <p className="text-gray-600 text-lg">
-                                                    Update your personal information and contact details
-                                                </p>
+                                            <div className="mb-8 flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="text-2xl font-bold text-gray-900 mb-3">Basic Information</h3>
+                                                    <p className="text-gray-600 text-lg">
+                                                        Update your personal information and contact details
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    {!editingSections.basic ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => startEditingSection('basic')}
+                                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    ) : (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => cancelEditingSection('basic')}
+                                                                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-medium"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => saveSection('basic')}
+                                                                disabled={savingSections.basic || Object.keys(getSectionChanges('basic')).length === 0}
+                                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50 flex items-center gap-2"
+                                                            >
+                                                                {savingSections.basic && (
+                                                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                    </svg>
+                                                                )}
+                                                                {savingSections.basic ? 'Saving...' : 'Save'}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <div className="space-y-6">
@@ -333,7 +645,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                             id="first_name"
                                                             value={data.first_name}
                                                             onChange={(e) => setData('first_name', e.target.value)}
-                                                            disabled={!isEditing}
+                                                            disabled={!editingSections.basic}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             required
                                                         />
@@ -348,7 +660,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                             id="last_name"
                                                             value={data.last_name}
                                                             onChange={(e) => setData('last_name', e.target.value)}
-                                                            disabled={!isEditing}
+                                                            disabled={!isCurrentTabEditing}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             required
                                                         />
@@ -367,7 +679,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                             id="email"
                                                             value={data.email}
                                                             onChange={(e) => setData('email', e.target.value)}
-                                                            disabled={!isEditing}
+                                                            disabled={!isCurrentTabEditing}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             required
                                                         />
@@ -387,7 +699,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                             id="phone"
                                                             value={data.phone}
                                                             onChange={(e) => setData('phone', e.target.value)}
-                                                            disabled={!isEditing}
+                                                            disabled={!isCurrentTabEditing}
                                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             placeholder="+63 912 345 6789"
                                                         />
@@ -616,18 +928,37 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
 
                                 {/* Professional/Business Tab */}
                                 {activeTab === 'professional' && (
+                                    <ProfessionalTab
+                                        data={data}
+                                        setData={setData}
+                                        errors={{ ...errors, ...clientErrors }}
+                                        isGigWorker={isGigWorker}
+                                        isEditing={editingSections.professional}
+                                        processing={savingSections.professional}
+                                        hasChanges={Object.keys(getSectionChanges('professional')).length > 0}
+                                        onEdit={() => startEditingSection('professional')}
+                                        onCancel={() => cancelEditingSection('professional')}
+                                        onSave={() => saveSection('professional')}
+                                        user={user}
+                                    />
+                                )}
+                                
+                                {/* Legacy Professional Tab - Remove after full migration */}
+                                {false && activeTab === 'professional' && (
                                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                         <div className="p-8">
-                                            <div className="mb-8">
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                                    {isGigWorker ? 'Professional Information' : 'Business Information'}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">
-                                                    {isGigWorker
-                                                        ? 'Showcase your skills, experience, and professional details'
-                                                        : 'Tell us about your business and project requirements'
-                                                    }
-                                                </p>
+                                            <div className="mb-8 flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                                        {isGigWorker ? 'Professional Information' : 'Business Information'}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600">
+                                                        {isGigWorker
+                                                            ? 'Showcase your skills, experience, and professional details'
+                                                            : 'Tell us about your business and project requirements'
+                                                        }
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             <div className="space-y-6">
@@ -643,7 +974,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 id="professional_title"
                                                                 value={data.professional_title}
                                                                 onChange={(e) => setData('professional_title', e.target.value)}
-                                                                disabled={!isEditing}
+                                                                disabled={!isCurrentTabEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="e.g., Full Stack Developer, UI/UX Designer"
                                                                 required
@@ -666,7 +997,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="hourly_rate"
                                                                     value={data.hourly_rate}
                                                                     onChange={(e) => setData('hourly_rate', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full pl-8 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     placeholder="25.00"
                                                                     min="5"
@@ -695,7 +1026,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     type="text"
                                                                     value={data.broad_category}
                                                                     onChange={(e) => setData('broad_category', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                                                     placeholder="e.g., Creative & Design Services"
                                                                 />
@@ -717,7 +1048,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                                     newServices[index] = e.target.value;
                                                                                     setData('specific_services', newServices);
                                                                                 }}
-                                                                                disabled={!isEditing}
+                                                                                disabled={!isCurrentTabEditing}
                                                                                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                                                                                 placeholder="Service name"
                                                                             />
@@ -764,7 +1095,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                                     newSkills[index].skill = e.target.value;
                                                                                     setData('skills_with_experience', newSkills);
                                                                                 }}
-                                                                                disabled={!isEditing}
+                                                                                disabled={!isCurrentTabEditing}
                                                                                 placeholder="Skill name"
                                                                                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                                                                             />
@@ -775,7 +1106,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                                     newSkills[index].experience_level = e.target.value;
                                                                                     setData('skills_with_experience', newSkills);
                                                                                 }}
-                                                                                disabled={!isEditing}
+                                                                                disabled={!isCurrentTabEditing}
                                                                                 className="px-4 py-2 border border-gray-300 rounded-lg"
                                                                             >
                                                                                 <option value="beginner">Beginner</option>
@@ -825,7 +1156,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 id="company_name"
                                                                 value={data.company_name}
                                                                 onChange={(e) => setData('company_name', e.target.value)}
-                                                                disabled={!isEditing}
+                                                                disabled={!isCurrentTabEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="Your Company Name"
                                                             />
@@ -841,7 +1172,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 id="work_type_needed"
                                                                 value={data.work_type_needed}
                                                                 onChange={(e) => setData('work_type_needed', e.target.value)}
-                                                                disabled={!isEditing}
+                                                                disabled={!isCurrentTabEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             >
                                                                 <option value="">Select work type</option>
@@ -865,7 +1196,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 id="budget_range"
                                                                 value={data.budget_range}
                                                                 onChange={(e) => setData('budget_range', e.target.value)}
-                                                                disabled={!isEditing}
+                                                                disabled={!isCurrentTabEditing}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                             >
                                                                 <option value="">Select budget range</option>
@@ -887,7 +1218,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 id="project_intent"
                                                                 value={data.project_intent}
                                                                 onChange={(e) => setData('project_intent', e.target.value)}
-                                                                disabled={!isEditing}
+                                                                disabled={!isCurrentTabEditing}
                                                                 rows={4}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 placeholder="Describe the types of projects you typically work on and your business goals..."
@@ -911,7 +1242,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="company_size"
                                                                     value={data.company_size}
                                                                     onChange={(e) => setData('company_size', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 >
                                                                     <option value="">Select company size</option>
@@ -934,7 +1265,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="industry"
                                                                     value={data.industry}
                                                                     onChange={(e) => setData('industry', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     placeholder="e.g., Technology & IT, Healthcare, E-commerce"
                                                                 />
@@ -951,7 +1282,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="company_website"
                                                                     value={data.company_website}
                                                                     onChange={(e) => setData('company_website', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     placeholder="https://example.com"
                                                                 />
@@ -967,7 +1298,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="company_description"
                                                                     value={data.company_description}
                                                                     onChange={(e) => setData('company_description', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     rows={4}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     placeholder="Tell us about your company or business..."
@@ -989,7 +1320,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="typical_project_budget"
                                                                     value={data.typical_project_budget}
                                                                     onChange={(e) => setData('typical_project_budget', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 >
                                                                     <option value="">Select budget range</option>
@@ -1011,7 +1342,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="typical_project_duration"
                                                                     value={data.typical_project_duration}
                                                                     onChange={(e) => setData('typical_project_duration', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 >
                                                                     <option value="">Select duration</option>
@@ -1032,7 +1363,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="preferred_experience_level"
                                                                     value={data.preferred_experience_level}
                                                                     onChange={(e) => setData('preferred_experience_level', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 >
                                                                     <option value="">Select experience level</option>
@@ -1053,7 +1384,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     id="hiring_frequency"
                                                                     value={data.hiring_frequency}
                                                                     onChange={(e) => setData('hiring_frequency', e.target.value)}
-                                                                    disabled={!isEditing}
+                                                                    disabled={!isCurrentTabEditing}
                                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                                                 >
                                                                     <option value="">Select frequency</option>
@@ -1092,8 +1423,25 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
 
                                 {/* Availability Tab */}
                                 {activeTab === 'availability' && isGigWorker && (
+                                    <AvailabilityTab
+                                        data={data}
+                                        setData={setData}
+                                        errors={{ ...errors, ...clientErrors }}
+                                        isEditing={editingSections.availability}
+                                        processing={savingSections.availability}
+                                        hasChanges={Object.keys(getSectionChanges('availability')).length > 0}
+                                        onEdit={() => startEditingSection('availability')}
+                                        onCancel={() => cancelEditingSection('availability')}
+                                        onSave={() => saveSection('availability')}
+                                    />
+                                )}
+                                
+                                {/* Legacy Availability Tab - Remove after full migration */}
+                                {false && activeTab === 'availability' && isGigWorker && (
                                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Availability & Communication</h3>
+                                        <div className="mb-6 flex justify-between items-start">
+                                            <h3 className="text-2xl font-bold text-gray-900">Availability & Communication</h3>
+                                        </div>
                                         <div className="space-y-6">
                                             {/* Working Hours */}
                                             <div>
@@ -1112,6 +1460,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                         [day]: { ...data.working_hours[day], enabled: e.target.checked }
                                                                     });
                                                                 }}
+                                                                disabled={!editingSections.availability}
                                                                 className="w-5 h-5 text-blue-600 rounded"
                                                             />
                                                             <span className="w-24 capitalize font-medium">{day}</span>
@@ -1126,7 +1475,8 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                                 [day]: { ...data.working_hours[day], start: e.target.value }
                                                                             });
                                                                         }}
-                                                                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                                                                        disabled={!editingSections.availability}
+                                                                        className="px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100"
                                                                     />
                                                                     <span className="text-gray-600">to</span>
                                                                     <input
@@ -1138,7 +1488,8 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                                 [day]: { ...data.working_hours[day], end: e.target.value }
                                                                             });
                                                                         }}
-                                                                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                                                                        disabled={!editingSections.availability}
+                                                                        className="px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100"
                                                                     />
                                                                 </>
                                                             )}
@@ -1220,12 +1571,56 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {user.portfolio_items.map((item, index) => (
                                                     <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                                                        <h4 className="font-semibold text-lg mb-2">{item.title}</h4>
-                                                        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                                                        {item.project_url && (
+                                                        <div className="flex items-start justify-between mb-2">
+                                                            <h4 className="font-semibold text-lg">{item.title}</h4>
+                                                            {item.project_type === 'resume' && (
+                                                                <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                                    Resume
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                                                        
+                                                        {/* Show document download for resume type */}
+                                                        {item.project_type === 'resume' && item.document_file && (
+                                                            <a 
+                                                                href={item.document_file} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer" 
+                                                                download
+                                                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                                </svg>
+                                                                Download Resume
+                                                            </a>
+                                                        )}
+                                                        
+                                                        {/* Show project URL for other types */}
+                                                        {item.project_type !== 'resume' && item.project_url && (
                                                             <a href={item.project_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
                                                                 View Project →
                                                             </a>
+                                                        )}
+                                                        
+                                                        {/* Show images for visual projects */}
+                                                        {item.project_type !== 'resume' && item.images && item.images.length > 0 && (
+                                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                                {item.images.slice(0, 3).map((img, imgIdx) => (
+                                                                    <img 
+                                                                        key={imgIdx} 
+                                                                        src={img} 
+                                                                        alt={`${item.title} - Image ${imgIdx + 1}`}
+                                                                        className="h-16 w-16 object-cover rounded border"
+                                                                    />
+                                                                ))}
+                                                                {item.images.length > 3 && (
+                                                                    <div className="h-16 w-16 flex items-center justify-center bg-gray-100 rounded border text-xs text-gray-600">
+                                                                        +{item.images.length - 3}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 ))}
@@ -1420,50 +1815,6 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Save Button - Always visible */}
-                                {(activeTab === 'basic' || activeTab === 'professional') && (
-                                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
-                                        <div className="p-8">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <Transition
-                                                        show={recentlySuccessful}
-                                                        enter="transition ease-in-out"
-                                                        enterFrom="opacity-0"
-                                                        leave="transition ease-in-out"
-                                                        leaveTo="opacity-0"
-                                                    >
-                                                        <p className="text-sm text-green-600">✓ Profile updated successfully!</p>
-                                                    </Transition>
-                                                </div>
-                                                <div className="flex items-center space-x-4">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => window.location.reload()}
-                                                        className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                    <button
-                                                        type="submit"
-                                                        disabled={processing}
-                                                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        {processing ? (
-                                                            <div className="flex items-center">
-                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                                Saving...
-                                                            </div>
-                                                        ) : (
-                                                            'Save Changes'
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </form>
                         </div>
                     </div>
@@ -1552,12 +1903,15 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                 }
             `}</style>
 
-            {/* Success Modal */}
+            {/* Success Modal (kept for backward compatibility) */}
             <SuccessModal 
                 isOpen={showSuccessModal} 
                 onClose={() => setShowSuccessModal(false)}
                 message="Profile picture updated successfully!"
             />
+
+            {/* Toast Notifications */}
+            <ToastContainer toasts={toast.toasts} removeToast={toast.removeToast} />
 
         </AuthenticatedLayout>
     );

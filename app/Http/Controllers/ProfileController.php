@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
@@ -26,17 +27,30 @@ class ProfileController extends Controller
 
     /**
      * Display the user's profile form.
+     * Optimized: Only loads necessary relationships and caches profile completion.
      */
     public function edit(Request $request): Response
     {
-        // Load portfolio items for gig workers
         $user = $request->user();
-        $user->load('portfolioItems');
         
-        // Get profile completion data for gig workers
+        // Optimize: Only load portfolio items if user is gig worker and select only needed columns
+        if ($user->isGigWorker()) {
+            $user->load([
+                'portfolioItems' => function ($query) {
+                    $query->select('id', 'user_id', 'title', 'description', 'project_url', 'images', 'document_file', 'project_type', 'display_order')
+                        ->orderBy('display_order')
+                        ->latest();
+                }
+            ]);
+        }
+        
+        // Get profile completion data with caching (cache for 5 minutes)
         $profileCompletion = null;
         if ($user->isGigWorker()) {
-            $profileCompletion = $this->profileCompletionService->getCompletionData($user);
+            $cacheKey = "profile_completion_{$user->id}";
+            $profileCompletion = Cache::remember($cacheKey, 300, function () use ($user) {
+                return $this->profileCompletionService->getCompletionData($user);
+            });
         }
 
         return Inertia::render('Profile/Edit', [
@@ -162,39 +176,82 @@ class ProfileController extends Controller
             }
         }
 
-        // Fill user with validated data
+        // Update only provided fields (partial update support)
         try {
-            // Ensure profile_picture is included in fill if it was uploaded
+            // Track which fields were updated for logging
+            $updatedFields = [];
+            
+            // Handle profile picture separately (if provided)
             if (isset($validated['profile_picture'])) {
                 $user->profile_picture = $validated['profile_picture'];
                 $user->profile_photo = $validated['profile_picture']; // Sync both fields
+                $updatedFields[] = 'profile_picture';
+                $updatedFields[] = 'profile_photo';
+                unset($validated['profile_picture']);
+                unset($validated['profile_photo']);
             }
             
-            $user->fill($validated);
+            // Update only the fields that were provided (partial update)
+            foreach ($validated as $key => $value) {
+                // Check if field exists and is fillable
+                if ($user->isFillable($key)) {
+                    // Only update if the value is different
+                    $currentValue = $user->getAttribute($key);
+                    if ($currentValue != $value) {
+                        $user->setAttribute($key, $value);
+                        $updatedFields[] = $key;
+                    }
+                }
+            }
 
             // Handle email verification reset
-            if ($user->isDirty('email')) {
+            if (in_array('email', $updatedFields) && $user->isDirty('email')) {
                 $user->email_verified_at = null;
             }
 
-            // Update profile completion status
-            $user->profile_completed = $this->calculateProfileCompletion($user);
-
-            // Force save to ensure database update
-            $user->save();
+            // Update profile completion status only if relevant fields changed
+            // Use ProfileCompletionService for consistency and accuracy
+            $completionRelevantFields = [
+                'first_name', 'last_name', 'bio', 'barangay', 'professional_title', 
+                'hourly_rate', 'skills', 'skills_with_experience', 'specific_services',
+                'broad_category', 'company_name', 'work_type_needed', 'profile_picture',
+                'working_hours', 'timezone', 'preferred_communication', 'street_address',
+                'city', 'country', 'email_verified_at'
+            ];
             
-            // Refresh user to ensure we have latest data
-            $user->refresh();
+            if (count(array_intersect($updatedFields, $completionRelevantFields)) > 0) {
+                // Use ProfileCompletionService for accurate calculation
+                $completionData = $this->profileCompletionService->calculateCompletion($user);
+                $user->profile_completed = $completionData['is_complete'];
+                
+                // Clear cached profile completion data
+                Cache::forget("profile_completion_{$user->id}");
+            }
 
-            Log::info('Profile updated successfully', [
-                'user_id' => $user->id,
-                'updated_profile_picture' => $user->profile_picture,
-                'updated_profile_photo' => $user->profile_photo,
-                'is_dirty_profile_picture' => $user->isDirty('profile_picture'),
-                'was_changed' => $user->wasChanged('profile_picture'),
-            ]);
+            // Only save if there are actual changes
+            if ($user->isDirty()) {
+                // Use select only dirty attributes to minimize database query
+                $user->save();
+                
+                // Clear any related caches after successful update
+                Cache::forget("profile_completion_{$user->id}");
+                
+                Log::info('Profile updated successfully (partial update)', [
+                    'user_id' => $user->id,
+                    'updated_fields' => $updatedFields,
+                    'updated_count' => count($updatedFields),
+                    'dirty_attributes' => array_keys($user->getDirty()),
+                ]);
+            } else {
+                Log::info('Profile update skipped - no changes detected', [
+                    'user_id' => $user->id,
+                ]);
+            }
 
-            return Redirect::route('profile.edit')->with('status', 'profile-updated');
+            // Use Inertia redirect to preserve state and avoid full page refresh
+            return Redirect::route('profile.edit')
+                ->with('status', 'profile-updated')
+                ->with('message', 'Profile updated successfully!');
         } catch (\Exception $e) {
             Log::error('Profile update failed: ' . $e->getMessage(), [
                 'user_id' => $user->id,
@@ -206,33 +263,16 @@ class ProfileController extends Controller
     }
 
     /**
-     * Calculate profile completion percentage
+     * Calculate profile completion status (deprecated - use ProfileCompletionService instead)
+     * This method is kept for backward compatibility but should not be used directly.
+     * 
+     * @deprecated Use ProfileCompletionService::calculateCompletion() instead
      */
     private function calculateProfileCompletion($user): bool
     {
-        $requiredFields = ['first_name', 'last_name', 'email', 'bio', 'barangay'];
-
-        if ($user->user_type === 'gig_worker') {
-            $requiredFields = array_merge($requiredFields, [
-                'professional_title', 'hourly_rate', 'skills'
-            ]);
-        } else {
-            $requiredFields = array_merge($requiredFields, [
-                'company_name', 'work_type_needed'
-            ]);
-        }
-
-        $completedFields = 0;
-        foreach ($requiredFields as $field) {
-            if ($field === 'skills' && is_array($user->skills) && count($user->skills) > 0) {
-                $completedFields++;
-            } elseif ($field !== 'skills' && !empty($user->$field)) {
-                $completedFields++;
-            }
-        }
-
-        // Consider profile complete if 80% or more fields are filled
-        return ($completedFields / count($requiredFields)) >= 0.8;
+        // Delegate to ProfileCompletionService for consistency
+        $completionData = $this->profileCompletionService->calculateCompletion($user);
+        return $completionData['is_complete'];
     }
 
     /**

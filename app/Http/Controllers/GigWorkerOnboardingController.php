@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PortfolioItem;
 use App\Mail\ProfileSubmitted;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
@@ -14,6 +15,19 @@ use Inertia\Response;
 
 class GigWorkerOnboardingController extends Controller
 {
+    /**
+     * File upload service instance
+     */
+    protected FileUploadService $fileUploadService;
+
+    /**
+     * Constructor
+     */
+    public function __construct(FileUploadService $fileUploadService)
+    {
+        $this->fileUploadService = $fileUploadService;
+    }
+
     /**
      * Show the gig worker onboarding page
      */
@@ -47,14 +61,30 @@ class GigWorkerOnboardingController extends Controller
     {
         $user = auth()->user();
 
-        \Log::info('Gig worker onboarding started', [
+        Log::info('ONBOARDING_STARTED', [
+            'event' => 'onboarding_started',
             'user_id' => $user->id,
-            'has_profile_picture' => $request->hasFile('profile_picture'),
-            'profile_picture_size' => $request->hasFile('profile_picture') ? $request->file('profile_picture')->getSize() : 0,
-            'has_id_front' => $request->hasFile('id_front_image'),
-            'has_id_back' => $request->hasFile('id_back_image'),
-            'portfolio_count' => count($request->input('portfolio_items', [])),
-            'all_files' => array_keys($request->allFiles())
+            'user_type' => 'gig_worker',
+            'user_email' => $user->email,
+            'files_submitted' => [
+                'profile_picture' => $request->hasFile('profile_picture'),
+                'id_front_image' => $request->hasFile('id_front_image'),
+                'id_back_image' => $request->hasFile('id_back_image'),
+                'resume_file' => $request->hasFile('resume_file'),
+            ],
+            'file_sizes' => [
+                'profile_picture_mb' => $request->hasFile('profile_picture') ? round($request->file('profile_picture')->getSize() / 1048576, 2) : 0,
+                'id_front_mb' => $request->hasFile('id_front_image') ? round($request->file('id_front_image')->getSize() / 1048576, 2) : 0,
+                'id_back_mb' => $request->hasFile('id_back_image') ? round($request->file('id_back_image')->getSize() / 1048576, 2) : 0,
+                'resume_mb' => $request->hasFile('resume_file') ? round($request->file('resume_file')->getSize() / 1048576, 2) : 0,
+            ],
+            'data_submitted' => [
+                'has_portfolio_link' => !empty($request->input('portfolio_link')),
+                'broad_category' => $request->input('broad_category'),
+                'specific_services_count' => count($request->input('specific_services', [])),
+                'skills_count' => count($request->input('skills_with_experience', [])),
+            ],
+            'timestamp' => now()->toIso8601String(),
         ]);
 
         // Validate the onboarding data with custom error messages
@@ -73,14 +103,9 @@ class GigWorkerOnboardingController extends Controller
             'skills_with_experience.*.skill' => 'required|string|max:100',
             'skills_with_experience.*.experience_level' => 'required|in:beginner,intermediate,expert',
 
-            // Step 3: Portfolio Items (optional)
-            'portfolio_items' => 'nullable|array|max:10',
-            'portfolio_items.*.title' => 'required|string|max:255',
-            'portfolio_items.*.description' => 'nullable|string|max:1000',
-            'portfolio_items.*.project_url' => 'nullable|url',
-            'portfolio_items.*.project_type' => 'required|in:web,mobile,design,writing,other',
-            'portfolio_items.*.images' => 'nullable|array|max:5',
-            'portfolio_items.*.images.*' => 'image|max:2048',
+            // Step 3: Portfolio (simplified)
+            'portfolio_link' => 'nullable|url|max:500',
+            'resume_file' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
 
             // Step 4: ID Verification & Address
             'id_type' => 'nullable|string|in:national_id,drivers_license,passport,philhealth_id,sss_id,umid,voters_id,prc_id',
@@ -116,10 +141,13 @@ class GigWorkerOnboardingController extends Controller
             'skills_with_experience.*.skill.required' => 'Skill name is required.',
             'skills_with_experience.*.experience_level.required' => 'Experience level is required for each skill.',
             
-            'id_front_image.image' => 'ID front must be an image file.',
-            'id_front_image.max' => 'ID front image must not exceed 5MB.',
-            'id_back_image.image' => 'ID back must be an image file.',
-            'id_back_image.max' => 'ID back image must not exceed 5MB.',
+            'id_front_image.image' => 'ID front must be an image file (JPG, PNG, GIF, or WebP).',
+            'id_front_image.max' => 'ID front image must not exceed 5MB. Please compress or resize your image.',
+            'id_back_image.image' => 'ID back must be an image file (JPG, PNG, GIF, or WebP).',
+            'id_back_image.max' => 'ID back image must not exceed 5MB. Please compress or resize your image.',
+            'resume_file.file' => 'Resume must be a valid file.',
+            'resume_file.mimes' => 'Resume must be a PDF, DOC, or DOCX file.',
+            'resume_file.max' => 'Resume file must not exceed 5MB. Please compress your document.',
             'street_address.required' => 'Street address is required.',
             'city.required' => 'City is required.',
             'postal_code.required' => 'Postal code is required.',
@@ -131,59 +159,233 @@ class GigWorkerOnboardingController extends Controller
             'preferred_communication.min' => 'Please select at least one communication method.',
         ]);
 
-        // Handle profile picture upload to R2
+        // Handle profile picture upload to R2 using FileUploadService
         if ($request->hasFile('profile_picture')) {
-            try {
-                \Log::info('Uploading profile picture to R2', ['user_id' => $user->id]);
-                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
-                if ($path) {
-                    // Use app proxy URL as fallback while R2 DNS propagates
-                    $validated['profile_picture'] = '/r2/' . $path;
-                    \Log::info('Profile picture uploaded successfully', ['url' => $validated['profile_picture']]);
+            $profilePicture = $request->file('profile_picture');
+            
+            Log::info('Profile picture upload started', [
+                'user_id' => $user->id,
+                'file_name' => $profilePicture->getClientOriginalName(),
+                'file_size' => $profilePicture->getSize(),
+                'mime_type' => $profilePicture->getMimeType(),
+            ]);
+
+            // Validate file before upload
+            $validation = $this->fileUploadService->validateFile($profilePicture, [
+                'type' => 'image',
+                'max_size' => 2097152, // 2MB
+                'user_id' => $user->id,
+                'user_type' => 'gig_worker',
+            ]);
+
+            if (!$validation['success']) {
+                Log::warning('Profile picture validation failed', [
+                    'user_id' => $user->id,
+                    'error' => $validation['error'],
+                    'error_code' => $validation['error_code'],
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'profile_picture' => $validation['error']
+                    ])
+                    ->with('error_codes', [
+                        'profile_picture' => $validation['error_code']
+                    ])
+                    ->withInput();
+            }
+
+            // Upload with retry logic
+            $uploadResult = $this->fileUploadService->uploadWithRetry(
+                $profilePicture,
+                'profiles',
+                2, // max retries
+                [
+                    'user_id' => $user->id,
+                    'user_type' => 'gig_worker',
+                    'use_proxy' => true, // Use app proxy URL for profile pictures
+                ]
+            );
+
+            if (!$uploadResult['success']) {
+                Log::error('Profile picture upload failed after retries', [
+                    'user_id' => $user->id,
+                    'error' => $uploadResult['error'],
+                    'error_code' => $uploadResult['error_code'],
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'profile_picture' => 'Failed to upload profile picture. ' . $uploadResult['error']
+                    ])
+                    ->with('error_codes', [
+                        'profile_picture' => $uploadResult['error_code']
+                    ])
+                    ->withInput();
+            }
+
+            $validated['profile_picture'] = $uploadResult['url'];
+            
+            Log::info('Profile picture uploaded successfully', [
+                'user_id' => $user->id,
+                'url' => $uploadResult['url'],
+                'path' => $uploadResult['path'],
+            ]);
+        }
+
+        // Handle ID images upload to R2 using FileUploadService
+        $idUploadErrors = [];
+        
+        if ($request->hasFile('id_front_image')) {
+            $idFrontImage = $request->file('id_front_image');
+            
+            Log::info('ID front image upload started', [
+                'user_id' => $user->id,
+                'file_name' => $idFrontImage->getClientOriginalName(),
+                'file_size' => $idFrontImage->getSize(),
+                'mime_type' => $idFrontImage->getMimeType(),
+            ]);
+
+            // Validate file before upload
+            $validation = $this->fileUploadService->validateFile($idFrontImage, [
+                'type' => 'image',
+                'max_size' => 5242880, // 5MB
+                'user_id' => $user->id,
+                'user_type' => 'gig_worker',
+            ]);
+
+            if (!$validation['success']) {
+                Log::warning('ID front image validation failed', [
+                    'user_id' => $user->id,
+                    'error' => $validation['error'],
+                    'error_code' => $validation['error_code'],
+                ]);
+
+                // Store error but don't block onboarding (optional field)
+                $idUploadErrors['id_front_image'] = [
+                    'message' => $validation['error'],
+                    'code' => $validation['error_code'],
+                ];
+            } else {
+                // Upload with retry logic
+                $uploadResult = $this->fileUploadService->uploadWithRetry(
+                    $idFrontImage,
+                    'id_verification',
+                    2, // max retries
+                    [
+                        'user_id' => $user->id,
+                        'user_type' => 'gig_worker',
+                    ]
+                );
+
+                if (!$uploadResult['success']) {
+                    Log::error('ID front image upload failed after retries', [
+                        'user_id' => $user->id,
+                        'error' => $uploadResult['error'],
+                        'error_code' => $uploadResult['error_code'],
+                    ]);
+
+                    // Store error but don't block onboarding (optional field)
+                    $idUploadErrors['id_front_image'] = [
+                        'message' => 'Failed to upload ID front image. ' . $uploadResult['error'],
+                        'code' => $uploadResult['error_code'],
+                    ];
                 } else {
-                    \Log::error('Failed to upload profile picture', ['user_id' => $user->id]);
-                    return back()->withErrors(['profile_picture' => 'Failed to upload profile picture. Please try again.'])->withInput();
+                    $validated['id_front_image'] = $uploadResult['url'];
+                    
+                    Log::info('ID front image uploaded successfully', [
+                        'user_id' => $user->id,
+                        'url' => $uploadResult['url'],
+                        'path' => $uploadResult['path'],
+                    ]);
+
+                    // Rate limiting: small delay before next upload (150ms)
+                    usleep(150000);
                 }
-            } catch (\Exception $e) {
-                \Log::error('Profile picture upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
-                return back()->withErrors(['profile_picture' => 'Failed to upload profile picture. Please try again.'])->withInput();
             }
         }
 
-        // Handle ID images upload to R2
-        if ($request->hasFile('id_front_image')) {
-            try {
-                \Log::info('Uploading ID front image to R2', ['user_id' => $user->id]);
-                $path = Storage::disk('r2')->putFile('id_verification/' . $user->id, $request->file('id_front_image'));
-                if ($path) {
-                    $validated['id_front_image'] = Storage::disk('r2')->url($path);
-                    \Log::info('ID front image uploaded successfully', ['url' => $validated['id_front_image']]);
-                } else {
-                    \Log::error('Failed to upload ID front image', ['user_id' => $user->id]);
-                    return back()->withErrors(['id_front_image' => 'Failed to upload ID front image. Please try again.'])->withInput();
-                }
-            } catch (\Exception $e) {
-                \Log::error('ID front image upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
-                return back()->withErrors(['id_front_image' => 'Failed to upload ID front image. Please try again.'])->withInput();
-            }
-        }
         if ($request->hasFile('id_back_image')) {
-            try {
-                \Log::info('Uploading ID back image to R2', ['user_id' => $user->id]);
-                $path = Storage::disk('r2')->putFile('id_verification/' . $user->id, $request->file('id_back_image'));
-                if ($path) {
-                    $validated['id_back_image'] = Storage::disk('r2')->url($path);
-                    \Log::info('ID back image uploaded successfully', ['url' => $validated['id_back_image']]);
+            $idBackImage = $request->file('id_back_image');
+            
+            Log::info('ID back image upload started', [
+                'user_id' => $user->id,
+                'file_name' => $idBackImage->getClientOriginalName(),
+                'file_size' => $idBackImage->getSize(),
+                'mime_type' => $idBackImage->getMimeType(),
+            ]);
+
+            // Validate file before upload
+            $validation = $this->fileUploadService->validateFile($idBackImage, [
+                'type' => 'image',
+                'max_size' => 5242880, // 5MB
+                'user_id' => $user->id,
+                'user_type' => 'gig_worker',
+            ]);
+
+            if (!$validation['success']) {
+                Log::warning('ID back image validation failed', [
+                    'user_id' => $user->id,
+                    'error' => $validation['error'],
+                    'error_code' => $validation['error_code'],
+                ]);
+
+                // Store error but don't block onboarding (optional field)
+                $idUploadErrors['id_back_image'] = [
+                    'message' => $validation['error'],
+                    'code' => $validation['error_code'],
+                ];
+            } else {
+                // Upload with retry logic
+                $uploadResult = $this->fileUploadService->uploadWithRetry(
+                    $idBackImage,
+                    'id_verification',
+                    2, // max retries
+                    [
+                        'user_id' => $user->id,
+                        'user_type' => 'gig_worker',
+                    ]
+                );
+
+                if (!$uploadResult['success']) {
+                    Log::error('ID back image upload failed after retries', [
+                        'user_id' => $user->id,
+                        'error' => $uploadResult['error'],
+                        'error_code' => $uploadResult['error_code'],
+                    ]);
+
+                    // Store error but don't block onboarding (optional field)
+                    $idUploadErrors['id_back_image'] = [
+                        'message' => 'Failed to upload ID back image. ' . $uploadResult['error'],
+                        'code' => $uploadResult['error_code'],
+                    ];
                 } else {
-                    \Log::error('Failed to upload ID back image', ['user_id' => $user->id]);
-                    return back()->withErrors(['id_back_image' => 'Failed to upload ID back image. Please try again.'])->withInput();
+                    $validated['id_back_image'] = $uploadResult['url'];
+                    
+                    Log::info('ID back image uploaded successfully', [
+                        'user_id' => $user->id,
+                        'url' => $uploadResult['url'],
+                        'path' => $uploadResult['path'],
+                    ]);
+
+                    // Rate limiting: small delay before next upload (150ms)
+                    usleep(150000);
                 }
-            } catch (\Exception $e) {
-                \Log::error('ID back image upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
-                return back()->withErrors(['id_back_image' => 'Failed to upload ID back image. Please try again.'])->withInput();
             }
         }
-        $validated['id_verification_status'] = 'pending';
+
+        // Set ID verification status if at least one ID image was uploaded successfully
+        if (isset($validated['id_front_image']) || isset($validated['id_back_image'])) {
+            $validated['id_verification_status'] = 'pending';
+        }
+
+        // Log ID upload errors for monitoring but don't block onboarding
+        if (!empty($idUploadErrors)) {
+            Log::warning('Some ID images failed to upload but onboarding continues', [
+                'user_id' => $user->id,
+                'errors' => $idUploadErrors,
+            ]);
+        }
 
         // Map kyc_country to country field (override registration country with KYC verified country)
         if (isset($validated['kyc_country'])) {
@@ -194,6 +396,75 @@ class GigWorkerOnboardingController extends Controller
         // Mark address as verified when ID is submitted
         $validated['address_verified_at'] = now();
 
+        // Handle resume file upload to R2 using FileUploadService
+        if ($request->hasFile('resume_file')) {
+            $resumeFile = $request->file('resume_file');
+            
+            Log::info('Resume file upload started', [
+                'user_id' => $user->id,
+                'file_name' => $resumeFile->getClientOriginalName(),
+                'file_size' => $resumeFile->getSize(),
+                'mime_type' => $resumeFile->getMimeType(),
+            ]);
+
+            // Validate file before upload
+            $validation = $this->fileUploadService->validateFile($resumeFile, [
+                'type' => 'document',
+                'max_size' => 5242880, // 5MB
+                'user_id' => $user->id,
+                'user_type' => 'gig_worker',
+            ]);
+
+            if (!$validation['success']) {
+                Log::warning('Resume file validation failed', [
+                    'user_id' => $user->id,
+                    'error' => $validation['error'],
+                    'error_code' => $validation['error_code'],
+                ]);
+
+                // Resume is optional, so we log the error but don't block onboarding
+                Log::info('Resume upload skipped due to validation error, continuing onboarding', [
+                    'user_id' => $user->id,
+                ]);
+            } else {
+                // Upload with retry logic
+                // Pass full directory path: portfolios/{user_id}/documents
+                $uploadResult = $this->fileUploadService->uploadWithRetry(
+                    $resumeFile,
+                    'portfolios/' . $user->id . '/documents',
+                    2, // max retries
+                    [
+                        'user_id' => null, // Don't append user_id again since it's in the path
+                        'user_type' => 'gig_worker',
+                    ]
+                );
+
+                if (!$uploadResult['success']) {
+                    Log::error('Resume file upload failed after retries', [
+                        'user_id' => $user->id,
+                        'error' => $uploadResult['error'],
+                        'error_code' => $uploadResult['error_code'],
+                    ]);
+
+                    // Resume is optional, so we log the error but don't block onboarding
+                    Log::info('Resume upload failed, continuing onboarding without resume', [
+                        'user_id' => $user->id,
+                    ]);
+                } else {
+                    $validated['resume_file'] = $uploadResult['url'];
+                    
+                    Log::info('Resume file uploaded successfully', [
+                        'user_id' => $user->id,
+                        'url' => $uploadResult['url'],
+                        'path' => $uploadResult['path'],
+                    ]);
+
+                    // Rate limiting: small delay after upload (150ms)
+                    usleep(150000);
+                }
+            }
+        }
+
         // Update user profile
         try {
             $user->update(array_merge($validated, [
@@ -203,142 +474,70 @@ class GigWorkerOnboardingController extends Controller
                 'onboarding_step' => 6, // Completed all steps (changed from 7 after removing language step)
             ]));
             
-            \Log::info('User profile updated successfully', ['user_id' => $user->id]);
-        } catch (\Exception $e) {
-            \Log::error('User profile update failed', [
+            Log::info('ONBOARDING_PROFILE_UPDATED', [
+                'event' => 'onboarding_profile_updated',
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
+                'user_type' => 'gig_worker',
+                'profile_status' => 'pending',
+                'timestamp' => now()->toIso8601String(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('ONBOARDING_PROFILE_UPDATE_FAILED', [
+                'event' => 'onboarding_profile_update_failed',
+                'user_id' => $user->id,
+                'user_type' => 'gig_worker',
+                'error_message' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'stack_trace' => $e->getTraceAsString(),
+                'timestamp' => now()->toIso8601String(),
             ]);
             return back()->withErrors(['error' => 'Failed to save profile. Please try again.'])->withInput();
         }
 
-        // Create portfolio items with sequential image uploads
-        if (!empty($validated['portfolio_items'])) {
-            \Log::info('Uploading portfolio items', [
-                'user_id' => $user->id,
-                'count' => count($validated['portfolio_items'])
-            ]);
-            
-            // Step 1: Collect all images that need to be uploaded
-            $allImagesToUpload = [];
-            foreach ($validated['portfolio_items'] as $itemIndex => $portfolioData) {
-                if (isset($portfolioData['images']) && is_array($portfolioData['images'])) {
-                    foreach ($portfolioData['images'] as $imageIndex => $image) {
-                        if ($image instanceof \Illuminate\Http\UploadedFile) {
-                            $combinedIndex = ($itemIndex * 100) + $imageIndex;
-                            $allImagesToUpload[] = [
-                                'file' => $image,
-                                'itemIndex' => $itemIndex,
-                                'imageIndex' => $imageIndex,
-                                'combinedIndex' => $combinedIndex,
-                            ];
-                        }
-                    }
-                }
-            }
-            
-            \Log::info('Total portfolio images to upload', ['count' => count($allImagesToUpload)]);
-            
-            // Step 2: Upload all images sequentially (one at a time)
-            $uploadedUrls = []; // Indexed by itemIndex
-            $uploadedCount = 0;
-            $failedCount = 0;
-            
-            foreach ($allImagesToUpload as $imageData) {
-                try {
-                    \Log::info('Uploading portfolio image sequentially', [
-                        'user_id' => $user->id,
-                        'portfolio_index' => $imageData['itemIndex'],
-                        'image_index' => $imageData['imageIndex'],
-                        'progress' => ($uploadedCount + $failedCount + 1) . '/' . count($allImagesToUpload)
-                    ]);
-                    
-                    // Upload to R2
-                    $path = Storage::disk('r2')->putFile('portfolios/' . $user->id, $imageData['file']);
-                    
-                    if ($path) {
-                        $url = Storage::disk('r2')->url($path);
-                        
-                        // Store URL indexed by portfolio item
-                        if (!isset($uploadedUrls[$imageData['itemIndex']])) {
-                            $uploadedUrls[$imageData['itemIndex']] = [];
-                        }
-                        $uploadedUrls[$imageData['itemIndex']][] = $url;
-                        $uploadedCount++;
-                        
-                        \Log::info('Portfolio image uploaded successfully', [
-                            'url' => $url,
-                            'item_index' => $imageData['itemIndex']
-                        ]);
-                        
-                        // Small delay to avoid rate limiting (100ms)
-                        usleep(100000);
-                    } else {
-                        $failedCount++;
-                        \Log::warning('Portfolio image upload returned no result', [
-                            'user_id' => $user->id,
-                            'portfolio_index' => $imageData['itemIndex'],
-                            'image_index' => $imageData['imageIndex']
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    $failedCount++;
-                    \Log::error('Portfolio image upload exception', [
-                        'user_id' => $user->id,
-                        'portfolio_index' => $imageData['itemIndex'],
-                        'image_index' => $imageData['imageIndex'],
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                    // Continue with other images even if one fails
-                }
-            }
-            
-            \Log::info('Portfolio upload summary', [
-                'user_id' => $user->id,
-                'total' => count($allImagesToUpload),
-                'uploaded' => $uploadedCount,
-                'failed' => $failedCount
-            ]);
-            
-            // Step 3: Create portfolio items with their uploaded image URLs
-            foreach ($validated['portfolio_items'] as $index => $portfolioData) {
-                $imageUrls = $uploadedUrls[$index] ?? [];
-                
-                PortfolioItem::create([
-                    'user_id' => $user->id,
-                    'title' => $portfolioData['title'],
-                    'description' => $portfolioData['description'] ?? null,
-                    'project_url' => $portfolioData['project_url'] ?? null,
-                    'project_type' => $portfolioData['project_type'],
-                    'images' => $imageUrls,
-                    'tags' => $validated['skills_with_experience'] ? array_column($validated['skills_with_experience'], 'skill') : [],
-                    'display_order' => $index,
-                ]);
-                
-                \Log::info('Portfolio item created', [
-                    'user_id' => $user->id,
-                    'item_index' => $index,
-                    'images_count' => count($imageUrls)
-                ]);
-            }
-        }
+
 
         // Send profile submitted confirmation email
         try {
             Mail::to($user->email)->send(new ProfileSubmitted($user));
+            
+            Log::info('ONBOARDING_EMAIL_SENT', [
+                'event' => 'onboarding_email_sent',
+                'user_id' => $user->id,
+                'user_type' => 'gig_worker',
+                'email' => $user->email,
+                'timestamp' => now()->toIso8601String(),
+            ]);
         } catch (\Exception $e) {
-            \Log::error('Failed to send profile submitted email: ' . $e->getMessage());
+            Log::error('ONBOARDING_EMAIL_FAILED', [
+                'event' => 'onboarding_email_failed',
+                'user_id' => $user->id,
+                'user_type' => 'gig_worker',
+                'email' => $user->email,
+                'error_message' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'timestamp' => now()->toIso8601String(),
+            ]);
         }
 
-        \Log::info('Gig worker onboarding completed successfully', [
+        Log::info('ONBOARDING_COMPLETED', [
+            'event' => 'onboarding_completed',
             'user_id' => $user->id,
-            'profile_picture_uploaded' => isset($validated['profile_picture']),
-            'id_verification_uploaded' => isset($validated['id_front_image']) && isset($validated['id_back_image']),
-            'portfolio_items_count' => !empty($validated['portfolio_items']) ? count($validated['portfolio_items']) : 0
+            'user_type' => 'gig_worker',
+            'user_email' => $user->email,
+            'completion_summary' => [
+                'profile_picture_uploaded' => isset($validated['profile_picture']),
+                'id_front_uploaded' => isset($validated['id_front_image']),
+                'id_back_uploaded' => isset($validated['id_back_image']),
+                'id_verification_complete' => isset($validated['id_front_image']) && isset($validated['id_back_image']),
+                'portfolio_link_saved' => !empty($validated['portfolio_link']),
+                'resume_file_uploaded' => isset($validated['resume_file']),
+                'profile_status' => 'pending',
+            ],
+            'upload_errors' => !empty($idUploadErrors) ? $idUploadErrors : null,
+            'timestamp' => now()->toIso8601String(),
         ]);
 
-        return redirect()->route('jobs.index')->with('success',
+        return redirect()->route('gig-worker.dashboard')->with('success',
             'Your profile has been submitted for review. You\'ll be notified once your ID is verified and profile is approved.');
     }
 

@@ -27,7 +27,17 @@ class GigWorkerDashboardController extends Controller
         }
 
         $data = [
-            'auth' => ['user' => $user],
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'user_type' => $user->user_type,
+                    'profile_picture' => $user->profile_picture,
+                    'professional_title' => $user->professional_title,
+                    'hourly_rate' => $user->hourly_rate,
+                ]
+            ],
             'stats' => $this->getGigWorkerStats($user),
             'activeContracts' => $this->getActiveContracts($user),
             'jobInvites' => $this->getJobInvites($user),
@@ -281,11 +291,16 @@ class GigWorkerDashboardController extends Controller
                     'title' => $job->title,
                     'client' => $job->employer->first_name . ' ' . $job->employer->last_name,
                     'budget' => $job->getBudgetDisplayAttribute(),
+                    'budgetMin' => $job->budget_min,
+                    'budgetMax' => $job->budget_max,
+                    'estimatedDuration' => $job->estimated_duration,
                     'skills' => $job->required_skills,
+                    'requiredSkills' => $job->required_skills ?? [],
                     'matchScore' => round($matchScore),
                     'matchingSkills' => $matchingSkills,
                     'posted_at' => $job->created_at,
-                    'description' => substr($job->description, 0, 120) . '...',
+                    'postedAt' => $job->created_at,
+                    'description' => $job->description ? substr($job->description, 0, 120) . '...' : '',
                 ];
             });
 

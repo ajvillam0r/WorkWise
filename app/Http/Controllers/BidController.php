@@ -99,7 +99,16 @@ class BidController extends Controller
      */
     public function show(Bid $bid): Response
     {
-        $bid->load(['job.employer', 'gigWorker']);
+        $bid->load([
+            'job.employer',
+            'gigWorker' => function ($query) {
+                $query->select([
+                    'id', 'first_name', 'last_name', 'profile_picture',
+                    'professional_title', 'bio', 'skills_with_experience',
+                    'portfolio_link', 'resume_file', 'average_rating'
+                ]);
+            }
+        ]);
 
         // Check if user can view this bid
         $user = auth()->user();

@@ -1,76 +1,129 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SkillAutocompleteInput from '@/Components/SkillAutocompleteInput';
+import FileUploadInput from '@/Components/FileUploadInput';
+import ValidationFeedback from '@/Components/ValidationFeedback';
+import CharacterCounter from '@/Components/CharacterCounter';
+import ErrorSummary from '@/Components/ErrorSummary';
+import { ToastContainer } from '@/Components/Toast';
+import useOnboardingForm from '@/Hooks/useOnboardingForm.js';
+import useFieldValidation from '@/Hooks/useFieldValidation';
+import useToast from '@/Hooks/useToast';
+import { validationRules } from '@/utils/validationRules';
+import { getFirstError, ERROR_CODES, SUPPORT_CONTACT } from '@/utils/errorHelpers';
 
 export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const [currentStep, setCurrentStep] = useState(0);
     const totalSteps = 7; // Changed from 8 (removed language step)
 
-    const { data, setData, post, processing, errors } = useForm({
-        // Step 1: Basic Info
-        professional_title: '',
-        hourly_rate: '',
-        bio: '',
-        profile_picture: null,
+    // Use custom onboarding form hook with file handling and persistence
+    const { 
+        data, 
+        setData, 
+        post, 
+        processing, 
+        errors,
+        files,
+        filePreviews,
+        handleFileChange,
+        clearStorage,
+        getUploadProgress,
+        getUploadStatus
+    } = useOnboardingForm({
+        initialData: {
+            // Step 1: Basic Info
+            professional_title: '',
+            hourly_rate: '',
+            bio: '',
+            profile_picture: null,
 
-        // Step 2: Hierarchical Skills
-        broad_category: '',
-        specific_services: [],
-        skills_with_experience: [],
+            // Step 2: Hierarchical Skills
+            broad_category: '',
+            specific_services: [],
+            skills_with_experience: [],
 
-        // Step 3: Portfolio
-        portfolio_items: [],
+            // Step 3: Portfolio
+            portfolio_link: '',
+            resume_file: null,
 
-        // Step 4: ID Verification & Address
-        id_type: '',
-        id_front_image: null,
-        id_back_image: null,
-        street_address: '',
-        city: '',
-        barangay: '',
-        postal_code: '',
-        kyc_country: '',
+            // Step 4: ID Verification & Address
+            id_type: '',
+            id_front_image: null,
+            id_back_image: null,
+            street_address: '',
+            city: '',
+            barangay: '',
+            postal_code: '',
+            kyc_country: '',
 
-        // Step 5: Availability
-        working_hours: {
-            monday: { enabled: true, start: '09:00', end: '17:00' },
-            tuesday: { enabled: true, start: '09:00', end: '17:00' },
-            wednesday: { enabled: true, start: '09:00', end: '17:00' },
-            thursday: { enabled: true, start: '09:00', end: '17:00' },
-            friday: { enabled: true, start: '09:00', end: '17:00' },
-            saturday: { enabled: false, start: '09:00', end: '17:00' },
-            sunday: { enabled: false, start: '09:00', end: '17:00' },
+            // Step 5: Availability
+            working_hours: {
+                monday: { enabled: true, start: '09:00', end: '17:00' },
+                tuesday: { enabled: true, start: '09:00', end: '17:00' },
+                wednesday: { enabled: true, start: '09:00', end: '17:00' },
+                thursday: { enabled: true, start: '09:00', end: '17:00' },
+                friday: { enabled: true, start: '09:00', end: '17:00' },
+                saturday: { enabled: false, start: '09:00', end: '17:00' },
+                sunday: { enabled: false, start: '09:00', end: '17:00' },
+            },
+            timezone: 'Asia/Manila',
+            preferred_communication: [],
+            availability_notes: '',
         },
-        timezone: 'Asia/Manila',
-        preferred_communication: [],
-        availability_notes: '',
+        storageKey: `onboarding_gig_worker_${user?.id || 'guest'}`,
+        enablePersistence: true
     });
 
+    // Safety fallbacks for upload progress functions (in case of caching issues)
+    const safeGetUploadProgress = getUploadProgress || (() => 0);
+    const safeGetUploadStatus = getUploadStatus || (() => '');
+
     // State for UI
-    const [selectedSkillsForExperience, setSelectedSkillsForExperience] = useState([]);
     const [availableCategories, setAvailableCategories] = useState([]);
     const [detectedAddress, setDetectedAddress] = useState(null);
     const [availableServices, setAvailableServices] = useState([]);
     const [availableSkills, setAvailableSkills] = useState([]);
+    const [skillSearchInput, setSkillSearchInput] = useState('');
+    const [portfolioType, setPortfolioType] = useState('none'); // 'none', 'link', 'resume'
+    const [attemptedProceed, setAttemptedProceed] = useState(false);
+    const [showErrorSummary, setShowErrorSummary] = useState(false);
+    const [errorCodes, setErrorCodes] = useState({});
+    const [uploadFailures, setUploadFailures] = useState({});
+    
+    // Toast notifications
+    const { toasts, removeToast, success, error: showError, warning } = useToast();
 
-    // State to track file previews and persist uploads across step navigation
-    const [filePreviews, setFilePreviews] = useState({
-        profile_picture: null,
-        id_front_image: null,
-        id_back_image: null,
-        portfolio_items: {} // Track by index
-    });
+    // Real-time validation for Step 1 fields
+    const professionalTitleValidation = useFieldValidation(
+        data.professional_title,
+        [validationRules.required('Professional title')],
+        300
+    );
 
-    const [fileRefs, setFileRefs] = useState({
-        profile_picture: null,
-        id_front_image: null,
-        id_back_image: null,
-        portfolio_items: {} // Track by index
-    });
+    const hourlyRateValidation = useFieldValidation(
+        data.hourly_rate,
+        [
+            validationRules.required('Hourly rate'),
+            validationRules.numeric('Hourly rate'),
+            validationRules.minValue(5, 'Hourly rate'),
+            validationRules.maxValue(10000, 'Hourly rate')
+        ],
+        300
+    );
+
+    const bioValidation = useFieldValidation(
+        data.bio,
+        [
+            validationRules.required('Professional bio'),
+            validationRules.minLength(50, 'Professional bio')
+        ],
+        500
+    );
 
     // Load categories from taxonomy
     useEffect(() => {
@@ -81,20 +134,23 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
 
     // Update available services when broad category changes
     useEffect(() => {
-        if (data.broad_category) {
+        if (data.broad_category && availableCategories.length > 0) {
             const selected = availableCategories.find(cat => cat.name === data.broad_category);
             if (selected) {
                 setAvailableServices(selected.categories || []);
-                setData('specific_services', []);
-                setData('skills_with_experience', []);
+                // Only reset if services actually changed
+                if (data.specific_services.length > 0) {
+                    setData('specific_services', []);
+                    setData('skills_with_experience', []);
+                }
                 setAvailableSkills([]);
             }
         }
-    }, [data.broad_category]);
+    }, [data.broad_category, availableCategories]);
 
     // Update available skills when specific services change
     useEffect(() => {
-        if (data.specific_services.length > 0) {
+        if (data.specific_services.length > 0 && availableServices.length > 0) {
             const allSkills = [];
             data.specific_services.forEach(serviceName => {
                 const service = availableServices.find(s => s.name === serviceName);
@@ -107,10 +163,10 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                 }
             });
             setAvailableSkills(allSkills);
-        } else {
+        } else if (data.specific_services.length === 0) {
             setAvailableSkills([]);
         }
-    }, [data.specific_services]);
+    }, [data.specific_services, availableServices]);
 
     // Auto-detect address when reaching ID verification step
     useEffect(() => {
@@ -147,39 +203,61 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        setShowErrorSummary(false);
+        
         post(route('gig-worker.onboarding'), {
             forceFormData: true,
             onError: (errors) => {
                 console.error('Onboarding submission errors:', errors);
-                console.table(errors);
                 
-                const firstErrorField = Object.keys(errors)[0];
-                if (firstErrorField) {
-                    console.log(`First error on field: ${firstErrorField}`, errors[firstErrorField]);
+                // Determine error codes based on error messages
+                const codes = {};
+                Object.entries(errors).forEach(([field, message]) => {
+                    const msg = Array.isArray(message) ? message[0] : message;
                     
-                    // Show user-friendly error message
-                    let userMessage = 'Please fix the following errors:\n\n';
-                    Object.keys(errors).forEach(field => {
-                        userMessage += `• ${errors[field]}\n`;
-                    });
-                    alert(userMessage);
-                    
-                    // Navigate to the step with the error
-                    if (firstErrorField.includes('professional_title') || firstErrorField.includes('hourly_rate') || firstErrorField.includes('bio') || firstErrorField.includes('profile_picture')) {
-                        setCurrentStep(1);
-                    } else if (firstErrorField.includes('skills') || firstErrorField.includes('broad_category') || firstErrorField.includes('specific_services')) {
-                        setCurrentStep(2);
-                    } else if (firstErrorField.includes('portfolio')) {
-                        setCurrentStep(3);
-                    } else if (firstErrorField.includes('id_') || firstErrorField.includes('address') || firstErrorField.includes('city') || firstErrorField.includes('postal')) {
-                        setCurrentStep(4);
-                    } else if (firstErrorField.includes('working_hours') || firstErrorField.includes('preferred_communication') || firstErrorField.includes('timezone')) {
-                        setCurrentStep(5);
+                    // Assign error codes based on message content
+                    if (msg.includes('required') || msg.includes('must be provided')) {
+                        codes[field] = ERROR_CODES.REQUIRED_FIELD_MISSING;
+                    } else if (msg.includes('file') && msg.includes('large')) {
+                        codes[field] = ERROR_CODES.FILE_TOO_LARGE;
+                    } else if (msg.includes('file') && msg.includes('type')) {
+                        codes[field] = ERROR_CODES.INVALID_FILE_TYPE;
+                    } else if (msg.includes('minimum') || msg.includes('at least')) {
+                        codes[field] = ERROR_CODES.MIN_LENGTH;
+                    } else if (msg.includes('maximum') || msg.includes('exceed')) {
+                        codes[field] = ERROR_CODES.MAX_LENGTH;
+                    } else if (msg.includes('format') || msg.includes('invalid')) {
+                        codes[field] = ERROR_CODES.INVALID_FORMAT;
+                    } else {
+                        codes[field] = ERROR_CODES.SERVER_ERROR;
                     }
+                });
+                
+                setErrorCodes(codes);
+                setShowErrorSummary(true);
+                
+                // Navigate to the step with the first error
+                const firstError = getFirstError(errors);
+                if (firstError && firstError.step !== null) {
+                    setCurrentStep(firstError.step);
+                    
+                    // Show error toast
+                    showError(
+                        `Please fix ${Object.keys(errors).length} error${Object.keys(errors).length > 1 ? 's' : ''} in your form`,
+                        5000
+                    );
+                } else {
+                    // Generic error toast if we can't determine the step
+                    showError('Please review and fix the errors in your form', 5000);
                 }
+                
+                // Scroll to top to show error summary
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             },
             onSuccess: () => {
                 console.log('Onboarding completed successfully');
+                success('Your profile has been created successfully! Welcome to WorkWise!', 6000);
+                clearStorage();
             }
         });
     };
@@ -187,15 +265,69 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const handleSkip = () => {
         post(route('gig-worker.onboarding.skip'));
     };
+    
+    // Handle error click to navigate to field
+    const handleErrorClick = (fieldName) => {
+        const firstError = getFirstError({ [fieldName]: errors[fieldName] });
+        if (firstError && firstError.step !== null) {
+            setCurrentStep(firstError.step);
+            
+            // Scroll to top after navigation
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Try to focus the field
+                const element = document.getElementById(fieldName) || document.querySelector(`[name="${fieldName}"]`);
+                if (element) {
+                    element.focus();
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+    };
+    
+    // Handle file upload retry
+    const handleFileRetry = (fieldName) => {
+        setUploadFailures(prev => ({ ...prev, [fieldName]: false }));
+        warning(`Retrying upload for ${fieldName.replace(/_/g, ' ')}...`, 3000);
+        
+        // Trigger file input click to allow user to select file again
+        const fileInput = document.querySelector(`input[name="${fieldName}"]`);
+        if (fileInput) {
+            fileInput.click();
+        }
+    };
 
     const nextStep = () => {
         if (currentStep < totalSteps - 1) {
             if (canProceedFromStep(currentStep)) {
                 setCurrentStep(currentStep + 1);
+                setAttemptedProceed(false); // Reset for next step
+                // Auto-scroll to top on step navigation (mobile optimization)
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
+                // Mark that user attempted to proceed (to show validation errors)
+                setAttemptedProceed(true);
+                
+                // Mark validation fields as touched for Step 1
+                if (currentStep === 1) {
+                    professionalTitleValidation.markAsTouched();
+                    hourlyRateValidation.markAsTouched();
+                    bioValidation.markAsTouched();
+                }
+                
                 // Show error message based on current step
                 let errorMsg = 'Please complete all required fields before proceeding.';
-                if (currentStep === 2) {
+                if (currentStep === 1) {
+                    const errors = [];
+                    if (!data.professional_title) errors.push('Professional title');
+                    if (!data.hourly_rate || data.hourly_rate < 5 || data.hourly_rate > 10000) errors.push('Valid hourly rate (₱5-₱10,000)');
+                    if (!data.bio || data.bio.length < 50) errors.push('Professional bio (minimum 50 characters)');
+                    
+                    if (errors.length > 0) {
+                        errorMsg = `Please complete the following:\n• ${errors.join('\n• ')}`;
+                    }
+                } else if (currentStep === 2) {
                     errorMsg = `Please select at least 3 skills with experience levels. You have selected ${data.skills_with_experience.length} skill(s).`;
                 }
                 alert(errorMsg);
@@ -206,6 +338,8 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const prevStep = () => {
         if (currentStep > 0) {
             setCurrentStep(currentStep - 1);
+            // Auto-scroll to top on step navigation (mobile optimization)
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
@@ -244,95 +378,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         }
     };
 
-    const addPortfolioItem = () => {
-        setData('portfolio_items', [...data.portfolio_items, {
-            title: '',
-            description: '',
-            project_url: '',
-            project_type: 'other',
-            images: []
-        }]);
-    };
 
-    const removePortfolioItem = (index) => {
-        setData('portfolio_items', data.portfolio_items.filter((_, i) => i !== index));
-    };
-
-    // Helper function to handle file uploads with preview persistence
-    const handleFileUpload = (fieldName, file, index = null) => {
-        if (!file) return;
-
-        // Create preview URL
-        const previewUrl = URL.createObjectURL(file);
-
-        // Store file reference
-        if (index !== null) {
-            // Portfolio item image
-            setFileRefs(prev => ({
-                ...prev,
-                portfolio_items: {
-                    ...prev.portfolio_items,
-                    [index]: file
-                }
-            }));
-            setFilePreviews(prev => ({
-                ...prev,
-                portfolio_items: {
-                    ...prev.portfolio_items,
-                    [index]: previewUrl
-                }
-            }));
-        } else {
-            // Single file (profile_picture, id_front_image, id_back_image)
-            setFileRefs(prev => ({ ...prev, [fieldName]: file }));
-            setFilePreviews(prev => ({ ...prev, [fieldName]: previewUrl }));
-        }
-
-        // Update form data
-        setData(fieldName, file);
-    };
-
-    // Helper function to update portfolio item images with preview generation
-    const updatePortfolioItemImages = (index, files) => {
-        const updatedItems = [...data.portfolio_items];
-        updatedItems[index].images = Array.from(files);
-        setData('portfolio_items', updatedItems);
-
-        // Store previews for each image
-        Array.from(files).forEach((file, fileIndex) => {
-            const previewUrl = URL.createObjectURL(file);
-            setFilePreviews(prev => ({
-                ...prev,
-                portfolio_items: {
-                    ...prev.portfolio_items,
-                    [`${index}_${fileIndex}`]: previewUrl
-                }
-            }));
-        });
-    };
-
-    // Cleanup preview URLs on unmount to prevent memory leaks
-    useEffect(() => {
-        return () => {
-            // Cleanup preview URLs to prevent memory leaks
-            Object.values(filePreviews).forEach(url => {
-                if (typeof url === 'string' && url.startsWith('blob:')) {
-                    URL.revokeObjectURL(url);
-                }
-            });
-            Object.values(filePreviews.portfolio_items || {}).forEach(url => {
-                if (typeof url === 'string' && url.startsWith('blob:')) {
-                    URL.revokeObjectURL(url);
-                }
-            });
-        };
-    }, []);
-
-    const updatePortfolioItem = (index, field, value) => {
-        const updated = [...data.portfolio_items];
-        updated[index][field] = value;
-        setData('portfolio_items', updated);
-    };
 
     const toggleService = (serviceName) => {
         if (data.specific_services.includes(serviceName)) {
@@ -397,35 +443,49 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             }
         >
             <Head title="Gig Worker Onboarding" />
+            
+            {/* Toast Notifications */}
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
 
-            <div className="py-12">
+            <div className="py-4 sm:py-8 md:py-12 px-4 sm:px-0">
                 <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            {/* Progress Bar */}
-                            <div className="mb-8">
+                        <div className="p-4 sm:p-6 text-gray-900">
+                            {/* Error Summary */}
+                            {showErrorSummary && Object.keys(errors).length > 0 && (
+                                <ErrorSummary
+                                    errors={errors}
+                                    errorCodes={errorCodes}
+                                    onClose={() => setShowErrorSummary(false)}
+                                    onErrorClick={handleErrorClick}
+                                    showErrorCodes={true}
+                                />
+                            )}
+                            
+                            {/* Progress Bar - Mobile Optimized */}
+                            <div className="mb-4 sm:mb-6 md:mb-8">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-600">
+                                    <span className="text-xs sm:text-sm font-medium text-gray-600">
                                         Step {currentStep + 1} of {totalSteps}
                                     </span>
-                                    <span className="text-sm text-gray-500">
+                                    <span className="text-xs sm:text-sm text-gray-500">
                                         {Math.round(((currentStep + 1) / totalSteps) * 100)}% Complete
                                     </span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="w-full bg-gray-200 rounded-full h-2 sm:h-2.5">
                                     <div 
-                                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                        className="bg-blue-600 h-2 sm:h-2.5 rounded-full transition-all duration-300"
                                         style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}
                                     ></div>
                                 </div>
                             </div>
 
-                            <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+                            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center px-2">
                                 {getStepTitle()}
                             </h3>
 
                             <form onSubmit={handleSubmit}>
-                                {/* Step 0: Welcome / Tutorial */}
+                                {/* Step 0: Welcome / Tutorial - Mobile Optimized */}
                                 {currentStep === 0 && (
                                     <div className="space-y-6">
                                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg">
@@ -479,33 +539,56 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                     <div className="space-y-6">
                                         <div>
                                             <InputLabel htmlFor="professional_title" value="Professional Title *" />
-                                            <select
-                                                id="professional_title"
-                                                value={data.professional_title}
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                onChange={(e) => setData('professional_title', e.target.value)}
-                                                required
-                                            >
-                                                <option value="">Select your professional title</option>
-                                                <option value="Web Developer">Web Developer</option>
-                                                <option value="Mobile Developer">Mobile Developer</option>
-                                                <option value="Frontend Developer">Frontend Developer</option>
-                                                <option value="Backend Developer">Backend Developer</option>
-                                                <option value="Full Stack Developer">Full Stack Developer</option>
-                                                <option value="UI/UX Designer">UI/UX Designer</option>
-                                                <option value="Graphic Designer">Graphic Designer</option>
-                                                <option value="Content Writer">Content Writer</option>
-                                                <option value="Copywriter">Copywriter</option>
-                                                <option value="Digital Marketer">Digital Marketer</option>
-                                                <option value="SEO Specialist">SEO Specialist</option>
-                                                <option value="Social Media Manager">Social Media Manager</option>
-                                                <option value="Video Editor">Video Editor</option>
-                                                <option value="Photographer">Photographer</option>
-                                                <option value="Virtual Assistant">Virtual Assistant</option>
-                                                <option value="Data Analyst">Data Analyst</option>
-                                                <option value="Project Manager">Project Manager</option>
-                                                <option value="Other">Other (specify in bio)</option>
-                                            </select>
+                                            <div className="relative">
+                                                <select
+                                                    id="professional_title"
+                                                    value={data.professional_title}
+                                                    className={`mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm ${
+                                                        attemptedProceed && !data.professional_title ? 'border-red-300 bg-red-50' : ''
+                                                    } ${
+                                                        professionalTitleValidation.isValid ? 'border-green-300 bg-green-50' : ''
+                                                    }`}
+                                                    onChange={(e) => {
+                                                        setData('professional_title', e.target.value);
+                                                        professionalTitleValidation.markAsTouched();
+                                                    }}
+                                                    onBlur={() => professionalTitleValidation.markAsTouched()}
+                                                    required
+                                                >
+                                                    <option value="">Select your professional title</option>
+                                                    <option value="Web Developer">Web Developer</option>
+                                                    <option value="Mobile Developer">Mobile Developer</option>
+                                                    <option value="Frontend Developer">Frontend Developer</option>
+                                                    <option value="Backend Developer">Backend Developer</option>
+                                                    <option value="Full Stack Developer">Full Stack Developer</option>
+                                                    <option value="UI/UX Designer">UI/UX Designer</option>
+                                                    <option value="Graphic Designer">Graphic Designer</option>
+                                                    <option value="Content Writer">Content Writer</option>
+                                                    <option value="Copywriter">Copywriter</option>
+                                                    <option value="Digital Marketer">Digital Marketer</option>
+                                                    <option value="SEO Specialist">SEO Specialist</option>
+                                                    <option value="Social Media Manager">Social Media Manager</option>
+                                                    <option value="Video Editor">Video Editor</option>
+                                                    <option value="Photographer">Photographer</option>
+                                                    <option value="Virtual Assistant">Virtual Assistant</option>
+                                                    <option value="Data Analyst">Data Analyst</option>
+                                                    <option value="Project Manager">Project Manager</option>
+                                                    <option value="Other">Other (specify in bio)</option>
+                                                </select>
+                                                {professionalTitleValidation.isValid && (
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                                        <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <ValidationFeedback
+                                                isValid={professionalTitleValidation.isValid}
+                                                error={professionalTitleValidation.error}
+                                                touched={professionalTitleValidation.touched || attemptedProceed}
+                                                showSuccess={true}
+                                            />
                                             <InputError message={errors.professional_title} className="mt-2" />
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Select the title that best describes your primary skill or role
@@ -514,65 +597,109 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
 
                                         <div>
                                             <InputLabel htmlFor="hourly_rate" value="Hourly Rate (PHP) *" />
-                                            <TextInput
-                                                id="hourly_rate"
-                                                type="number"
-                                                value={data.hourly_rate}
-                                                className="mt-1 block w-full"
-                                                placeholder="500"
-                                                min="5"
-                                                onChange={(e) => setData('hourly_rate', e.target.value)}
-                                                required
+                                            <div className="relative">
+                                                <TextInput
+                                                    id="hourly_rate"
+                                                    type="number"
+                                                    value={data.hourly_rate}
+                                                    className={`mt-1 block w-full ${
+                                                        attemptedProceed && (!data.hourly_rate || data.hourly_rate < 5 || data.hourly_rate > 10000) 
+                                                            ? 'border-red-300 bg-red-50' 
+                                                            : ''
+                                                    } ${
+                                                        hourlyRateValidation.isValid ? 'border-green-300 bg-green-50' : ''
+                                                    }`}
+                                                    placeholder="500"
+                                                    min="5"
+                                                    max="10000"
+                                                    onChange={(e) => {
+                                                        setData('hourly_rate', e.target.value);
+                                                        hourlyRateValidation.markAsTouched();
+                                                    }}
+                                                    onBlur={() => hourlyRateValidation.markAsTouched()}
+                                                    required
+                                                />
+                                                {hourlyRateValidation.isValid && (
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                                        <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <ValidationFeedback
+                                                isValid={hourlyRateValidation.isValid}
+                                                error={hourlyRateValidation.error}
+                                                touched={hourlyRateValidation.touched || attemptedProceed}
+                                                showSuccess={true}
                                             />
                                             <InputError message={errors.hourly_rate} className="mt-2" />
                                             <p className="text-xs text-gray-500 mt-1">
-                                                You can adjust this later. Consider your experience and market rates.
+                                                Enter a rate between ₱5 and ₱10,000. Consider your experience and market rates.
                                             </p>
                                         </div>
 
                                         <div>
                                             <InputLabel htmlFor="bio" value="Professional Bio *" />
-                                            <textarea
-                                                id="bio"
-                                                value={data.bio}
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                rows="6"
-                                                placeholder="Describe your experience, expertise, what makes you unique, and what you're passionate about..."
-                                                onChange={(e) => setData('bio', e.target.value)}
-                                                required
+                                            <div className="relative">
+                                                <textarea
+                                                    id="bio"
+                                                    value={data.bio}
+                                                    className={`mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm ${
+                                                        attemptedProceed && (!data.bio || data.bio.length < 50) ? 'border-red-300 bg-red-50' : ''
+                                                    } ${
+                                                        bioValidation.isValid ? 'border-green-300 bg-green-50' : ''
+                                                    }`}
+                                                    rows="6"
+                                                    placeholder="Describe your experience, expertise, what makes you unique, and what you're passionate about..."
+                                                    onChange={(e) => {
+                                                        setData('bio', e.target.value);
+                                                        bioValidation.markAsTouched();
+                                                    }}
+                                                    onBlur={() => bioValidation.markAsTouched()}
+                                                    required
+                                                />
+                                                {bioValidation.isValid && (
+                                                    <div className="absolute right-3 top-3 pointer-events-none">
+                                                        <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <ValidationFeedback
+                                                isValid={bioValidation.isValid}
+                                                error={bioValidation.error}
+                                                touched={bioValidation.touched || attemptedProceed}
+                                                showSuccess={true}
                                             />
                                             <InputError message={errors.bio} className="mt-2" />
-                                            <div className="flex justify-between text-xs mt-1">
-                                                <span className="text-gray-500">Minimum 50 characters</span>
-                                                <span className={data.bio.length >= 50 ? 'text-green-600' : 'text-gray-500'}>
-                                                    {data.bio.length}/50
-                                                </span>
+                                            <div className="mt-2">
+                                                <CharacterCounter
+                                                    current={data.bio.length}
+                                                    min={50}
+                                                    max={1000}
+                                                    showProgress={true}
+                                                />
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <InputLabel htmlFor="profile_picture" value="Profile Photo (Optional)" />
-                                            <input
-                                                id="profile_picture"
-                                                type="file"
-                                                accept="image/*"
-                                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                onChange={(e) => handleFileUpload('profile_picture', e.target.files[0])}
-                                            />
-                                            <InputError message={errors.profile_picture} className="mt-2" />
-                                            {filePreviews.profile_picture && (
-                                                <div className="mt-3">
-                                                    <img 
-                                                        src={filePreviews.profile_picture} 
-                                                        alt="Preview" 
-                                                        className="h-24 w-24 rounded-full object-cover border-2 border-gray-300"
-                                                    />
-                                                </div>
-                                            )}
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Profiles with photos get 40% more responses!
-                                            </p>
-                                        </div>
+                                        <FileUploadInput
+                                            name="profile_picture"
+                                            label="Profile Photo"
+                                            accept="image/*"
+                                            maxSize={2}
+                                            required={false}
+                                            preview="image"
+                                            value={files.profile_picture || null}
+                                            previewUrl={filePreviews.profile_picture || null}
+                                            error={errors.profile_picture}
+                                            onChange={(file) => handleFileChange('profile_picture', file)}
+                                            helpText="Profiles with photos get 40% more responses! Max 2MB."
+                                            loading={processing && files.profile_picture}
+                                            uploadProgress={safeGetUploadProgress('profile_picture')}
+                                            uploadStatus={safeGetUploadStatus('profile_picture')}
+                                        />
                                     </div>
                                 )}
 
@@ -638,8 +765,25 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                             <div>
                                                 <InputLabel value="3. Select Your Skills & Set Experience Level (Choose 3 or more) *" />
                                                 <p className="text-xs text-gray-600 mb-2">
-                                                    Click on skills to add them, then set your experience level for each
+                                                    Type to search and add skills quickly, or click on skills below
                                                 </p>
+                                                
+                                                {/* Skill Autocomplete Input */}
+                                                <div className="mb-4">
+                                                    <SkillAutocompleteInput
+                                                        value={skillSearchInput}
+                                                        onChange={setSkillSearchInput}
+                                                        onSelect={(skill) => {
+                                                            if (!data.skills_with_experience.find(s => s.skill === skill)) {
+                                                                toggleSkillSelection(skill);
+                                                            }
+                                                        }}
+                                                        skills={availableSkills}
+                                                        placeholder="Type to search skills (e.g., 'react', 'php')..."
+                                                        maxSuggestions={10}
+                                                    />
+                                                </div>
+
                                                 <div className="space-y-3 max-h-96 overflow-y-auto border border-gray-200 rounded-md p-3">
                                                     {availableSkills.map((skill, index) => {
                                                         const skillData = data.skills_with_experience.find(s => s.skill === skill);
@@ -707,112 +851,165 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                 {/* Step 3: Portfolio */}
                                 {currentStep === 3 && (
                                     <div className="space-y-6">
-                                        <div className="text-center">
-                                            <p className="text-gray-600 mb-4">
-                                                Add your best work samples to stand out (optional but recommended)
+                                        <div className="text-center mb-6">
+                                            <p className="text-gray-600 mb-2">
+                                                Showcase your work to stand out (optional)
                                             </p>
-                                            <button
-                                                type="button"
-                                                onClick={addPortfolioItem}
-                                                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                                            >
-                                                + Add Portfolio Item
-                                            </button>
+                                            <p className="text-sm text-gray-500">
+                                                Choose one option below or skip to continue
+                                            </p>
                                         </div>
 
-                                        {data.portfolio_items.length === 0 && (
-                                            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                                                <p className="text-gray-500">No portfolio items yet. Click "Add Portfolio Item" to start showcasing your work.</p>
+                                        {/* Portfolio Type Selection */}
+                                        <div className="space-y-4">
+                                            <InputLabel value="How would you like to showcase your work?" />
+                                            
+                                            <div className="space-y-3">
+                                                {/* Portfolio Link Option */}
+                                                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                                                    style={{ borderColor: portfolioType === 'link' ? '#4F46E5' : '#D1D5DB' }}>
+                                                    <input
+                                                        type="radio"
+                                                        name="portfolio_type"
+                                                        value="link"
+                                                        checked={portfolioType === 'link'}
+                                                        onChange={(e) => {
+                                                            setPortfolioType(e.target.value);
+                                                            handleFileChange('resume_file', null);
+                                                        }}
+                                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <div className="ml-3 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                            </svg>
+                                                            <span className="font-medium text-gray-900">Portfolio Website Link</span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            Share a link to your online portfolio, Behance, Dribbble, GitHub, etc.
+                                                        </p>
+                                                    </div>
+                                                </label>
+
+                                                {/* Resume Upload Option */}
+                                                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                                                    style={{ borderColor: portfolioType === 'resume' ? '#4F46E5' : '#D1D5DB' }}>
+                                                    <input
+                                                        type="radio"
+                                                        name="portfolio_type"
+                                                        value="resume"
+                                                        checked={portfolioType === 'resume'}
+                                                        onChange={(e) => {
+                                                            setPortfolioType(e.target.value);
+                                                            setData('portfolio_link', '');
+                                                        }}
+                                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <div className="ml-3 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                            </svg>
+                                                            <span className="font-medium text-gray-900">Upload Resume</span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            Upload your resume or CV (PDF, DOC, or DOCX - Max 5MB)
+                                                        </p>
+                                                    </div>
+                                                </label>
+
+                                                {/* Skip Option */}
+                                                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                                                    style={{ borderColor: portfolioType === 'none' ? '#4F46E5' : '#D1D5DB' }}>
+                                                    <input
+                                                        type="radio"
+                                                        name="portfolio_type"
+                                                        value="none"
+                                                        checked={portfolioType === 'none'}
+                                                        onChange={(e) => {
+                                                            setPortfolioType(e.target.value);
+                                                            setData('portfolio_link', '');
+                                                            handleFileChange('resume_file', null);
+                                                        }}
+                                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <div className="ml-3 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                            </svg>
+                                                            <span className="font-medium text-gray-900">Skip for Now</span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            You can add your portfolio later from your profile
+                                                        </p>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {/* Portfolio Link Input */}
+                                        {portfolioType === 'link' && (
+                                            <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                                                <InputLabel htmlFor="portfolio_link" value="Portfolio Website URL *" />
+                                                <TextInput
+                                                    id="portfolio_link"
+                                                    type="url"
+                                                    value={data.portfolio_link}
+                                                    className="mt-2 block w-full"
+                                                    placeholder="https://yourportfolio.com"
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        setData('portfolio_link', value);
+                                                        
+                                                        // Frontend URL validation
+                                                        const urlPattern = /^https?:\/\/.+\..+/;
+                                                        if (value && !urlPattern.test(value)) {
+                                                            e.target.setCustomValidity('Please enter a valid URL starting with http:// or https://');
+                                                        } else {
+                                                            e.target.setCustomValidity('');
+                                                        }
+                                                    }}
+                                                    required={portfolioType === 'link'}
+                                                />
+                                                <InputError message={errors.portfolio_link} className="mt-2" />
+                                                <p className="text-xs text-indigo-700 mt-2">
+                                                    Examples: GitHub profile, Behance portfolio, personal website, LinkedIn, etc.
+                                                </p>
                                             </div>
                                         )}
 
-                                        {data.portfolio_items.map((item, index) => (
-                                            <div key={index} className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                                                <div className="flex justify-between items-center mb-3">
-                                                    <h4 className="font-semibold text-gray-900">Portfolio Item #{index + 1}</h4>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removePortfolioItem(index)}
-                                                        className="text-red-600 hover:text-red-800 font-bold"
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </div>
-
-                                                <div className="space-y-3">
-                                                    <div>
-                                                        <InputLabel value="Project Title *" />
-                                                        <TextInput
-                                                            type="text"
-                                                            value={item.title}
-                                                            className="mt-1 block w-full"
-                                                            placeholder="e.g., E-commerce Website Redesign"
-                                                            onChange={(e) => updatePortfolioItem(index, 'title', e.target.value)}
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <InputLabel value="Project Type *" />
-                                                        <select
-                                                            value={item.project_type}
-                                                            className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                            onChange={(e) => updatePortfolioItem(index, 'project_type', e.target.value)}
-                                                        >
-                                                            <option value="web">Web Development</option>
-                                                            <option value="mobile">Mobile App</option>
-                                                            <option value="design">Design</option>
-                                                            <option value="writing">Writing/Content</option>
-                                                            <option value="other">Other</option>
-                                                        </select>
-                                                    </div>
-
-                                                    <div>
-                                                        <InputLabel value="Description" />
-                                                        <textarea
-                                                            value={item.description}
-                                                            className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                            rows="3"
-                                                            placeholder="Brief description of the project..."
-                                                            onChange={(e) => updatePortfolioItem(index, 'description', e.target.value)}
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <InputLabel value="Project URL" />
-                                                        <TextInput
-                                                            type="url"
-                                                            value={item.project_url}
-                                                            className="mt-1 block w-full"
-                                                            placeholder="https://example.com"
-                                                            onChange={(e) => updatePortfolioItem(index, 'project_url', e.target.value)}
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <InputLabel value="Project Images (Max 5)" />
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            multiple
-                                                            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                                            onChange={(e) => updatePortfolioItemImages(index, e.target.files)}
-                                                        />
-                                                        {item.images && item.images.length > 0 && (
-                                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                                {Array.from(item.images).map((img, imgIdx) => (
-                                                                    <img
-                                                                        key={imgIdx}
-                                                                        src={filePreviews.portfolio_items[`${index}_${imgIdx}`] || URL.createObjectURL(img)}
-                                                                        alt={`Portfolio ${imgIdx + 1}`}
-                                                                        className="h-20 w-20 object-cover rounded border shadow-sm"
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                        {/* Resume File Upload */}
+                                        {portfolioType === 'resume' && (
+                                            <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                                                <FileUploadInput
+                                                    name="resume_file"
+                                                    label="Upload Your Resume"
+                                                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                                    maxSize={5}
+                                                    required={portfolioType === 'resume'}
+                                                    preview="document"
+                                                    value={files.resume_file || null}
+                                                    previewUrl={filePreviews.resume_file || null}
+                                                    error={errors.resume_file}
+                                                    onChange={(file) => handleFileChange('resume_file', file)}
+                                                    helpText="Accepted formats: PDF, DOC, DOCX • Maximum size: 5MB"
+                                                    loading={processing && files.resume_file}
+                                                    uploadProgress={safeGetUploadProgress('resume_file')}
+                                                    uploadStatus={safeGetUploadStatus('resume_file')}
+                                                />
                                             </div>
-                                        ))}
+                                        )}
+
+                                        {/* Skip Message */}
+                                        {portfolioType === 'none' && (
+                                            <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                                                <p className="text-gray-600">
+                                                    No problem! You can add your portfolio or resume later from your profile settings.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -827,8 +1024,8 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                     type="button"
                                                     onClick={() => {
                                                         setData('id_type', '');
-                                                        setData('id_front_image', null);
-                                                        setData('id_back_image', null);
+                                                        handleFileChange('id_front_image', null);
+                                                        handleFileChange('id_back_image', null);
                                                     }}
                                                     className="text-sm text-blue-600 hover:text-blue-800 underline"
                                                 >
@@ -860,48 +1057,39 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                     <InputError message={errors.id_type} className="mt-2" />
                                                 </div>
 
-                                                <div>
-                                                    <InputLabel value="Front of ID" />
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                        onChange={(e) => handleFileUpload('id_front_image', e.target.files[0])}
-                                                    />
-                                                    <InputError message={errors.id_front_image} className="mt-2" />
-                                                    {filePreviews.id_front_image && (
-                                                        <div className="mt-3">
-                                                            <img 
-                                                                src={filePreviews.id_front_image} 
-                                                                alt="ID Front Preview" 
-                                                                className="h-32 w-auto border rounded shadow-sm"
-                                                            />
-                                                        </div>
-                                                    )}
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        Max size: 5MB. Ensure all details are clearly visible.
-                                                    </p>
-                                                </div>
+                                                <FileUploadInput
+                                                    name="id_front_image"
+                                                    label="Front of ID"
+                                                    accept="image/*"
+                                                    maxSize={5}
+                                                    required={false}
+                                                    preview="image"
+                                                    value={files.id_front_image || null}
+                                                    previewUrl={filePreviews.id_front_image || null}
+                                                    error={errors.id_front_image}
+                                                    onChange={(file) => handleFileChange('id_front_image', file)}
+                                                    helpText="Max size: 5MB. Ensure all details are clearly visible."
+                                                    loading={processing && files.id_front_image}
+                                                    uploadProgress={safeGetUploadProgress('id_front_image')}
+                                                    uploadStatus={safeGetUploadStatus('id_front_image')}
+                                                />
 
-                                                <div>
-                                                    <InputLabel value="Back of ID" />
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                        onChange={(e) => handleFileUpload('id_back_image', e.target.files[0])}
-                                                    />
-                                                    <InputError message={errors.id_back_image} className="mt-2" />
-                                                    {filePreviews.id_back_image && (
-                                                        <div className="mt-3">
-                                                            <img 
-                                                                src={filePreviews.id_back_image} 
-                                                                alt="ID Back Preview" 
-                                                                className="h-32 w-auto border rounded shadow-sm"
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <FileUploadInput
+                                                    name="id_back_image"
+                                                    label="Back of ID"
+                                                    accept="image/*"
+                                                    maxSize={5}
+                                                    required={false}
+                                                    preview="image"
+                                                    value={files.id_back_image || null}
+                                                    previewUrl={filePreviews.id_back_image || null}
+                                                    error={errors.id_back_image}
+                                                    onChange={(file) => handleFileChange('id_back_image', file)}
+                                                    helpText="Max size: 5MB. Ensure all details are clearly visible."
+                                                    loading={processing && files.id_back_image}
+                                                    uploadProgress={safeGetUploadProgress('id_back_image')}
+                                                    uploadStatus={safeGetUploadStatus('id_back_image')}
+                                                />
                                             </div>
                                         </div>
 
@@ -1157,9 +1345,24 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
 
                                             <div className="border-t pt-4">
                                                 <h5 className="font-semibold text-gray-900 mb-2">Portfolio</h5>
-                                                <p className="text-sm text-gray-700">
-                                                    {data.portfolio_items.length} portfolio item(s) added
-                                                </p>
+                                                <div className="text-sm text-gray-700 space-y-1">
+                                                    {data.portfolio_link && (
+                                                        <p>
+                                                            <strong>Portfolio Link:</strong>{' '}
+                                                            <a href={data.portfolio_link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                                                                {data.portfolio_link}
+                                                            </a>
+                                                        </p>
+                                                    )}
+                                                    {data.resume_file && (
+                                                        <p>
+                                                            <strong>Resume:</strong> {data.resume_file.name}
+                                                        </p>
+                                                    )}
+                                                    {!data.portfolio_link && !data.resume_file && (
+                                                        <p className="text-gray-500">No portfolio added</p>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <div className="border-t pt-4">
@@ -1187,31 +1390,34 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                     </div>
                                 )}
 
-                                {/* Navigation Buttons */}
-                                <div className="flex justify-between mt-8 pt-6 border-t">
-                                    <div>
+                                {/* Navigation Buttons - Mobile Optimized */}
+                                <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t">
+                                    <div className="order-2 sm:order-1">
                                         {currentStep > 0 && (
                                             <button
                                                 type="button"
                                                 onClick={prevStep}
-                                                className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                                                className="w-full sm:w-auto min-h-[44px] px-6 py-3 sm:py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-base sm:text-sm font-medium"
                                             >
                                                 ← Previous
                                             </button>
                                         )}
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
                                         {currentStep < totalSteps - 1 ? (
                                             <button
                                                 type="button"
                                                 onClick={nextStep}
-                                                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                                className="w-full sm:w-auto min-h-[44px] px-6 py-3 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-base sm:text-sm font-medium"
                                             >
                                                 Next →
                                             </button>
                                         ) : (
-                                            <PrimaryButton disabled={processing}>
+                                            <PrimaryButton 
+                                                disabled={processing}
+                                                className="w-full sm:w-auto min-h-[44px] text-base sm:text-sm"
+                                            >
                                                 {processing ? 'Submitting...' : 'Submit Profile'}
                                             </PrimaryButton>
                                         )}
@@ -1221,7 +1427,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 type="button"
                                                 onClick={handleSkip}
                                                 disabled={processing}
-                                                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                                                className="w-full sm:w-auto min-h-[44px] px-4 py-3 sm:py-2 border border-gray-300 rounded-md text-base sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                                             >
                                                 Skip for now
                                             </button>

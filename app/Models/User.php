@@ -80,6 +80,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'street_address',
         'postal_code',
         'address_verified_at',
+        // Portfolio fields
+        'portfolio_link',
+        'resume_file',
     ];
 
     /**
@@ -167,6 +170,22 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getNameAttribute(): string
     {
         return $this->getFullNameAttribute();
+    }
+
+    /**
+     * Get just the skill names from skills_with_experience
+     * Returns array of skill names for matching purposes
+     */
+    public function getSkillsAttribute(): array
+    {
+        if (empty($this->skills_with_experience)) {
+            return [];
+        }
+
+        // Extract skill names from skills_with_experience array
+        return array_map(function($skillData) {
+            return is_array($skillData) ? ($skillData['skill'] ?? $skillData['name'] ?? '') : $skillData;
+        }, $this->skills_with_experience);
     }
 
     /**
@@ -368,5 +387,13 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isIdVerified(): bool
     {
         return $this->id_verification_status === 'verified';
+    }
+
+    /**
+     * Check if user has portfolio link or resume
+     */
+    public function hasPortfolio(): bool
+    {
+        return !empty($this->portfolio_link) || !empty($this->resume_file);
     }
 }

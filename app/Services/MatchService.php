@@ -18,17 +18,17 @@ class MatchService
 
     public function __construct()
     {
-        // Prioritize META_LLAMA_L4_SCOUT_FREE API key from .env file
-        $this->apiKey = env('META_LLAMA_L4_SCOUT_FREE') ?: config('services.openrouter.api_key');
-        $this->model = 'meta-llama/llama-4-scout:free';
-        $this->baseUrl = config('services.openrouter.base_url') ?: env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
+        // Use QWEN_API_KEY for Groq API
+        $this->apiKey = env('QWEN_API_KEY');
+        $this->model = 'llama-3.1-8b-instant';
+        $this->baseUrl = 'https://api.groq.com/openai/v1';
         $this->certPath = base_path('cacert.pem');
         $this->isConfigured = !empty($this->apiKey);
 
         if (!$this->isConfigured) {
-            Log::warning('META_LLAMA_L4_SCOUT_FREE API key is not configured. AI matching will use fallback mode.');
+            Log::warning('QWEN_API_KEY is not configured. AI matching will use fallback mode.');
         } else {
-            Log::info('AI matching configured with META_LLAMA_L4_SCOUT_FREE API key');
+            Log::info('AI matching configured with Groq API (llama-3.1-8b-instant)');
         }
     }
 
@@ -166,15 +166,12 @@ class MatchService
                             "Hourly Rate: ₱{$hourlyRate}\n" .
                             "Bio: " . substr($gigWorker->bio ?? 'No bio provided', 0, 150);
 
-            // Make API call to OpenRouter
+            // Make API call to Groq
             $response = Http::withToken($this->apiKey)
                 ->withOptions([
                     'verify' => $this->certPath
                 ])
-                ->withHeaders([
-                    'HTTP-Referer' => config('app.url'),
-                    'X-Title' => 'WorkWise Job Matching'
-                ])
+                ->timeout(30)
                 ->post($this->baseUrl . '/chat/completions', [
                     'model' => $this->model,
                     'messages' => [
@@ -187,12 +184,25 @@ class MatchService
                             'content' => "Match Analysis - Focus ONLY on skills & experience:\n\n📋 JOB REQUIREMENTS:\n{$jobText}\n\n👤 YOUR PROFILE:\n{$gigWorkerText}\n\nAnalyze:\n1. EXACT skill matches (list them)\n2. Related/complementary skills you have\n3. Experience level match (beginner/intermediate/expert)\n4. Skill gaps and learning curve\n5. Overall compatibility score (0-100)\n\nBe specific about which skills match and why. Ignore budget, location, ratings."
                         ]
                     ],
-                    'temperature' => 0.4,
-                    'max_tokens' => 250
+                    'temperature' => 1,
+                    'max_completion_tokens' => 1024,
+                    'top_p' => 1,
+                    'stream' => false
                 ]);
 
             if ($response->successful()) {
-                $content = $response->json()['choices'][0]['message']['content'];
+                $responseData = $response->json();
+                
+                // Log full response for debugging
+                Log::debug('Groq API Response', ['response' => $responseData]);
+                
+                // Check if response has expected structure
+                if (!isset($responseData['choices'][0]['message']['content'])) {
+                    Log::error('Groq API response missing expected structure', ['response' => $responseData]);
+                    throw new \Exception('Invalid response structure from Groq API');
+                }
+                
+                $content = $responseData['choices'][0]['message']['content'];
                 
                 // Parse the response with improved regex
                 preg_match('/Score:\s*(\d+)/i', $content, $scoreMatch);
@@ -223,7 +233,7 @@ class MatchService
                 return $result;
             }
 
-            throw new \Exception('Failed to get response from OpenRouter API');
+            throw new \Exception('Failed to get response from Groq API: ' . $response->status());
 
         } catch (\Exception $e) {
             Log::error('AI Match Error', [
@@ -244,8 +254,7 @@ class MatchService
     {
         // Limit the number of gig workers to process to prevent timeouts
         $gigWorkers = User::where('user_type', 'gig_worker')
-            ->whereNotNull('skills')
-            ->whereNotNull('experience_level')
+            ->whereNotNull('skills_with_experience')
             ->limit(15) // Process max 15 gig workers for AI analysis
             ->get();
 
@@ -305,7 +314,6 @@ class MatchService
         $jobs = GigJob::with(['employer'])
             ->where('status', 'open')
             ->whereNotNull('required_skills')
-            ->whereNotNull('experience_level')
             ->limit(10) // Process max 10 jobs for AI analysis
             ->get();
 

@@ -13,6 +13,7 @@ class PortfolioItem extends Model
         'description',
         'project_url',
         'images',
+        'document_file',
         'tags',
         'completion_date',
         'project_type',

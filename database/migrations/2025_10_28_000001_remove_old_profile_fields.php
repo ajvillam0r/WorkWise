@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             // Remove deprecated fields
+            // Note: province and municipality are NEW fields (added in 2025_10_27_232857_add_location_hierarchy_fields)
+            // Do NOT remove them here
             if (Schema::hasColumn('users', 'experience_level')) {
                 $table->dropColumn('experience_level');
             }
@@ -22,12 +24,7 @@ return new class extends Migration
             if (Schema::hasColumn('users', 'portfolio_url')) {
                 $table->dropColumn('portfolio_url');
             }
-            if (Schema::hasColumn('users', 'province')) {
-                $table->dropColumn('province');
-            }
-            if (Schema::hasColumn('users', 'municipality')) {
-                $table->dropColumn('municipality');
-            }
+            // province and municipality are kept - they are new location hierarchy fields
         });
     }
 
@@ -41,8 +38,7 @@ return new class extends Migration
             $table->enum('experience_level', ['beginner', 'intermediate', 'expert'])->nullable();
             $table->json('languages')->nullable();
             $table->string('portfolio_url')->nullable();
-            $table->string('province')->nullable();
-            $table->string('municipality')->nullable();
+            // Note: province and municipality are handled by add_location_hierarchy_fields migration
         });
     }
 };

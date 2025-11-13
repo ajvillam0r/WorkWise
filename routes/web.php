@@ -23,7 +23,7 @@ use App\Http\Controllers\ContractController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminReportController;
-use App\Http\Controllers\AdminAnalyticsController;
+use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\AdminVerificationController;
 use App\Http\Controllers\AdminIdVerificationController;
 use App\Http\Controllers\AdminSettingsController;
@@ -277,6 +277,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile', [ProfileController::class, 'update']); // For file uploads with method spoofing
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Profile viewing routes
+    Route::get('/workers/{user}', [ProfileController::class, 'showWorker'])->name('workers.show');
+    Route::get('/employers/{user}', [ProfileController::class, 'showEmployer'])->name('employers.show');
+
     // R2 Proxy route (fallback while DNS propagates)
     Route::get('/r2/{path}', [ProfileController::class, 'proxyR2File'])
         ->where('path', '.*')
@@ -304,7 +308,8 @@ Route::middleware('auth')->group(function () {
 
         // Worker discovery
         Route::get('/discover-workers', [WorkerDiscoveryController::class, 'index'])->name('worker-discovery.index');
-        Route::get('/workers/{user}', [WorkerDiscoveryController::class, 'show'])->name('worker-discovery.show');
+        // Note: /workers/{user} route is now handled by ProfileController::showWorker (workers.show)
+        // Route::get('/workers/{user}', [WorkerDiscoveryController::class, 'show'])->name('worker-discovery.show');
         Route::post('/workers/{user}/invite', [WorkerDiscoveryController::class, 'inviteToJob'])->name('worker-discovery.invite');
     });
 
@@ -523,10 +528,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/id-verifications/statistics', [\App\Http\Controllers\Admin\IdVerificationController::class, 'getStatistics'])->name('id-verifications.statistics');
 
     // Analytics
-    Route::get('/analytics', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'overview'])->name('analytics.overview');
-    Route::get('/analytics/jobs-contracts', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'jobsContracts'])->name('analytics.jobsContracts');
-    Route::get('/analytics/financial', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'financial'])->name('analytics.financial');
-    Route::get('/analytics/quality', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'quality'])->name('analytics.quality');
+    Route::get('/analytics', [AdminAnalyticsController::class, 'overview'])->name('analytics.overview');
+    Route::get('/analytics/jobs-contracts', [AdminAnalyticsController::class, 'jobsContracts'])->name('analytics.jobsContracts');
+    Route::get('/analytics/financial', [AdminAnalyticsController::class, 'financial'])->name('analytics.financial');
+    Route::get('/analytics/quality', [AdminAnalyticsController::class, 'quality'])->name('analytics.quality');
 
     // User Verifications
     Route::get('/verifications', [AdminVerificationController::class, 'index'])->name('verifications');

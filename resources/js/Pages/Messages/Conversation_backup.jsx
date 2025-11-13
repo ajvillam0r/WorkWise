@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { getFileIcon, isImageFile, getFileExtension } from '@/utils/fileIcons.jsx';
 
 import axios from 'axios';
 
@@ -291,53 +290,24 @@ export default function Conversation({ user, messages, currentUser }) {
                                 : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'
                         } ${isOptimistic ? 'optimistic opacity-75' : ''} ${!isOwnMessage ? 'received' : ''}`}>
                             {message.type === 'file' ? (
-                                isImageFile(message.attachment_name) ? (
-                                    // Image attachment with thumbnail
-                                    <div className="space-y-2">
+                                <div className="flex items-center space-x-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                        isOwnMessage ? 'bg-white/20' : 'bg-blue-100'
+                                    }`}>
+                                        <svg className={`w-5 h-5 ${isOwnMessage ? 'text-white' : 'text-blue-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm truncate">{message.attachment_name}</div>
                                         <a
                                             href={`/messages/${message.id}/download`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="block group"
+                                            className={`text-xs ${isOwnMessage ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-800'} hover:underline transition-colors`}
                                         >
-                                            <img
-                                                src={message.attachment_path || `/messages/${message.id}/download`}
-                                                alt={message.attachment_name}
-                                                className="max-w-xs rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-                                                style={{ maxHeight: '300px', objectFit: 'cover' }}
-                                            />
-                                            <div className={`mt-2 text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-600'} group-hover:underline`}>
-                                                {message.attachment_name}
-                                            </div>
+                                            Download file
                                         </a>
                                     </div>
-                                ) : (
-                                    // Non-image attachment with file icon
-                                    <div className="flex items-center space-x-3">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                            isOwnMessage ? 'bg-white/20' : 'bg-blue-100'
-                                        }`}>
-                                            {getFileIcon(message.attachment_name, 'w-5 h-5', isOwnMessage)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-sm truncate">{message.attachment_name}</div>
-                                            <div className="flex items-center space-x-2">
-                                                <span className={`text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'}`}>
-                                                    {getFileExtension(message.attachment_name).toUpperCase()}
-                                                </span>
-                                                <a
-                                                    href={`/messages/${message.id}/download`}
-                                                    className={`text-xs ${isOwnMessage ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-800'} hover:underline transition-colors flex items-center`}
-                                                >
-                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                    </svg>
-                                                    Download
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
+                                </div>
                         ) : (
                             <div className="whitespace-pre-wrap leading-relaxed">{message.message}</div>
                         )}
@@ -523,24 +493,6 @@ export default function Conversation({ user, messages, currentUser }) {
                                     </div>
                                 )}
 
-                                {/* Display validation errors */}
-                                {errors.attachment && (
-                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start space-x-2">
-                                        <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                        </svg>
-                                        <p className="text-sm text-red-700">{errors.attachment}</p>
-                                    </div>
-                                )}
-                                {errors.message && (
-                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start space-x-2">
-                                        <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                        </svg>
-                                        <p className="text-sm text-red-700">{errors.message}</p>
-                                    </div>
-                                )}
-
                                 {/* Message input container */}
                                 <div className="message-input-container bg-white border border-gray-300 rounded-2xl shadow-sm">
                                     <div className="flex items-end space-x-3 p-4">
@@ -669,7 +621,7 @@ export default function Conversation({ user, messages, currentUser }) {
                                     </div>
                                 )}
 
-                                {getLocationDisplay(user) && (
+                                {user.barangay && (
                                     <div className="bg-white rounded-xl p-4 border border-gray-100">
                                         <dt className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                                             <svg className="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -678,7 +630,7 @@ export default function Conversation({ user, messages, currentUser }) {
                                             </svg>
                                             Location
                                         </dt>
-                                        <dd className="text-sm text-gray-900">{getLocationDisplay(user) || 'Location not specified'}</dd>
+                                        <dd className="text-sm text-gray-900">{user.barangay}, Lapu-Lapu City</dd>
                                     </div>
                                 )}
                             </div>

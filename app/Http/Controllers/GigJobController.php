@@ -168,10 +168,26 @@ class GigJobController extends Controller
 
     /**
      * Display the specified resource.
+     * 
+     * DATA CONSISTENCY VERIFICATION (Requirement 9.1-9.6):
+     * - Job data comes from gig_jobs table
+     * - Employer profile data comes from users table
+     * - Gig worker profile data in bids comes from users table
+     * - All data is fetched from database with no mock or placeholder data
      */
     public function show(GigJob $job): Response
     {
-        $job->load(['employer', 'bids.gigWorker']);
+        // Load employer with profile data needed for clickable links (Requirement 9.1, 9.2)
+        // Load gig worker data for each bid from users table (Requirement 9.1, 9.2)
+        $job->load([
+            'employer:id,first_name,last_name,company_name,profile_picture',
+            'bids' => function ($query) {
+                $query->with([
+                    'gigWorker:id,first_name,last_name,professional_title,profile_picture'
+                ]);
+            }
+        ]);
+        
         $job->budget_display = $job->getBudgetDisplayAttribute();
 
         return Inertia::render('Jobs/Show', [

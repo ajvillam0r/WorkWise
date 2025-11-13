@@ -522,10 +522,16 @@ export default function JobShow({ job, canBid }) {
                                                             {getUserAvatar(bid.gig_worker)}
                                                             <div>
                                                                 <h4 className="font-medium text-gray-900">
-                                                                    {bid.gig_worker ? 
-                                                                        `${bid.gig_worker.first_name} ${bid.gig_worker.last_name}` : 
+                                                                    {bid.gig_worker ? (
+                                                                        <Link 
+                                                                            href={route('workers.show', bid.gig_worker.id)}
+                                                                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                                        >
+                                                                            {`${bid.gig_worker.first_name} ${bid.gig_worker.last_name}`}
+                                                                        </Link>
+                                                                    ) : (
                                                                         'Unknown User'
-                                                                    }
+                                                                    )}
                                                                 </h4>
                                                                 <p className="text-sm text-gray-600">
                                                                     {bid.gig_worker?.professional_title || 'Gig Worker'}
@@ -793,7 +799,12 @@ export default function JobShow({ job, canBid }) {
                                         {getUserAvatar(job.employer)}
                                         <div>
                                             <h4 className="font-medium text-gray-900">
-                                                {job.employer.first_name} {job.employer.last_name}
+                                                <Link 
+                                                    href={route('employers.show', job.employer.id)}
+                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                >
+                                                    {job.employer.first_name} {job.employer.last_name}
+                                                </Link>
                                             </h4>
                                             <p className="text-sm text-gray-600">
                                                 {job.employer.professional_title || 'Employer'}

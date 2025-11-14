@@ -13,6 +13,7 @@ class Message extends Model
     protected $fillable = [
         'sender_id',
         'receiver_id',
+        'reply_to_id',
         'project_id',
         'message',
         'attachment_path',
@@ -43,6 +44,16 @@ class Message extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function replyTo(): BelongsTo
+    {
+        return $this->belongsTo(Message::class, 'reply_to_id');
+    }
+
+    public function replies()
+    {
+        return $this->hasMany(Message::class, 'reply_to_id');
     }
 
     public function markAsRead(): void

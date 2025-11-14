@@ -331,6 +331,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages/users', [MessageController::class, 'getUsers'])->name('messages.users');
     Route::get('/messages/{user}', [MessageController::class, 'conversation'])->name('messages.conversation');
     Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
     Route::get('/messages/unread/count', [MessageController::class, 'unreadCount'])->name('messages.unread.count');
     Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead'])->name('messages.read');
     Route::get('/messages/recent/conversations', [MessageController::class, 'getRecentConversations'])->name('messages.recent');

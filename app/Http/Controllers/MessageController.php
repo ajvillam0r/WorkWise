@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Contract;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -45,6 +46,29 @@ class MessageController extends Controller
                                   ->where('is_read', false)
                                   ->count();
 
+            // Get job/contract context
+            $jobContext = null;
+            $contractStatus = null;
+            
+            // Find active contract between these users
+            $contract = Contract::where(function($query) use ($userId, $otherUser) {
+                $query->where('employer_id', $userId)->where('gig_worker_id', $otherUser->id);
+            })->orWhere(function($query) use ($userId, $otherUser) {
+                $query->where('gig_worker_id', $userId)->where('employer_id', $otherUser->id);
+            })
+            ->with('job:id,title,status')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+            if ($contract && $contract->job) {
+                $jobContext = [
+                    'job_id' => $contract->job->id,
+                    'job_title' => $contract->job->title,
+                    'job_status' => $contract->job->status,
+                ];
+                $contractStatus = $contract->status;
+            }
+
             return [
                 'user' => $otherUser,
                 'latest_message' => [
@@ -55,14 +79,16 @@ class MessageController extends Controller
                 'unread_count' => $unreadCount,
                 'last_activity' => $latestMessage->created_at,
                 'last_message' => $latestMessage->message,
-                'status' => 'new_lead' // Default status, can be enhanced later with a conversations table
+                'status' => 'new_lead', // Default status
+                'job_context' => $jobContext,
+                'contract_status' => $contractStatus,
             ];
         })
         ->sortByDesc('last_activity')
         ->values()
         ->all();
 
-        return Inertia::render('Messages/Index', [
+        return Inertia::render('Messages/EnhancedIndex', [
             'conversations' => $conversations
         ]);
     }
@@ -83,7 +109,7 @@ class MessageController extends Controller
             $query->where('sender_id', $user->id)
                   ->where('receiver_id', $currentUserId);
         })
-        ->with(['sender', 'receiver'])
+        ->with(['sender', 'receiver', 'replyTo.sender'])
         ->orderBy('created_at', 'asc')
         ->get();
 
@@ -93,7 +119,7 @@ class MessageController extends Controller
                ->where('is_read', false)
                ->update(['is_read' => true, 'read_at' => now()]);
 
-        return Inertia::render('Messages/Conversation', [
+        return Inertia::render('Messages/EnhancedConversation', [
             'user' => $user,
             'messages' => $messages,
             'currentUser' => auth()->user()
@@ -106,10 +132,10 @@ class MessageController extends Controller
     public function store(Request $request)
     {
         // Validate request - message is optional if attachment is present
-        $request->validate([
+        $validator = \Validator::make($request->all(), [
             'receiver_id' => 'required_without:recipient_id|exists:users,id',
             'recipient_id' => 'required_without:receiver_id|exists:users,id',
-            'message' => 'required_without:attachment|string|min:1|max:2000',
+            'message' => 'nullable|string|max:2000',
             'attachment' => [
                 'nullable',
                 'file',
@@ -120,34 +146,63 @@ class MessageController extends Controller
         ], [
             'attachment.max' => 'File size must not exceed 10MB.',
             'attachment.mimes' => 'File must be one of the following types: PDF, DOC, DOCX, PNG, JPG, JPEG, GIF, TXT, ZIP, or RAR.',
-            'message.required_without' => 'Please provide a message or attach a file.'
         ]);
+
+        // Check if validation fails
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
+
+        // Check if either message or attachment is provided
+        if (empty($request->message) && !$request->hasFile('attachment')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide a message or attach a file.'
+            ], 422);
+        }
 
         $attachmentPath = null;
         $attachmentName = null;
 
-        // Handle file attachment upload to R2
+        // Handle file attachment upload
         if ($request->hasFile('attachment')) {
             try {
                 $file = $request->file('attachment');
                 $attachmentName = $file->getClientOriginalName();
                 
-                // Upload to R2
-                $path = Storage::disk('r2')->putFile('messages/' . auth()->id(), $file);
-                
-                if ($path) {
-                    $attachmentPath = Storage::disk('r2')->url($path);
-                    Log::info('Message attachment uploaded successfully', [
-                        'user_id' => auth()->id(),
-                        'filename' => $attachmentName,
-                        'path' => $path
-                    ]);
-                } else {
-                    Log::error('Message attachment upload failed: Storage returned false', [
-                        'user_id' => auth()->id(),
-                        'filename' => $attachmentName
-                    ]);
-                    return back()->withErrors(['attachment' => 'Failed to upload attachment. Please try again.']);
+                // Try R2 first, fallback to public storage
+                try {
+                    $path = Storage::disk('r2')->putFile('messages/' . auth()->id(), $file);
+                    
+                    if ($path) {
+                        $attachmentPath = Storage::disk('r2')->url($path);
+                        Log::info('Message attachment uploaded to R2 successfully', [
+                            'user_id' => auth()->id(),
+                            'filename' => $attachmentName,
+                            'path' => $path
+                        ]);
+                    } else {
+                        throw new \Exception('R2 storage returned false');
+                    }
+                } catch (\Exception $r2Error) {
+                    // Fallback to public storage if R2 fails
+                    Log::warning('R2 upload failed, using public storage: ' . $r2Error->getMessage());
+                    
+                    $path = $file->store('messages/' . auth()->id(), 'public');
+                    
+                    if ($path) {
+                        $attachmentPath = asset('storage/' . $path);
+                        Log::info('Message attachment uploaded to public storage', [
+                            'user_id' => auth()->id(),
+                            'filename' => $attachmentName,
+                            'path' => $path
+                        ]);
+                    } else {
+                        throw new \Exception('Both R2 and public storage failed');
+                    }
                 }
             } catch (\Exception $e) {
                 Log::error('Message attachment upload failed: ' . $e->getMessage(), [
@@ -155,7 +210,10 @@ class MessageController extends Controller
                     'filename' => $attachmentName ?? 'unknown',
                     'exception' => $e->getTraceAsString()
                 ]);
-                return back()->withErrors(['attachment' => 'Failed to upload attachment. Please try again.']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to upload attachment. Please try again.'
+                ], 500);
             }
         }
 
@@ -165,6 +223,7 @@ class MessageController extends Controller
         $message = Message::create([
             'sender_id' => auth()->id(),
             'receiver_id' => $receiverId,
+            'reply_to_id' => $request->reply_to_id,
             'project_id' => $request->project_id,
             'message' => $request->message ?? '',
             'attachment_path' => $attachmentPath,
@@ -172,7 +231,7 @@ class MessageController extends Controller
             'type' => $attachmentPath ? 'file' : 'text'
         ]);
 
-        $message->load(['sender', 'receiver']);
+        $message->load(['sender', 'receiver', 'replyTo.sender']);
 
         // Send notification to receiver about new message
         $notificationService = new \App\Services\NotificationService();
@@ -244,60 +303,75 @@ class MessageController extends Controller
      */
     public function downloadAttachment(Message $message)
     {
-        // Verify user is sender or receiver of the message (Requirement 7.3, 7.4)
+        // Verify user is sender or receiver of the message
         if ($message->sender_id !== auth()->id() && $message->receiver_id !== auth()->id()) {
             abort(403, 'Unauthorized access to attachment');
         }
 
-        // Check if message has an attachment (Requirement 7.6)
+        // Check if message has an attachment
         if (!$message->hasAttachment()) {
             Log::warning('Attachment download attempted on message without attachment', [
                 'message_id' => $message->id,
                 'user_id' => auth()->id()
             ]);
-            return back()->withErrors(['attachment' => 'This message does not have an attachment.']);
+            abort(404, 'This message does not have an attachment.');
         }
 
-        // Verify attachment file path exists (Requirement 7.6)
+        // Verify attachment file path exists
         if (!$message->attachment_path) {
             Log::error('Attachment path is missing from message record', [
                 'message_id' => $message->id,
                 'user_id' => auth()->id()
             ]);
-            return back()->withErrors(['attachment' => 'Attachment file information is missing. Please contact support.']);
+            abort(404, 'Attachment file information is missing.');
         }
 
-        // Verify file exists in R2 storage (Requirement 7.6)
         try {
-            // Extract path from URL if it's a full URL
             $path = $message->attachment_path;
+            
+            // Check if it's a full URL (R2 or external)
             if (str_contains($path, 'http')) {
-                // If it's a full URL, we'll trust it exists (R2 will handle 404)
-                // But we can add additional validation if needed
-                Log::info('Attachment download initiated', [
+                Log::info('Redirecting to external attachment URL', [
                     'message_id' => $message->id,
                     'user_id' => auth()->id(),
                     'filename' => $message->attachment_name
                 ]);
-            } else {
-                // If it's a relative path, check if file exists in R2
-                if (!Storage::disk('r2')->exists($path)) {
-                    Log::error('Attachment file not found in R2 storage', [
-                        'message_id' => $message->id,
-                        'user_id' => auth()->id(),
-                        'path' => $path,
-                        'filename' => $message->attachment_name
-                    ]);
-                    return back()->withErrors(['attachment' => 'The attachment file could not be found. It may have been deleted.']);
-                }
+                
+                // Redirect to the URL (R2 or other external storage)
+                return redirect()->away($path);
             }
-
-            // Redirect to R2 public URL (attachment_path already contains full URL)
-            // This preserves the original filename through the attachment_name field
-            return redirect()->away($message->attachment_path);
+            
+            // It's a local storage path
+            // Extract the relative path from asset URL if needed
+            if (str_contains($path, '/storage/')) {
+                $path = str_replace(asset('storage/'), '', $path);
+                $path = str_replace('/storage/', '', $path);
+            }
+            
+            // Check if file exists in public storage
+            if (Storage::disk('public')->exists($path)) {
+                Log::info('Downloading from public storage', [
+                    'message_id' => $message->id,
+                    'user_id' => auth()->id(),
+                    'filename' => $message->attachment_name,
+                    'path' => $path
+                ]);
+                
+                // Download the file with original filename
+                return Storage::disk('public')->download($path, $message->attachment_name);
+            }
+            
+            // File not found
+            Log::error('Attachment file not found in storage', [
+                'message_id' => $message->id,
+                'user_id' => auth()->id(),
+                'path' => $path,
+                'filename' => $message->attachment_name
+            ]);
+            
+            abort(404, 'The attachment file could not be found.');
             
         } catch (\Exception $e) {
-            // Handle R2 download failures gracefully (Requirement 7.6)
             Log::error('Attachment download failed: ' . $e->getMessage(), [
                 'message_id' => $message->id,
                 'user_id' => auth()->id(),
@@ -306,7 +380,58 @@ class MessageController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return back()->withErrors(['attachment' => 'Failed to download attachment. Please try again or contact support if the problem persists.']);
+            abort(500, 'Failed to download attachment. Please try again.');
+        }
+    }
+
+    /**
+     * Delete a message
+     */
+    public function destroy(Message $message)
+    {
+        // Only the sender can delete their own message
+        if ($message->sender_id !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only delete your own messages'
+            ], 403);
+        }
+
+        try {
+            // Delete attachment file if exists
+            if ($message->hasAttachment() && $message->attachment_path) {
+                $path = $message->attachment_path;
+                
+                // If it's a local storage path, delete the file
+                if (!str_contains($path, 'http')) {
+                    if (str_contains($path, '/storage/')) {
+                        $path = str_replace(asset('storage/'), '', $path);
+                        $path = str_replace('/storage/', '', $path);
+                    }
+                    
+                    if (Storage::disk('public')->exists($path)) {
+                        Storage::disk('public')->delete($path);
+                    }
+                }
+            }
+
+            // Delete the message
+            $message->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Message deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Message deletion failed: ' . $e->getMessage(), [
+                'message_id' => $message->id,
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete message'
+            ], 500);
         }
     }
 
@@ -469,21 +594,29 @@ class MessageController extends Controller
     }
 
     /**
-     * Get new messages for polling
+     * Get new messages for polling - FIXED to prevent duplicates
      */
     public function getNewMessages(User $user, Request $request)
     {
         $currentUserId = auth()->id();
-        $lastMessageId = $request->query('last_id', 0);
+        $afterId = $request->query('after', 0);
 
-        $newMessages = Message::where(function($query) use ($currentUserId, $user) {
-            $query->where('sender_id', $user->id)
-                  ->where('receiver_id', $currentUserId);
-        })
-        ->where('id', '>', $lastMessageId)
-        ->with(['sender', 'receiver'])
-        ->orderBy('created_at', 'asc')
-        ->get();
+        // Only get messages from the other user to current user that are newer than afterId
+        $newMessages = Message::where('sender_id', $user->id)
+            ->where('receiver_id', $currentUserId)
+            ->where('id', '>', $afterId)
+            ->with(['sender', 'receiver'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Mark new messages as read
+        if ($newMessages->isNotEmpty()) {
+            Message::where('sender_id', $user->id)
+                ->where('receiver_id', $currentUserId)
+                ->where('id', '>', $afterId)
+                ->where('is_read', false)
+                ->update(['is_read' => true, 'read_at' => now()]);
+        }
 
         return response()->json([
             'messages' => $newMessages

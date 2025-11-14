@@ -3,6 +3,86 @@ import InputLabel from './InputLabel';
 import InputError from './InputError';
 
 /**
+ * Compress an image file before upload
+ * @param {File} file - The image file to compress
+ * @param {number} maxWidth - Maximum width in pixels
+ * @param {number} maxHeight - Maximum height in pixels
+ * @param {number} quality - JPEG quality (0-1)
+ * @returns {Promise<File>} - Compressed image file
+ */
+const compressImage = (file, maxWidth = 1920, maxHeight = 1920, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+        // Skip compression for non-image files or GIFs
+        if (!file.type.startsWith('image/') || file.type === 'image/gif') {
+            resolve(file);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Calculate new dimensions while maintaining aspect ratio
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to blob
+                canvas.toBlob(
+                    (blob) => {
+                        if (!blob) {
+                            reject(new Error('Canvas to Blob conversion failed'));
+                            return;
+                        }
+
+                        // Create new file from blob
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now(),
+                        });
+
+                        // Only use compressed version if it's actually smaller
+                        resolve(compressedFile.size < file.size ? compressedFile : file);
+                    },
+                    'image/jpeg',
+                    quality
+                );
+            };
+
+            img.onerror = () => {
+                reject(new Error('Image loading failed'));
+            };
+        };
+
+        reader.onerror = () => {
+            reject(new Error('File reading failed'));
+        };
+    });
+};
+
+/**
  * FileUploadInput Component
  * 
  * A reusable file upload component with preview, validation, and drag-and-drop support.
@@ -23,6 +103,7 @@ import InputError from './InputError';
  * @param {function} onRetry - Callback when retry button is clicked
  * @param {number} uploadProgress - Upload progress percentage (0-100)
  * @param {string} uploadStatus - Current upload status message
+ * @param {boolean} compressImages - Whether to compress images before upload (default: true)
  */
 export default function FileUploadInput({
     name,
@@ -41,9 +122,11 @@ export default function FileUploadInput({
     onRetry = null,
     uploadProgress = 0,
     uploadStatus = '',
+    compressImages = true, // Enable image compression by default
 }) {
     const [isDragging, setIsDragging] = useState(false);
     const [validationError, setValidationError] = useState('');
+    const [isCompressing, setIsCompressing] = useState(false);
     const fileInputRef = useRef(null);
 
     // Validate file size and type
@@ -91,7 +174,7 @@ export default function FileUploadInput({
     };
 
     // Handle file selection
-    const handleFileChange = (file) => {
+    const handleFileChange = async (file) => {
         if (!file) {
             setValidationError('');
             onChange(null);
@@ -109,8 +192,26 @@ export default function FileUploadInput({
             return;
         }
 
+        // Compress image if enabled and file is an image
+        let processedFile = file;
+        if (compressImages && file.type.startsWith('image/')) {
+            try {
+                setIsCompressing(true);
+                const originalSize = file.size;
+                processedFile = await compressImage(file);
+                const compressedSize = processedFile.size;
+                
+                console.log(`Image compressed: ${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressedSize / 1024 / 1024).toFixed(2)}MB (${Math.round((1 - compressedSize / originalSize) * 100)}% reduction)`);
+            } catch (error) {
+                console.error('Image compression failed, using original:', error);
+                // Continue with original file if compression fails
+            } finally {
+                setIsCompressing(false);
+            }
+        }
+
         setValidationError('');
-        onChange(file);
+        onChange(processedFile);
     };
 
     // Handle drag events
@@ -207,8 +308,23 @@ export default function FileUploadInput({
                     ${displayError ? 'border-red-300' : ''}
                 `}
             >
+                {/* Compressing State */}
+                {isCompressing && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 rounded-lg z-10">
+                        <div className="flex flex-col items-center">
+                            <svg className="animate-spin h-8 w-8 text-indigo-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700">
+                                Optimizing image...
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Loading State with Progress */}
-                {loading && (
+                {loading && !isCompressing && (
                     <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 rounded-lg z-10">
                         <div className="flex flex-col items-center w-full px-8">
                             <svg className="animate-spin h-8 w-8 text-indigo-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

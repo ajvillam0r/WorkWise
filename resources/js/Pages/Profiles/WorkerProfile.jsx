@@ -6,6 +6,14 @@ import { MapPinIcon, StarIcon, ClockIcon, CurrencyDollarIcon, BriefcaseIcon, Aca
 
 export default function WorkerProfile({ user, reviews, rating_summary, portfolio_items }) {
     const { auth } = usePage().props;
+    
+    // Debug: Log the data received from backend
+    console.log('WorkerProfile - Data received:', {
+        user: user?.first_name + ' ' + user?.last_name,
+        reviewsCount: reviews?.length || 0,
+        reviews: reviews,
+        rating_summary: rating_summary
+    });
 
     return (
         <AuthenticatedLayout

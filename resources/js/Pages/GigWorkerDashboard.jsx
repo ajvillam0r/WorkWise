@@ -686,7 +686,9 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, earni
                                     <div className="flex items-center mt-4 space-x-6">
                                         <div className="flex items-center">
                                             <StarIcon className="w-5 h-5 mr-2 text-yellow-300" />
-                                            <span className="text-sm">Rating: {stats?.rating || '5.0'}</span>
+                                            <span className="text-sm">
+                                                Rating: {stats?.rating?.toFixed(1) || '0.0'} ({stats?.reviewsCount || 0})
+                                            </span>
                                         </div>
                                         <div className="flex items-center">
                                             <TrophyIcon className="w-5 h-5 mr-2 text-yellow-300" />

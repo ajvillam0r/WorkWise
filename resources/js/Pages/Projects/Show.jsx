@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SuccessModal from '@/Components/SuccessModal';
 import MiniChatModal from '@/Components/MiniChatModal';
+import ThankYouModal from '@/Components/ThankYouModal';
 import { formatDistanceToNow } from 'date-fns';
 
 // Confirmation Modal Component
@@ -88,14 +89,22 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
 };
 
 export default function ProjectShow({ project, hasPayment, canReview, isEmployer }) {
-    const { auth } = usePage().props;
+    const { auth, flash } = usePage().props;
     const [showReviewForm, setShowReviewForm] = useState(false);
     const [showRevisionForm, setShowRevisionForm] = useState(false);
     const [showCompletionForm, setShowCompletionForm] = useState(false);
     const [completionError, setCompletionError] = useState(null);
     const [showMiniChat, setShowMiniChat] = useState(false);
     const [miniChatTargetUserId, setMiniChatTargetUserId] = useState(null);
+    const [showThankYouModal, setShowThankYouModal] = useState(false);
     const miniChatRef = useRef(null);
+
+    // Check for thank you flag from backend
+    useEffect(() => {
+        if (flash?.showThankYou) {
+            setShowThankYouModal(true);
+        }
+    }, [flash]);
 
     // Helper function to safely parse required_skills
     const parseSkills = (skills) => {
@@ -228,6 +237,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
             onSuccess: () => {
                 setShowReviewForm(false);
                 reset();
+                setShowThankYouModal(true);
             }
         });
     };
@@ -825,6 +835,16 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
                     }}
                 />
             )}
+
+            {/* Thank You Modal */}
+            <ThankYouModal
+                isOpen={showThankYouModal}
+                onClose={() => setShowThankYouModal(false)}
+                message={isEmployer 
+                    ? "Thank you for reviewing the gig worker! Your feedback helps build a better community." 
+                    : "Thank you for reviewing the employer! Your feedback helps build a better community."}
+                duration={3500}
+            />
 
             <style>{`
                 body {

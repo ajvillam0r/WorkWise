@@ -37,9 +37,9 @@ class EmployerOnboardingController extends Controller
             return redirect()->route('jobs.index');
         }
 
-        // If profile is already completed, redirect to jobs
+        // If profile is already completed, redirect to employer dashboard
         if ($user->profile_completed) {
-            return redirect()->route('jobs.index');
+            return redirect()->route('employer.dashboard');
         }
 
         // Load industry options and service categories
@@ -127,6 +127,9 @@ class EmployerOnboardingController extends Controller
 
         // Handle profile picture upload to R2 using FileUploadService
         if ($request->hasFile('profile_picture')) {
+            // Increase execution time for file upload
+            set_time_limit(120);
+            
             Log::info('Employer profile picture upload started', [
                 'user_id' => $user->id,
                 'file_name' => $request->file('profile_picture')->getClientOriginalName(),
@@ -155,11 +158,11 @@ class EmployerOnboardingController extends Controller
                 ])->withInput();
             }
 
-            // Upload with retry logic
+            // Upload with retry logic (reduced retries to avoid timeout)
             $uploadResult = $this->fileUploadService->uploadWithRetry(
                 $request->file('profile_picture'),
                 'profiles',
-                2,
+                1, // Reduced from 2 to 1 retry to avoid timeout
                 [
                     'user_id' => $user->id,
                     'user_type' => 'employer',
@@ -281,8 +284,8 @@ class EmployerOnboardingController extends Controller
                 'timestamp' => now()->toIso8601String(),
             ]);
 
-            return redirect()->route('jobs.index')->with('success',
-                'Welcome to WorkWise! Your profile is complete. You can now start posting jobs and hiring gig workers.');
+            return redirect()->route('employer.dashboard')->with('success',
+                'Welcome to WorkWise! Your employer profile is complete. You can now start posting jobs and hiring talented gig workers.');
                 
         } catch (\Exception $e) {
             Log::error('ONBOARDING_PROFILE_UPDATE_FAILED', [
@@ -313,8 +316,8 @@ class EmployerOnboardingController extends Controller
             'profile_status' => 'approved'
         ]);
 
-        return redirect()->route('jobs.index')->with('info',
-            'You can complete your profile later from your profile settings to attract better candidates.');
+        return redirect()->route('employer.dashboard')->with('info',
+            'Welcome to WorkWise! You can complete your profile later from your profile settings to attract better candidates.');
     }
 
     /**

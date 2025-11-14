@@ -247,7 +247,7 @@ class ProjectController extends Controller
             ? $project->gig_worker_id
             : $project->employer_id;
 
-        Review::create([
+        $review = Review::create([
             'project_id' => $project->id,
             'reviewer_id' => auth()->id(),
             'reviewee_id' => $revieweeId,
@@ -256,6 +256,17 @@ class ProjectController extends Controller
             'criteria_ratings' => $request->criteria_ratings,
         ]);
 
-        return back()->with('success', 'Review submitted successfully!');
+        // Log the review creation for debugging
+        \Log::info('Review created successfully', [
+            'review_id' => $review->id,
+            'project_id' => $project->id,
+            'reviewer_id' => auth()->id(),
+            'reviewee_id' => $revieweeId,
+            'rating' => $request->rating,
+        ]);
+
+        return back()->with('success', 'Review submitted successfully!')
+                    ->with('showThankYou', true)
+                    ->with('reviewSubmitted', true);
     }
 }

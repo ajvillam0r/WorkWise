@@ -320,9 +320,10 @@ class ProfileController extends Controller
             abort(404, 'This user is not a gig worker or the profile does not exist.');
         }
 
-        // Eager load relationships from database
+        // Eager load relationships from database (always fresh data, no caching)
         // Reviews come from reviews table (Requirement 9.4)
         // Portfolio items come from portfolio_items table (Requirement 9.5)
+        // Force fresh query to ensure latest reviews are displayed immediately after submission
         $user->load([
             'receivedReviews' => function ($query) {
                 $query->with('reviewer:id,first_name,last_name,profile_picture')
@@ -336,6 +337,7 @@ class ProfileController extends Controller
         ]);
 
         // Calculate rating summary from actual review data (Requirement 9.4)
+        // This ensures the rating summary is always up-to-date with the latest reviews
         $ratingSummary = $this->calculateRatingSummary($user->receivedReviews);
 
         // All data passed to frontend comes from database (Requirement 9.1, 9.2)
@@ -374,9 +376,10 @@ class ProfileController extends Controller
             abort(404, 'This user is not an employer or the profile does not exist.');
         }
 
-        // Eager load relationships from database
+        // Eager load relationships from database (always fresh data, no caching)
         // Reviews come from reviews table (Requirement 9.4)
         // Posted jobs come from gig_jobs table (Requirement 9.6)
+        // Force fresh query to ensure latest reviews are displayed immediately after submission
         $user->load([
             'receivedReviews' => function ($query) {
                 $query->with('reviewer:id,first_name,last_name,profile_picture')
@@ -390,6 +393,7 @@ class ProfileController extends Controller
         ]);
 
         // Calculate rating summary from actual review data (Requirement 9.4)
+        // This ensures the rating summary is always up-to-date with the latest reviews
         $ratingSummary = $this->calculateRatingSummary($user->receivedReviews);
 
         // Calculate job statistics from database tables (Requirement 9.6)

@@ -99,6 +99,10 @@ class GigWorkerDashboardController extends Controller
             ->count();
         $successRate = $totalBids > 0 ? round(($acceptedBids / $totalBids) * 100, 1) : 0;
 
+        // Rating calculation - get actual rating from reviews
+        $reviewsCount = $user->receivedReviews()->count();
+        $averageRating = $reviewsCount > 0 ? round($user->receivedReviews()->avg('rating'), 1) : 0.0;
+
         return [
             'activeBids' => $activeBids,
             'bidsTrend' => $this->calculateTrend($activeBids, $lastMonthActiveBids),
@@ -115,6 +119,9 @@ class GigWorkerDashboardController extends Controller
             'successRate' => $successRate,
             'successRateTrend' => 'up', // This would need more complex calculation
             'successRateTrendValue' => 0,
+            
+            'rating' => $averageRating,
+            'reviewsCount' => $reviewsCount,
         ];
     }
 

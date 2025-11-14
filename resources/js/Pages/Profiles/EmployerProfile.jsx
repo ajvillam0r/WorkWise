@@ -17,6 +17,14 @@ import {
 
 export default function EmployerProfile({ user, reviews, rating_summary, job_statistics }) {
     const { auth } = usePage().props;
+    
+    // Debug: Log the data received from backend
+    console.log('EmployerProfile - Data received:', {
+        user: user?.company_name || (user?.first_name + ' ' + user?.last_name),
+        reviewsCount: reviews?.length || 0,
+        reviews: reviews,
+        rating_summary: rating_summary
+    });
 
     return (
         <AuthenticatedLayout

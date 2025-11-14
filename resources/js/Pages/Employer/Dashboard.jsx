@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { ToastContainer } from '@/Components/Toast';
+import useToast from '@/Hooks/useToast';
 import {
     BriefcaseIcon,
     UserGroupIcon,
@@ -38,8 +40,22 @@ export default function EmployerDashboard({
     activityStats,
     stats
 }) {
-    const { auth } = usePage().props;
+    const { auth, flash } = usePage().props;
     const user = auth.user;
+    const { toasts, removeToast, success, error, info } = useToast();
+
+    // Handle flash messages
+    useEffect(() => {
+        if (flash?.success) {
+            success(flash.success, 8000);
+        }
+        if (flash?.error) {
+            error(flash.error, 8000);
+        }
+        if (flash?.info) {
+            info(flash.info, 8000);
+        }
+    }, [flash]);
 
     useEffect(() => {
         // Intersection Observer for animations
@@ -766,6 +782,9 @@ export default function EmployerDashboard({
         >
             <Head title="Employer Dashboard" />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+            {/* Toast Notifications */}
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
 
             <div className="relative py-8 bg-white overflow-hidden">
                 {/* Animated Background Shapes */}

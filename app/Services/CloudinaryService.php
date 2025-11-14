@@ -15,8 +15,8 @@ class CloudinaryService
 {
     protected $cloudinary;
     protected $config;
-    protected $maxRetries = 3;
-    protected $retryDelay = 1000000; // 1 second in microseconds
+    protected $maxRetries = 2; // Reduced from 3 to 2 to avoid timeout
+    protected $retryDelay = 500000; // Reduced from 1 second to 0.5 seconds
 
     public function __construct()
     {
@@ -83,8 +83,8 @@ class CloudinaryService
                 ]);
 
                 if ($attempts < $this->maxRetries) {
-                    // Exponential backoff: wait longer between each retry
-                    $delay = $this->retryDelay * pow(2, $attempts - 1);
+                    // Linear backoff instead of exponential to avoid long waits
+                    $delay = $this->retryDelay * $attempts;
                     usleep($delay);
                 }
             }
@@ -130,7 +130,7 @@ class CloudinaryService
                         'format' => $this->config['profile_pictures']['transformation']['format']
                     ],
                     'allowed_formats' => $this->config['profile_pictures']['allowed_formats'],
-                    'timeout' => 60 // 60 second timeout
+                    'timeout' => 30 // Reduced from 60 to 30 seconds to prevent PHP timeout
                 ]
             );
 
@@ -287,7 +287,7 @@ class CloudinaryService
                     'type' => 'authenticated', // Secure access
                     'allowed_formats' => $this->config['id_verification']['allowed_formats'],
                     'resource_type' => 'auto',
-                    'timeout' => 60 // 60 second timeout per upload
+                    'timeout' => 30 // Reduced from 60 to 30 seconds to prevent PHP timeout
                 ]
             );
 

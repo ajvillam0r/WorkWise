@@ -366,7 +366,7 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                                             required
                                         >
                                             <option value="">Select company size</option>
-                                            <option value="individual">Individual / Freelancer</option>
+                                            <option value="individual">Individual</option>
                                             <option value="2-10">2-10 employees</option>
                                             <option value="11-50">11-50 employees</option>
                                             <option value="51-200">51-200 employees</option>
@@ -595,11 +595,11 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                                             required
                                         >
                                             <option value="">Select typical budget</option>
-                                            <option value="under_500">Under  ₱500</option>
-                                            <option value="500-2000"> ₱5,000 -  ₱20,000</option>
-                                            <option value="2000-5000"> ₱20,000 -  ₱50,000</option>
-                                            <option value="5000-10000"> ₱50,000 -  ₱60,000</option>
-                                            <option value="10000+"> ₱100,000+</option>
+                                            <option value="under_500">Under ₱500</option>
+                                            <option value="500-2000">₱500 - ₱2,000</option>
+                                            <option value="2000-5000">₱2,000 - ₱5,000</option>
+                                            <option value="5000-10000">₱5,000 - ₱10,000</option>
+                                            <option value="10000+">₱10,000+</option>
                                         </select>
                                         {touchedFields.typical_project_budget && !data.typical_project_budget && (
                                             <p className="mt-1 text-sm text-red-600">Please select your typical project budget</p>

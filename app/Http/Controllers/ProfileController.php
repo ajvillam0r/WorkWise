@@ -307,7 +307,7 @@ class ProfileController extends Controller
      * - Portfolio items fetched from portfolio_items table
      * - All data is real-time from database with no caching of profile content
      */
-    public function showWorker(User $user): Response
+    public function showWorker(User $user): Response|RedirectResponse
     {
         // Redirect to own profile edit if viewing own profile (Requirement 1.2)
         if ($user->id === auth()->id()) {
@@ -361,7 +361,7 @@ class ProfileController extends Controller
      * - Job statistics calculated from gig_jobs and projects tables
      * - All data is real-time from database with no caching of profile content
      */
-    public function showEmployer(User $user): Response
+    public function showEmployer(User $user): Response|RedirectResponse
     {
         // Redirect to own profile edit if viewing own profile (Requirement 3.2)
         if ($user->id === auth()->id()) {

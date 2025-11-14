@@ -547,15 +547,12 @@ export default function JobShow({ job, canBid }) {
                                                             <div>
                                                                 <h4 className="font-medium text-gray-900">
                                                                     {bid.gig_worker ? (
-                                                                        <Link
-                                                                            href={route('workers.show', bid.gig_worker.id)}
+                                                                        <a
+                                                                            href={`/workers/${bid.gig_worker.id}`}
                                                                             className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                            }}
                                                                         >
                                                                             {`${bid.gig_worker.first_name} ${bid.gig_worker.last_name}`}
-                                                                        </Link>
+                                                                        </a>
                                                                     ) : (
                                                                         'Unknown User'
                                                                     )}
@@ -826,19 +823,12 @@ export default function JobShow({ job, canBid }) {
                                         {getUserAvatar(job.employer)}
                                         <div>
                                             <h4 className="font-medium text-gray-900">
-                                                <button
-                                                    type="button"
-                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium relative z-10 cursor-pointer bg-transparent border-0 p-0"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        const employerUrl = route('employers.show', job.employer.id);
-                                                        console.log('Navigating to employer profile:', employerUrl);
-                                                        router.visit(employerUrl);
-                                                    }}
+                                                <a
+                                                    href={`/employers/${job.employer.id}`}
+                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
                                                 >
                                                     {job.employer.first_name} {job.employer.last_name}
-                                                </button>
+                                                </a>
                                             </h4>
                                             <p className="text-sm text-gray-600">
                                                 {job.employer.professional_title || 'Employer'}

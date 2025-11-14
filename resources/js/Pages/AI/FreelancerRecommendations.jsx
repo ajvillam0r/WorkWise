@@ -285,7 +285,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
 
                             {/* Local Market Insights */}
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                                <h3 className="text-lg font-semibold text-blue-900 mb-4">🏝️ Lapu-Lapu City Market</h3>
+                                <h3 className="text-lg font-semibold text-blue-900 mb-4">🏝️ Local Market</h3>
                                 <div className="space-y-3 text-sm text-blue-800">
                                     <div>
                                         <div className="font-medium">Tourism Season Peak</div>

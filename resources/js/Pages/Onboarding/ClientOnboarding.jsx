@@ -163,7 +163,7 @@ export default function ClientOnboarding({ user }) {
                                             <div className="mt-2 text-sm text-blue-700">
                                                 <ul className="list-disc list-inside space-y-1">
                                                     <li>You can immediately start posting projects</li>
-                                                    <li>Browse and contact gig workers in Lapu-Lapu City</li>
+                                                    <li>Browse and contact local gig workers</li>
                                                     <li>Receive proposals from qualified local professionals</li>
                                                     <li>Manage your projects from your dashboard</li>
                                                 </ul>

@@ -463,6 +463,13 @@ Route::match(['GET', 'POST'], '/api/ai/test-connection', [AIRecommendationContro
 // System-wide unique skills endpoint for filters
 Route::middleware(['auth'])->get('/api/ai-recommendation/skills', [AIRecommendationController::class, 'allSkills'])->name('ai.skills');
 
+// AI Skill Recommendations for job creation
+Route::middleware(['auth'])->group(function () {
+    Route::post('/api/recommendations/skills', [AIRecommendationController::class, 'recommendSkills'])->name('api.recommendations.skills');
+    Route::post('/api/recommendations/skills/accept', [AIRecommendationController::class, 'acceptSuggestion'])->name('api.recommendations.accept');
+    Route::get('/api/recommendations/skills/all', [AIRecommendationController::class, 'allSkills'])->name('api.recommendations.all');
+});
+
 // Admin routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     // Admin dashboard

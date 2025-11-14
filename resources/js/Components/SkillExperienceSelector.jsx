@@ -34,15 +34,17 @@ export default function SkillExperienceSelector({
     const handleInputChange = useCallback((e) => {
         const value = e.target.value;
         setInput(value);
+        setSelectedSkill(value); // Allow custom skills
 
         if (value.trim().length < 1) {
             setSuggestions([]);
             return;
         }
 
+        // Filter taxonomy suggestions (case-insensitive)
         const filtered = ALL_SKILLS.filter(skill =>
             skill.toLowerCase().includes(value.toLowerCase()) &&
-            !skills.some(s => s.skill.toLowerCase() === skill.toLowerCase())
+            !skills.some(s => s.skill.trim().toLowerCase() === skill.trim().toLowerCase())
         );
 
         setSuggestions(filtered.slice(0, 8));
@@ -52,14 +54,17 @@ export default function SkillExperienceSelector({
     const addSkill = useCallback(() => {
         if (!selectedSkill || skills.length >= maxSkills) return;
 
-        // Check if skill already exists
-        if (skills.some(s => s.skill.toLowerCase() === selectedSkill.toLowerCase())) {
+        // Normalize skill name (trim whitespace and convert to lowercase for comparison)
+        const normalizedSkill = selectedSkill.trim().toLowerCase();
+        
+        // Case-insensitive, trimmed duplicate check
+        if (skills.some(s => s.skill.trim().toLowerCase() === normalizedSkill)) {
             alert('This skill is already added');
             return;
         }
 
         const newSkill = {
-            skill: selectedSkill,
+            skill: selectedSkill.trim(), // Store with proper casing, but trimmed
             experience_level: selectedLevel,
             importance: type === 'nice_to_have' ? 'preferred' : selectedImportance
         };
@@ -73,6 +78,31 @@ export default function SkillExperienceSelector({
         setSelectedLevel('intermediate');
         setSelectedImportance(type === 'nice_to_have' ? 'preferred' : 'required');
     }, [selectedSkill, selectedLevel, selectedImportance, skills, onChange, maxSkills, type]);
+
+    // Handle Enter key to add custom skill
+    const handleKeyPress = useCallback((e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            
+            const trimmedInput = input.trim();
+            if (!trimmedInput) return;
+            
+            // If there's an exact match in suggestions, use it
+            const exactMatch = suggestions.find(s => 
+                s.toLowerCase() === trimmedInput.toLowerCase()
+            );
+            
+            if (exactMatch) {
+                setSelectedSkill(exactMatch);
+            } else {
+                // Add as custom skill
+                setSelectedSkill(trimmedInput);
+            }
+            
+            // Trigger add skill
+            setTimeout(() => addSkill(), 0);
+        }
+    }, [input, suggestions, addSkill]);
 
     // Remove a skill
     const removeSkill = useCallback((index) => {
@@ -117,7 +147,8 @@ export default function SkillExperienceSelector({
                                 type="text"
                                 value={input}
                                 onChange={handleInputChange}
-                                placeholder="Type skill name..."
+                                onKeyPress={handleKeyPress}
+                                placeholder="Type or add custom skill..."
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 list="skill-suggestions"
                             />
@@ -137,8 +168,39 @@ export default function SkillExperienceSelector({
                                             {skill}
                                         </button>
                                     ))}
+                                    {input.trim() && !suggestions.some(s => s.toLowerCase() === input.trim().toLowerCase()) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedSkill(input.trim());
+                                                setSuggestions([]);
+                                                setTimeout(() => addSkill(), 0);
+                                            }}
+                                            className="w-full text-left px-3 py-2 hover:bg-green-50 text-sm text-green-700 border-t border-gray-200 font-medium"
+                                        >
+                                            + Add "{input.trim()}" as custom skill
+                                        </button>
+                                    )}
                                 </div>
                             )}
+                            {input.trim() && suggestions.length === 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedSkill(input.trim());
+                                            setSuggestions([]);
+                                            setTimeout(() => addSkill(), 0);
+                                        }}
+                                        className="w-full text-left px-3 py-2 hover:bg-green-50 text-sm text-green-700 font-medium"
+                                    >
+                                        + Add "{input.trim()}" as custom skill
+                                    </button>
+                                </div>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                                Press Enter to add custom skill
+                            </p>
                         </div>
                     </div>
 

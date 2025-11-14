@@ -5,13 +5,14 @@ import SkillExperienceSelector from '@/Components/SkillExperienceSelector';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function JobCreate() {
-    const [skillInput, setSkillInput] = useState('');
     // AI-suggested skills state
     const [suggestedSkills, setSuggestedSkills] = useState([]);
     const [skillSuggestLoading, setSkillSuggestLoading] = useState(false);
     // Emerging skills and innovative roles
     const [emergingSkills, setEmergingSkills] = useState([]);
     const [innovativeRoles, setInnovativeRoles] = useState([]);
+    // Suggested category state
+    const [suggestedCategory, setSuggestedCategory] = useState('');
 
     // Flatten taxonomy into skills and category index (memoized for performance)
     const { skills: ALL_SKILLS, categories: CATEGORY_INDEX } = useMemo(() => {
@@ -284,9 +285,7 @@ export default function JobCreate() {
         title: '',
         description: '',
         project_category: '',
-        required_skills: [],
         skills_requirements: [],
-        nice_to_have_skills: [],
         budget_type: 'fixed',
         budget_min: '',
         budget_max: '',
@@ -294,7 +293,7 @@ export default function JobCreate() {
         job_complexity: '',
         estimated_duration_days: '',
         deadline: '',
-        location: 'Lapu-Lapu City',
+        location: '',
         is_remote: false,
     });
 
@@ -302,7 +301,8 @@ export default function JobCreate() {
     useEffect(() => {
         const t = setTimeout(() => {
             const text = `${data.title ?? ''} ${data.description ?? ''}`;
-            const suggestions = suggestSkills(text, data.required_skills);
+            const existingSkills = data.skills_requirements.map(s => s.skill);
+            const suggestions = suggestSkills(text, existingSkills);
             setSuggestedSkills(suggestions);
             setSkillSuggestLoading(false);
         }, 300);
@@ -310,16 +310,37 @@ export default function JobCreate() {
         return () => {
             clearTimeout(t);
         };
-    }, [data.title, data.description, data.required_skills]);
+    }, [data.title, data.description, data.skills_requirements]);
+
+    // Debounced category detection when title/description change
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const text = `${data.title ?? ''} ${data.description ?? ''}`;
+            const matchedCategories = matchCategoriesFromText(text);
+            
+            if (matchedCategories.length > 0) {
+                setSuggestedCategory(matchedCategories[0]);
+                // Auto-select if category is empty
+                if (!data.project_category) {
+                    setData('project_category', matchedCategories[0]);
+                }
+            } else {
+                setSuggestedCategory('');
+            }
+        }, 300); // Debounce 300ms
+        
+        return () => clearTimeout(timer);
+    }, [data.title, data.description]);
 
     // Server-backed recommendations: taxonomy, emerging skills, innovative roles
     useEffect(() => {
         const ctrl = new AbortController();
         const run = async () => {
+            const existingSkills = data.skills_requirements.map(s => s.skill);
             const payload = {
                 title: data.title,
                 description: data.description,
-                exclude: data.required_skills,
+                exclude: existingSkills,
             };
             try {
                 const res = await fetch('/api/recommendations/skills', {
@@ -345,11 +366,18 @@ export default function JobCreate() {
             run();
         }
         return () => ctrl.abort();
-    }, [data.title, data.description, data.required_skills]);
+    }, [data.title, data.description, data.skills_requirements]);
 
     const addSkillFromSuggestion = async (skill) => {
-        if (skill && !data.required_skills.includes(skill)) {
-            setData('required_skills', [...data.required_skills, skill]);
+        // Case-insensitive, trimmed duplicate check
+        const normalizedSkill = skill?.trim().toLowerCase();
+        if (skill && !data.skills_requirements.some(s => s.skill.trim().toLowerCase() === normalizedSkill)) {
+            const newSkill = {
+                skill: skill.trim(),
+                experience_level: 'intermediate',
+                importance: 'required'
+            };
+            setData('skills_requirements', [...data.skills_requirements, newSkill]);
             // log acceptance for learning
             try {
                 await fetch('/api/recommendations/skills/accept', {
@@ -362,8 +390,15 @@ export default function JobCreate() {
     };
 
     const addEmergingSkill = async (skill) => {
-        if (skill && !data.required_skills.includes(skill)) {
-            setData('required_skills', [...data.required_skills, skill]);
+        // Case-insensitive, trimmed duplicate check
+        const normalizedSkill = skill?.trim().toLowerCase();
+        if (skill && !data.skills_requirements.some(s => s.skill.trim().toLowerCase() === normalizedSkill)) {
+            const newSkill = {
+                skill: skill.trim(),
+                experience_level: 'intermediate',
+                importance: 'required'
+            };
+            setData('skills_requirements', [...data.skills_requirements, newSkill]);
             try {
                 await fetch('/api/recommendations/skills/accept', {
                     method: 'POST',
@@ -387,41 +422,83 @@ export default function JobCreate() {
     };
 
     const addAllSuggestedSkills = () => {
-        const toAdd = suggestedSkills.filter((s) => !data.required_skills.includes(s));
+        // Case-insensitive, trimmed duplicate filtering
+        const existingSkillsNormalized = data.skills_requirements.map(s => s.skill.trim().toLowerCase());
+        const toAdd = suggestedSkills.filter((s) => !existingSkillsNormalized.includes(s.trim().toLowerCase()));
         if (toAdd.length > 0) {
-            setData('required_skills', [...data.required_skills, ...toAdd]);
+            const newSkills = toAdd.map(skill => ({
+                skill: skill.trim(),
+                experience_level: 'intermediate',
+                importance: 'required'
+            }));
+            setData('skills_requirements', [...data.skills_requirements, ...newSkills]);
         }
     };
 
     // Add all emerging skills helper
     const addAllEmergingSkills = () => {
-        const toAdd = emergingSkills.filter((s) => !data.required_skills.includes(s));
+        // Case-insensitive, trimmed duplicate filtering
+        const existingSkillsNormalized = data.skills_requirements.map(s => s.skill.trim().toLowerCase());
+        const toAdd = emergingSkills.filter((s) => !existingSkillsNormalized.includes(s.trim().toLowerCase()));
         if (toAdd.length > 0) {
-            setData('required_skills', [...data.required_skills, ...toAdd]);
+            const newSkills = toAdd.map(skill => ({
+                skill: skill.trim(),
+                experience_level: 'intermediate',
+                importance: 'required'
+            }));
+            setData('skills_requirements', [...data.skills_requirements, ...newSkills]);
         }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('jobs.store'));
-    };
-
-    const addSkill = () => {
-        if (skillInput.trim() && !data.required_skills.includes(skillInput.trim())) {
-            setData('required_skills', [...data.required_skills, skillInput.trim()]);
-            setSkillInput('');
+        
+        // Comprehensive client-side validation
+        const validationErrors = [];
+        
+        // Validate skills_requirements has at least one skill
+        if (data.skills_requirements.length === 0) {
+            validationErrors.push('Please add at least one required skill using the Skills Requirements section.');
         }
-    };
-
-    const removeSkill = (skillToRemove) => {
-        setData('required_skills', data.required_skills.filter(skill => skill !== skillToRemove));
-    };
-
-    const handleSkillKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addSkill();
+        
+        // Validate description is at least 100 characters
+        if (data.description.trim().length < 100) {
+            validationErrors.push(`Job description must be at least 100 characters. Current length: ${data.description.trim().length} characters.`);
         }
+        
+        // Validate budget_max >= budget_min
+        const budgetMin = parseFloat(data.budget_min);
+        const budgetMax = parseFloat(data.budget_max);
+        
+        if (isNaN(budgetMin) || budgetMin < 0) {
+            validationErrors.push('Please enter a valid minimum budget.');
+        }
+        
+        if (isNaN(budgetMax) || budgetMax < 0) {
+            validationErrors.push('Please enter a valid maximum budget.');
+        }
+        
+        if (!isNaN(budgetMin) && !isNaN(budgetMax) && budgetMax < budgetMin) {
+            validationErrors.push('Maximum budget must be greater than or equal to minimum budget.');
+        }
+        
+        // Display validation errors if any
+        if (validationErrors.length > 0) {
+            alert('Please fix the following errors:\n\n' + validationErrors.map((err, idx) => `${idx + 1}. ${err}`).join('\n'));
+            return;
+        }
+        
+        // Submit form with error handling
+        post(route('jobs.store'), {
+            onError: (errors) => {
+                console.error('Validation errors:', errors);
+                // Scroll to top to show error messages
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+            onSuccess: () => {
+                console.log('Job posted successfully');
+            }
+        });
     };
 
     const barangays = [
@@ -475,6 +552,33 @@ export default function JobCreate() {
                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
                         <div className="p-8">
                             <form onSubmit={handleSubmit} className="space-y-8">
+                                {/* Error Summary */}
+                                {Object.keys(errors).length > 0 && (
+                                    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+                                        <div className="flex">
+                                            <div className="flex-shrink-0">
+                                                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div className="ml-3">
+                                                <h3 className="text-sm font-medium text-red-800">
+                                                    There {Object.keys(errors).length === 1 ? 'is' : 'are'} {Object.keys(errors).length} error{Object.keys(errors).length === 1 ? '' : 's'} with your submission
+                                                </h3>
+                                                <div className="mt-2 text-sm text-red-700">
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                        {Object.entries(errors).map(([field, message]) => (
+                                                            <li key={field}>
+                                                                <span className="font-medium capitalize">{field.replace(/_/g, ' ')}:</span> {message}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 {/* Job Title */}
                                 <div>
                                     <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
@@ -515,51 +619,8 @@ export default function JobCreate() {
                                     {errors.description && <p className="mt-2 text-sm text-red-600">{errors.description}</p>}
                                 </div>
 
-                                {/* Required Skills */}
+                                {/* AI-Suggested Skills */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Required Skills *
-                                    </label>
-                                    <div className="flex items-center space-x-2 mb-3">
-                                        <input
-                                            type="text"
-                                            value={skillInput}
-                                            onChange={(e) => setSkillInput(e.target.value)}
-                                            onKeyDown={handleSkillKeyPress}
-                                            className="flex-1 border-gray-300 rounded-xl shadow-lg focus:ring-blue-500 focus:border-blue-500"
-                                            placeholder="Type a skill and press Enter"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={addSkill}
-                                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                        >
-                                            Add
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        {data.required_skills.map((skill, index) => (
-                                            <span
-                                                key={index}
-                                                className="inline-flex items-center px-3 py-1 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md"
-                                            >
-                                                {skill}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeSkill(skill)}
-                                                    className="ml-2 text-blue-600 hover:text-blue-800"
-                                                >
-                                                    ×
-                                                </button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <p className="text-sm text-gray-500">
-                                        Add skills that are essential for this job (e.g., React.js, PHP, Graphic Design)
-                                    </p>
-                                    {errors.required_skills && <p className="mt-2 text-sm text-red-600">{errors.required_skills}</p>}
-                                    
-                                    {/* AI-Suggested Skills */}
                                     {(skillSuggestLoading || suggestedSkills.length > 0) && (
                                         <div className="mt-4">
                                             <div className="flex items-center mb-2">
@@ -574,9 +635,9 @@ export default function JobCreate() {
                                                     <button
                                                         type="button"
                                                         onClick={addAllSuggestedSkills}
-                                                        disabled={suggestedSkills.every((s) => data.required_skills.includes(s))}
-                                                        className={`ml-auto inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border transition ${suggestedSkills.every((s) => data.required_skills.includes(s)) ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-indigo-50 text-blue-700 border-blue-200 hover:bg-indigo-100 hover:text-blue-800 hover:border-blue-300'}`}
-                                                        aria-disabled={suggestedSkills.every((s) => data.required_skills.includes(s))}
+                                                        disabled={suggestedSkills.every((s) => data.skills_requirements.some(sr => sr.skill === s))}
+                                                        className={`ml-auto inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border transition ${suggestedSkills.every((s) => data.skills_requirements.some(sr => sr.skill === s)) ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-indigo-50 text-blue-700 border-blue-200 hover:bg-indigo-100 hover:text-blue-800 hover:border-blue-300'}`}
+                                                        aria-disabled={suggestedSkills.every((s) => data.skills_requirements.some(sr => sr.skill === s))}
                                                         title="Add all suggested skills"
                                                     >
                                                         Add all
@@ -585,7 +646,7 @@ export default function JobCreate() {
                                             </div>
                                             <div className="flex flex-wrap gap-2">
                                                 {suggestedSkills.map((s) => {
-                                                    const isAdded = data.required_skills.includes(s);
+                                                    const isAdded = data.skills_requirements.some(sr => sr.skill === s);
                                                     return (
                                                         <button
                                                             type="button"
@@ -617,9 +678,9 @@ export default function JobCreate() {
                                             <button
                                                 type="button"
                                                 onClick={addAllEmergingSkills}
-                                                disabled={emergingSkills.every((s) => data.required_skills.includes(s))}
-                                                className={`ml-auto inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border transition ${emergingSkills.every((s) => data.required_skills.includes(s)) ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-indigo-50 text-blue-700 border-blue-200 hover:bg-indigo-100 hover:text-blue-800 hover:border-blue-300'}`}
-                                                aria-disabled={emergingSkills.every((s) => data.required_skills.includes(s))}
+                                                disabled={emergingSkills.every((s) => data.skills_requirements.some(sr => sr.skill === s))}
+                                                className={`ml-auto inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border transition ${emergingSkills.every((s) => data.skills_requirements.some(sr => sr.skill === s)) ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-indigo-50 text-blue-700 border-blue-200 hover:bg-indigo-100 hover:text-blue-800 hover:border-blue-300'}`}
+                                                aria-disabled={emergingSkills.every((s) => data.skills_requirements.some(sr => sr.skill === s))}
                                                 title="Add all emerging skills"
                                             >
                                                 Add all
@@ -627,7 +688,7 @@ export default function JobCreate() {
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {emergingSkills.map((s) => {
-                                                const isAdded = data.required_skills.includes(s);
+                                                const isAdded = data.skills_requirements.some(sr => sr.skill === s);
                                                 return (
                                                     <button
                                                         type="button"
@@ -796,11 +857,21 @@ export default function JobCreate() {
                                     >
                                         <option value="">Select a category</option>
                                         {PROJECT_CATEGORIES.map((category) => (
-                                            <option key={category} value={category}>
-                                                {category}
+                                            <option 
+                                                key={category} 
+                                                value={category}
+                                                className={category === suggestedCategory ? 'bg-blue-50 font-semibold' : ''}
+                                            >
+                                                {category === suggestedCategory ? `✨ ${category} (Suggested)` : category}
                                             </option>
                                         ))}
                                     </select>
+                                    {suggestedCategory && (
+                                        <p className="mt-1 text-sm text-blue-600 flex items-center">
+                                            <span className="mr-1">💡</span>
+                                            Suggested category based on your job details
+                                        </p>
+                                    )}
                                     {errors.project_category && <p className="mt-2 text-sm text-red-600">{errors.project_category}</p>}
                                 </div>
 
@@ -825,26 +896,26 @@ export default function JobCreate() {
                                 </div>
 
                                 {/* Skills Requirements */}
-                                <SkillExperienceSelector
-                                    label="Skills Requirements"
-                                    description="Select the skills and experience levels required for this job"
-                                    skills={data.skills_requirements}
-                                    onChange={(skills) => setData('skills_requirements', skills)}
-                                    type="required"
-                                    maxSkills={10}
-                                />
+                                <div>
+                                    <SkillExperienceSelector
+                                        label="Skills Requirements *"
+                                        description="Select the skills and experience levels required for this job"
+                                        skills={data.skills_requirements}
+                                        onChange={(skills) => setData('skills_requirements', skills)}
+                                        type="required"
+                                        maxSkills={10}
+                                    />
+                                    {errors.skills_requirements && (
+                                        <p className="mt-2 text-sm text-red-600">{errors.skills_requirements}</p>
+                                    )}
+                                    {data.skills_requirements.length === 0 && (
+                                        <p className="mt-2 text-sm text-amber-600">
+                                            💡 Tip: Use the AI-suggested skills above or add skills manually using the selector
+                                        </p>
+                                    )}
+                                </div>
 
-                                {/* Nice to Have Skills */}
-                                <SkillExperienceSelector
-                                    label="Nice to Have Skills"
-                                    description="Select optional skills that would be a bonus to have"
-                                    skills={data.nice_to_have_skills}
-                                    onChange={(skills) => setData('nice_to_have_skills', skills)}
-                                    type="nice_to_have"
-                                    maxSkills={5}
-                                />
-
-                                {/* Location & Remote
+                                {/* Location & Remote */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-4">
                                         Work Location
@@ -853,48 +924,51 @@ export default function JobCreate() {
                                         <div className="flex items-center space-x-4">
                                             <label className="flex items-center">
                                                 <input
-                                                    type="radio"
-                                                    name="work_location"
-                                                    checked={!data.is_remote}
-                                                    onChange={() => setData('is_remote', false)}
-                                                    className="text-blue-600 focus:ring-blue-500"
-                                                />
-                                                <span className="ml-2 text-sm font-medium text-gray-700">On-site in Lapu-Lapu City</span>
-                                            </label>
-                                            <label className="flex items-center">
-                                                <input
-                                                    type="radio"
-                                                    name="work_location"
+                                                    type="checkbox"
                                                     checked={data.is_remote}
-                                                    onChange={() => setData('is_remote', true)}
-                                                    className="text-blue-600 focus:ring-blue-500"
+                                                    onChange={(e) => {
+                                                        const isRemote = e.target.checked;
+                                                        setData('is_remote', isRemote);
+                                                        // Clear location when remote is checked
+                                                        if (isRemote) {
+                                                            setData('location', '');
+                                                        }
+                                                    }}
+                                                    className="text-blue-600 focus:ring-blue-500 rounded"
                                                 />
                                                 <span className="ml-2 text-sm font-medium text-gray-700">Remote Work</span>
                                             </label>
                                         </div>
                                         
+                                        {/* Conditionally render location field */}
                                         {!data.is_remote && (
-                                            <div>
+                                            <div className="transition-all duration-200 ease-in-out">
                                                 <label htmlFor="location" className="block text-sm text-gray-600 mb-1">
-                                                    Specific Barangay (Optional)
+                                                    Location *
                                                 </label>
-                                                <select
+                                                <input
+                                                    type="text"
                                                     id="location"
                                                     value={data.location}
                                                     onChange={(e) => setData('location', e.target.value)}
                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                >
-                                                    <option value="Lapu-Lapu City">Any Barangay in Lapu-Lapu City</option>
-                                                    {barangays.map((barangay) => (
-                                                        <option key={barangay} value={barangay}>
-                                                            {barangay}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    placeholder="e.g., City, Province"
+                                                />
+                                                <p className="mt-1 text-sm text-gray-500">
+                                                    Specify where the work needs to be performed
+                                                </p>
                                             </div>
                                         )}
+                                        
+                                        {data.is_remote && (
+                                            <p className="text-sm text-green-600 flex items-center">
+                                                <span className="mr-1">✓</span>
+                                                This job can be done from anywhere
+                                            </p>
+                                        )}
                                     </div>
-                                </div> */}
+                                    {errors.location && <p className="mt-2 text-sm text-red-600">{errors.location}</p>}
+                                </div>
 
                                 {/* Deadline */}
                                 <div>

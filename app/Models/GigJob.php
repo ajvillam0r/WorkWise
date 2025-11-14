@@ -98,4 +98,44 @@ class GigJob extends Model
 
         return "$" . number_format($this->budget_min ?? 0, 0) . "/hr - $" . number_format($this->budget_max ?? 0, 0) . "/hr";
     }
+
+    /**
+     * Get skill names from skills_requirements (primary) or required_skills (fallback)
+     */
+    public function getSkillNamesAttribute(): array
+    {
+        if (!empty($this->skills_requirements) && is_array($this->skills_requirements)) {
+            return array_map(fn($skill) => $skill['skill'] ?? '', $this->skills_requirements);
+        }
+        
+        return $this->required_skills ?? [];
+    }
+
+    /**
+     * Get required skills with experience levels
+     */
+    public function getRequiredSkillsWithLevelsAttribute(): array
+    {
+        if (!empty($this->skills_requirements) && is_array($this->skills_requirements)) {
+            return array_filter($this->skills_requirements, fn($skill) => 
+                ($skill['importance'] ?? 'required') === 'required'
+            );
+        }
+        
+        return [];
+    }
+
+    /**
+     * Get preferred skills with experience levels
+     */
+    public function getPreferredSkillsWithLevelsAttribute(): array
+    {
+        if (!empty($this->skills_requirements) && is_array($this->skills_requirements)) {
+            return array_filter($this->skills_requirements, fn($skill) => 
+                ($skill['importance'] ?? 'required') === 'preferred'
+            );
+        }
+        
+        return [];
+    }
 }

@@ -84,9 +84,19 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
         const searchLower = search.toLowerCase();
         const titleMatch = job.title?.toLowerCase().includes(searchLower);
         const descMatch = job.description?.toLowerCase().includes(searchLower);
-        const skillsMatch = parseSkills(job.required_skills).some(skill => 
-            skill.toLowerCase().includes(searchLower)
-        );
+        
+        // Check structured skills first, then fallback to legacy
+        let skillsMatch = false;
+        if (job.skills_requirements?.length > 0) {
+            skillsMatch = job.skills_requirements.some(s => 
+                s.skill.toLowerCase().includes(searchLower)
+            );
+        } else {
+            skillsMatch = parseSkills(job.required_skills).some(skill => 
+                skill.toLowerCase().includes(searchLower)
+            );
+        }
+        
         return titleMatch || descMatch || skillsMatch;
     };
 
@@ -599,23 +609,48 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                                             {job.experience_level}
                                                                         </span>
                                                                     </div>
-                                                                    <div>
-                                                                        <div className="text-sm font-medium text-blue-600 mb-1">Location</div>
-                                                                        <div className="font-bold text-gray-900 text-lg">
-                                                                            {job.is_remote ? '🌐 Remote' : `📍 ${job.location || 'Lapu-Lapu City'}`}
+                                                                    {(job.is_remote || job.location) && (
+                                                                        <div>
+                                                                            <div className="text-sm font-medium text-blue-600 mb-1">Location</div>
+                                                                            <div className="font-bold text-gray-900 text-lg">
+                                                                                {job.is_remote ? '🌐 Remote' : `📍 ${job.location}`}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
 
                                                             <div className="mb-6">
                                                                 <div className="text-sm font-medium text-blue-600 mb-3">Required Skills</div>
-                                                                <div className="flex flex-wrap gap-3">
-                                                                    {parseSkills(job?.required_skills || []).map((skill, index) => (
-                                                                        <span key={index} className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300">
-                                                                            {skill}
-                                                                        </span>
-                                                                    ))}
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {/* Show structured skills if available */}
+                                                                    {job?.skills_requirements?.length > 0 ? (
+                                                                        <>
+                                                                            {job.skills_requirements
+                                                                                .filter(s => s.importance === 'required')
+                                                                                .slice(0, 5)
+                                                                                .map((skill, index) => (
+                                                                                    <div key={index} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm hover:shadow-md transition-all duration-200">
+                                                                                        <span>{skill.skill}</span>
+                                                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                                            {skill.experience_level.charAt(0).toUpperCase()}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            {job.skills_requirements.filter(s => s.importance === 'required').length > 5 && (
+                                                                                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600" title={`+${job.skills_requirements.filter(s => s.importance === 'required').length - 5} more skills`}>
+                                                                                    +{job.skills_requirements.filter(s => s.importance === 'required').length - 5} more
+                                                                                </span>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
+                                                                        /* Fallback to legacy required_skills */
+                                                                        parseSkills(job?.required_skills || []).slice(0, 5).map((skill, index) => (
+                                                                            <span key={index} className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm hover:shadow-md transition-all duration-200">
+                                                                                {skill}
+                                                                            </span>
+                                                                        ))
+                                                                    )}
                                                                 </div>
                                                             </div>
 
@@ -747,23 +782,48 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                                         {job.experience_level}
                                                                     </span>
                                                                 </div>
-                                                                <div>
-                                                                    <div className="text-sm font-medium text-blue-600 mb-1">Location</div>
-                                                                    <div className="font-bold text-gray-900 text-lg">
-                                                                        {job.is_remote ? '🌐 Remote' : `📍 ${job.location || 'Lapu-Lapu City'}`}
+                                                                {(job.is_remote || job.location) && (
+                                                                    <div>
+                                                                        <div className="text-sm font-medium text-blue-600 mb-1">Location</div>
+                                                                        <div className="font-bold text-gray-900 text-lg">
+                                                                            {job.is_remote ? '🌐 Remote' : `📍 ${job.location}`}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
+                                                                )}
                                                             </div>
                                                         </div>
 
                                                         <div className="mb-6">
                                                             <div className="text-sm font-medium text-blue-600 mb-3">Required Skills</div>
-                                                            <div className="flex flex-wrap gap-3">
-                                                                {parseSkills(job?.required_skills || []).map((skill, index) => (
-                                                                    <span key={index} className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300">
-                                                                        {skill}
-                                                                    </span>
-                                                                ))}
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {/* Show structured skills if available */}
+                                                                {job?.skills_requirements?.length > 0 ? (
+                                                                    <>
+                                                                        {job.skills_requirements
+                                                                            .filter(s => s.importance === 'required')
+                                                                            .slice(0, 5)
+                                                                            .map((skill, index) => (
+                                                                                <div key={index} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm hover:shadow-md transition-all duration-200">
+                                                                                    <span>{skill.skill}</span>
+                                                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                                        {skill.experience_level.charAt(0).toUpperCase()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            ))}
+                                                                        {job.skills_requirements.filter(s => s.importance === 'required').length > 5 && (
+                                                                            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600" title={`+${job.skills_requirements.filter(s => s.importance === 'required').length - 5} more skills`}>
+                                                                                +{job.skills_requirements.filter(s => s.importance === 'required').length - 5} more
+                                                                            </span>
+                                                                        )}
+                                                                    </>
+                                                                ) : (
+                                                                    /* Fallback to legacy required_skills */
+                                                                    parseSkills(job?.required_skills || []).slice(0, 5).map((skill, index) => (
+                                                                        <span key={index} className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm hover:shadow-md transition-all duration-200">
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))
+                                                                )}
                                                             </div>
                                                         </div>
 

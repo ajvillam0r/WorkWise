@@ -26,12 +26,32 @@ export default function JobEdit({ job }) {
         return [];
     };
 
+    // Convert legacy required_skills to structured format if needed
+    const getInitialSkillsRequirements = () => {
+        // If we have structured skills, use them
+        if (job.skills_requirements && job.skills_requirements.length > 0) {
+            return job.skills_requirements;
+        }
+        
+        // Otherwise, convert legacy required_skills to structured format
+        const legacySkills = parseSkills(job.required_skills);
+        if (legacySkills.length > 0) {
+            return legacySkills.map(skill => ({
+                skill: skill,
+                experience_level: job.experience_level || 'intermediate',
+                importance: 'required'
+            }));
+        }
+        
+        return [];
+    };
+
     const { data, setData, processing, errors } = useForm({
         title: job.title || '',
         description: job.description || '',
         project_category: job.project_category || '',
         required_skills: parseSkills(job.required_skills),
-        skills_requirements: job.skills_requirements || [],
+        skills_requirements: getInitialSkillsRequirements(),
         nice_to_have_skills: job.nice_to_have_skills || [],
         budget_type: job.budget_type || 'fixed',
         budget_min: job.budget_min || '',
@@ -40,7 +60,7 @@ export default function JobEdit({ job }) {
         job_complexity: job.job_complexity || '',
         estimated_duration_days: job.estimated_duration_days || '',
         deadline: job.deadline ? job.deadline.split('T')[0] : '',
-        location: job.location || 'Lapu-Lapu City',
+        location: job.location || '',
         is_remote: job.is_remote || false,
     });
 
@@ -407,7 +427,7 @@ export default function JobEdit({ job }) {
                                     </div>
                                 </div>
 
-                                {/* Location & Remote
+                                {/* Location & Remote */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-4">
                                         Work Location
@@ -416,48 +436,34 @@ export default function JobEdit({ job }) {
                                         <div className="flex items-center space-x-4">
                                             <label className="flex items-center">
                                                 <input
-                                                    type="radio"
-                                                    name="work_location"
-                                                    checked={!data.is_remote}
-                                                    onChange={() => setData('is_remote', false)}
-                                                    className="text-blue-600 focus:ring-blue-500"
-                                                />
-                                                <span className="ml-2 text-sm font-medium text-gray-700">On-site in Lapu-Lapu City</span>
-                                            </label>
-                                            <label className="flex items-center">
-                                                <input
-                                                    type="radio"
-                                                    name="work_location"
+                                                    type="checkbox"
                                                     checked={data.is_remote}
-                                                    onChange={() => setData('is_remote', true)}
-                                                    className="text-blue-600 focus:ring-blue-500"
+                                                    onChange={(e) => setData('is_remote', e.target.checked)}
+                                                    className="text-blue-600 focus:ring-blue-500 rounded"
                                                 />
                                                 <span className="ml-2 text-sm font-medium text-gray-700">Remote Work</span>
                                             </label>
                                         </div>
                                         
-                                        {!data.is_remote && (
-                                            <div>
-                                                <label htmlFor="location" className="block text-sm text-gray-600 mb-1">
-                                                    Specific Barangay (Optional)
-                                                </label>
-                                                <select
-                                                    id="location"
-                                                    value={data.location}
-                                                    onChange={(e) => setData('location', e.target.value)}
-                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                >
-                                                    <option value="Lapu-Lapu City">Any Barangay in Lapu-Lapu City</option>
-                                                    {barangays.map((barangay) => (
-                                                        <option key={barangay} value={barangay}>
-                                                            {barangay}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        )}
+                                        <div>
+                                            <label htmlFor="location" className="block text-sm text-gray-600 mb-1">
+                                                Location (Optional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="location"
+                                                value={data.location}
+                                                onChange={(e) => setData('location', e.target.value)}
+                                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="e.g., City, Province or leave empty for any location"
+                                            />
+                                            <p className="mt-1 text-sm text-gray-500">
+                                                Specify a location if the work requires on-site presence, or leave empty for flexible location
+                                            </p>
+                                        </div>
                                     </div>
-                                </div> */}
+                                    {errors.location && <p className="mt-2 text-sm text-red-600">{errors.location}</p>}
+                                </div>
 
                                 {/* Deadline */}
                                 <div>

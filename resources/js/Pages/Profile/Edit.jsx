@@ -753,7 +753,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 onChange={(e) => setData('city', e.target.value)}
                                                                 disabled={!isEditing || user.address_verified_at}
                                                                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                                placeholder="Lapu-Lapu City"
+                                                                placeholder="Enter your city"
                                                             />
                                                             {errors.city && <p className="mt-2 text-sm text-red-600">{errors.city}</p>}
                                                         </div>

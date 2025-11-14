@@ -124,7 +124,7 @@ const BasicInfoTab = memo(function BasicInfoTab({
                                                             value={data.city}
                                                             onChange={(e) => setData('city', e.target.value)}
                                                             disabled={!isEditing || !!user.address_verified_at}
-                                                            placeholder="Lapu-Lapu City"
+                                                            placeholder="Enter your city"
                                                             error={errors.city}
                                                             debounceMs={300}
                                                         />

@@ -5,6 +5,7 @@ import SuccessModal from '@/Components/SuccessModal';
 import ErrorModal from '@/Components/ErrorModal';
 import MessagesModal from '@/Components/MessagesModal';
 import { formatDistanceToNow } from 'date-fns';
+import { getProfilePhotoUrl, getLocationDisplay } from '@/utils/profileHelpers';
 
 // Confirmation Modal Component
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor = 'green', isLoading = false }) => {
@@ -343,10 +344,11 @@ export default function JobShow({ job, canBid }) {
             );
         }
 
-        if (user.profile_photo) {
+        const photoUrl = getProfilePhotoUrl(user.profile_photo);
+        if (photoUrl) {
             return (
                 <img
-                    src={`/storage/${user.profile_photo}`}
+                    src={photoUrl}
                     alt={`${user.first_name} ${user.last_name}`}
                     className="h-12 w-12 rounded-full object-cover"
                 />
@@ -427,19 +429,83 @@ export default function JobShow({ job, canBid }) {
                                 </div>
                             </div>
 
-                            {/* Required Skills */}
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
-                                <div className="p-8">
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Required Skills</h3>
-                                    <div className="flex flex-wrap gap-3">
-                                        {parseSkills(job?.required_skills || []).map((skill, index) => (
-                                            <span key={index} className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300">
-                                                {skill}
-                                            </span>
-                                        ))}
+                            {/* Skills Requirements */}
+                            {(job?.skills_requirements?.length > 0 || parseSkills(job?.required_skills || []).length > 0) && (
+                                <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                                    <div className="p-8">
+                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Skills Requirements</h3>
+                                        
+                                        {/* Required Skills with Experience Levels */}
+                                        {job?.skills_requirements?.length > 0 ? (
+                                            <>
+                                                {/* Required Skills */}
+                                                {job.skills_requirements.filter(s => s.importance === 'required').length > 0 && (
+                                                    <div className="mb-6">
+                                                        <h4 className="text-lg font-semibold text-gray-800 mb-3">Required Skills</h4>
+                                                        <div className="flex flex-wrap gap-3">
+                                                            {job.skills_requirements
+                                                                .filter(s => s.importance === 'required')
+                                                                .map((skill, index) => (
+                                                                    <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300">
+                                                                        <span>{skill.skill}</span>
+                                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                            {skill.experience_level}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Preferred Skills */}
+                                                {job.skills_requirements.filter(s => s.importance === 'preferred').length > 0 && (
+                                                    <div className="mb-6">
+                                                        <h4 className="text-lg font-semibold text-gray-800 mb-3">Preferred Skills</h4>
+                                                        <div className="flex flex-wrap gap-3">
+                                                            {job.skills_requirements
+                                                                .filter(s => s.importance === 'preferred')
+                                                                .map((skill, index) => (
+                                                                    <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-green-100 to-green-200 text-green-800 shadow-md hover:shadow-lg transition-all duration-300">
+                                                                        <span>{skill.skill}</span>
+                                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                            {skill.experience_level}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Nice to Have Skills */}
+                                                {job?.nice_to_have_skills?.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-lg font-semibold text-gray-800 mb-3">Nice to Have</h4>
+                                                        <div className="flex flex-wrap gap-3">
+                                                            {job.nice_to_have_skills.map((skill, index) => (
+                                                                <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-md hover:shadow-lg transition-all duration-300">
+                                                                    <span>{skill.skill}</span>
+                                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                        {skill.experience_level}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            /* Fallback to legacy required_skills */
+                                            <div className="flex flex-wrap gap-3">
+                                                {parseSkills(job?.required_skills || []).map((skill, index) => (
+                                                    <span key={index} className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300">
+                                                        {skill}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Proposals Section */}
                             {job.bids && Array.isArray(job.bids) && job.bids.length > 0 && (isJobOwner || !isEmployer) && (
@@ -693,12 +759,14 @@ export default function JobShow({ job, canBid }) {
                                                 </span>
                                             </dd>
                                         </div>
-                                        <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                            <dt className="text-sm font-medium text-blue-600 mb-2">Location</dt>
-                                            <dd className="text-lg font-semibold text-gray-900">
-                                                {job.is_remote ? '🌐 Remote Work' : `📍 ${job.location || 'Lapu-Lapu City'}`}
-                                            </dd>
-                                        </div>
+                                        {(job.is_remote || job.location) && (
+                                            <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
+                                                <dt className="text-sm font-medium text-blue-600 mb-2">Location</dt>
+                                                <dd className="text-lg font-semibold text-gray-900">
+                                                    {job.is_remote ? '🌐 Remote Work' : `📍 ${job.location}`}
+                                                </dd>
+                                            </div>
+                                        )}
                                         {job.deadline && (
                                             <div>
                                                 <dt className="text-sm font-medium text-gray-500">Deadline</dt>
@@ -747,7 +815,7 @@ export default function JobShow({ job, canBid }) {
                                         <div className="flex justify-between">
                                             <span className="text-gray-500">Location</span>
                                             <span className="text-gray-900">
-                                                {job.employer.barangay ? `${job.employer.barangay}, ` : ''}Lapu-Lapu City
+                                                {getLocationDisplay(job.employer) || 'Location not specified'}
                                             </span>
                                         </div>
                                     </div>

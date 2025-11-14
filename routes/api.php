@@ -52,5 +52,10 @@ Route::post('/stripe/webhook', [WebhookController::class, 'handleStripeWebhook']
 Route::match(['GET', 'POST'], '/ai/test-connection', [AIRecommendationController::class, 'testConnection'])
     ->withoutMiddleware(['web', 'csrf']);
 
-Route::post('/recommendations/skills', [AIRecommendationController::class, 'recommendSkills']);
-Route::post('/recommendations/skills/accept', [AIRecommendationController::class, 'acceptSuggestion']);
+// AI Recommendations (authenticated)
+Route::get('/test-recommendations', function() {
+    return response()->json(['test' => 'works']);
+});
+Route::post('/recommendations/skills', [AIRecommendationController::class, 'recommendSkills'])->middleware('auth');
+Route::post('/recommendations/skills/accept', [AIRecommendationController::class, 'acceptSuggestion'])->middleware('auth');
+Route::get('/recommendations/skills/all', [AIRecommendationController::class, 'allSkills'])->middleware('auth');

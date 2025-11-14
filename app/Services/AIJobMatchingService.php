@@ -812,10 +812,7 @@ class AIJobMatchingService
             'ai_service_config' => $this->aiService->getConfig()
         ];
     }
-}
 
-class SkillRecommendationStat
-{
     protected function taxonomy(): array
     {
         return Cache::rememberForever('full_taxonomy', function () {
@@ -1112,15 +1109,15 @@ class SkillRecommendationStat
         return array_values(array_unique($out));
     }
 
-    // public function recordAcceptance(string $type, string $value, array $context = []): void
-    // {
-    //     SkillRecommendationStat::query()->updateOrCreate(
-    //         ['type' => $type, 'value' => $value],
-    //         [
-    //             'accepted_count' => \DB::raw('accepted_count + 1'),
-    //             'last_accepted_at' => now(),
-    //             'context' => $context,
-    //         ]
-    //     );
-    // }
+    public function recordAcceptance(string $type, string $value, array $context = []): void
+    {
+        // Log acceptance for future analytics
+        // This can be expanded to store in database when needed
+        \Log::info('Skill recommendation accepted', [
+            'type' => $type,
+            'value' => $value,
+            'context' => $context,
+            'timestamp' => now(),
+        ]);
+    }
 }

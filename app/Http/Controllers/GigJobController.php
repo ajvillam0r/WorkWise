@@ -127,14 +127,17 @@ class GigJobController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string|min:100',
             'project_category' => 'nullable|string|max:255',
-            'required_skills' => 'required|array|min:1',
-            'required_skills.*' => 'string|max:50',
-            'skills_requirements' => 'nullable|array',
+            
+            // Primary structured skills field (required)
+            'skills_requirements' => 'required|array|min:1',
             'skills_requirements.*.skill' => 'required|string|max:100',
             'skills_requirements.*.experience_level' => 'required|in:beginner,intermediate,expert',
             'skills_requirements.*.importance' => 'required|in:required,preferred',
-            'nice_to_have_skills' => 'nullable|array',
-            'nice_to_have_skills.*' => 'string|max:100',
+            
+            // Legacy field - no longer required, auto-populated for backward compatibility
+            'required_skills' => 'nullable|array',
+            'required_skills.*' => 'string|max:50',
+            
             'budget_type' => 'required|in:fixed,hourly',
             'budget_min' => 'required|numeric|min:5',
             'budget_max' => 'required|numeric|min:5|gte:budget_min',
@@ -149,16 +152,12 @@ class GigJobController extends Controller
         $validated['employer_id'] = auth()->id();
         $validated['status'] = 'open';
 
-        // If skills_requirements is not provided but required_skills is, create skills_requirements from required_skills
-        if (empty($validated['skills_requirements']) && !empty($validated['required_skills'])) {
-            $experienceLevel = $validated['experience_level'];
-            $validated['skills_requirements'] = array_map(function($skill) use ($experienceLevel) {
-                return [
-                    'skill' => $skill,
-                    'experience_level' => $experienceLevel,
-                    'importance' => 'required'
-                ];
-            }, $validated['required_skills']);
+        // Auto-populate required_skills from skills_requirements for backward compatibility
+        if (!empty($validated['skills_requirements'])) {
+            $validated['required_skills'] = array_map(
+                fn($skill) => $skill['skill'],
+                $validated['skills_requirements']
+            );
         }
 
         $job = GigJob::create($validated);
@@ -211,14 +210,17 @@ class GigJobController extends Controller
             'title' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|required|string',
             'project_category' => 'sometimes|nullable|string|max:255',
-            'required_skills' => 'sometimes|required|array|min:1',
-            'required_skills.*' => 'string',
-            'skills_requirements' => 'sometimes|nullable|array',
+            
+            // Primary structured skills field
+            'skills_requirements' => 'sometimes|required|array|min:1',
             'skills_requirements.*.skill' => 'required|string|max:100',
             'skills_requirements.*.experience_level' => 'required|in:beginner,intermediate,expert',
             'skills_requirements.*.importance' => 'required|in:required,preferred',
-            'nice_to_have_skills' => 'sometimes|nullable|array',
-            'nice_to_have_skills.*' => 'string|max:100',
+            
+            // Legacy field - no longer required, auto-populated for backward compatibility
+            'required_skills' => 'sometimes|nullable|array',
+            'required_skills.*' => 'string|max:50',
+            
             'budget_type' => 'sometimes|required|in:fixed,hourly',
             'budget_min' => 'sometimes|required|numeric|min:0',
             'budget_max' => 'sometimes|nullable|numeric|min:0|gte:budget_min',
@@ -231,16 +233,12 @@ class GigJobController extends Controller
             'status' => 'sometimes|in:open,closed,cancelled',
         ]);
 
-        // If skills_requirements is not provided but required_skills is being updated, create skills_requirements
-        if (!isset($validated['skills_requirements']) && isset($validated['required_skills'])) {
-            $experienceLevel = $validated['experience_level'] ?? $job->experience_level ?? 'intermediate';
-            $validated['skills_requirements'] = array_map(function($skill) use ($experienceLevel) {
-                return [
-                    'skill' => $skill,
-                    'experience_level' => $experienceLevel,
-                    'importance' => 'required'
-                ];
-            }, $validated['required_skills']);
+        // Auto-populate required_skills from skills_requirements for backward compatibility
+        if (isset($validated['skills_requirements']) && !empty($validated['skills_requirements'])) {
+            $validated['required_skills'] = array_map(
+                fn($skill) => $skill['skill'],
+                $validated['skills_requirements']
+            );
         }
 
         $job->update($validated);

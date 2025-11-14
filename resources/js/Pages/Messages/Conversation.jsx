@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { getLocationDisplay } from '@/utils/profileHelpers';
 
 import axios from 'axios';
 
@@ -621,7 +622,7 @@ export default function Conversation({ user, messages, currentUser }) {
                                     </div>
                                 )}
 
-                                {user.barangay && (
+                                {getLocationDisplay(user) && (
                                     <div className="bg-white rounded-xl p-4 border border-gray-100">
                                         <dt className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                                             <svg className="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -630,7 +631,7 @@ export default function Conversation({ user, messages, currentUser }) {
                                             </svg>
                                             Location
                                         </dt>
-                                        <dd className="text-sm text-gray-900">{user.barangay}, Lapu-Lapu City</dd>
+                                        <dd className="text-sm text-gray-900">{getLocationDisplay(user) || 'Location not specified'}</dd>
                                     </div>
                                 )}
                             </div>

@@ -36,9 +36,18 @@ class AdminAnalyticsController
     }
 
     /**
-     * Dashboard 1: User Analytics Overview
+     * Dashboard 1: User Analytics Overview (Real-time with Tabs)
      */
     public function overview(Request $request)
+    {
+        // Use the unified analytics page with tabs
+        return Inertia::render('Admin/Analytics/UnifiedAnalytics');
+    }
+
+    /**
+     * Legacy Overview (kept for reference)
+     */
+    public function legacyOverview(Request $request)
     {
         $period = $this->getPeriod($request);
         [$startDate, $endDate] = $this->getDateRange($period);

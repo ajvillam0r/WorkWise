@@ -481,6 +481,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Admin dashboard
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard.alt');
+    
+    // Real-time Dashboard API endpoints
+    Route::get('/api/realtime-stats', [\App\Http\Controllers\AdminDashboardController::class, 'realtimeStats']);
+    Route::get('/api/realtime-activities', [\App\Http\Controllers\AdminDashboardController::class, 'realtimeActivities']);
+    Route::get('/api/user-growth', [\App\Http\Controllers\AdminDashboardController::class, 'userGrowthData']);
+    Route::get('/api/revenue-analytics', [\App\Http\Controllers\AdminDashboardController::class, 'revenueAnalytics']);
+    Route::get('/api/platform-health', [\App\Http\Controllers\AdminDashboardController::class, 'platformHealth']);
 
     // User management
     Route::get('/users', [AdminController::class, 'users'])->name('users');
@@ -501,6 +508,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Projects management
     Route::get('/projects', [AdminController::class, 'projects'])->name('projects');
+    Route::get('/projects/{project}', [AdminController::class, 'showProject'])->name('projects.show');
     Route::get('/projects/export', [AdminController::class, 'exportProjects'])->name('projects.export');
 
     // Payments management
@@ -533,6 +541,17 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/analytics/jobs-contracts', [AdminAnalyticsController::class, 'jobsContracts'])->name('analytics.jobsContracts');
     Route::get('/analytics/financial', [AdminAnalyticsController::class, 'financial'])->name('analytics.financial');
     Route::get('/analytics/quality', [AdminAnalyticsController::class, 'quality'])->name('analytics.quality');
+    
+    // Real-time Analytics API
+    Route::get('/api/analytics/overview', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'overview']);
+    Route::get('/api/analytics/user-metrics', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'userMetrics']);
+    Route::get('/api/analytics/job-metrics', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'jobMetrics']);
+    Route::get('/api/analytics/financial-metrics', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'financialMetrics']);
+    Route::get('/api/analytics/quality-metrics', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'qualityMetrics']);
+    Route::get('/api/analytics/user-growth-chart', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'userGrowthChart']);
+    Route::get('/api/analytics/revenue-trend-chart', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'revenueTrendChart']);
+    Route::get('/api/analytics/job-trends-chart', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'jobTrendsChart']);
+    Route::get('/api/analytics/quality-trend-chart', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'qualityTrendChart']);
 
     // User Verifications
     Route::get('/verifications', [AdminVerificationController::class, 'index'])->name('verifications');

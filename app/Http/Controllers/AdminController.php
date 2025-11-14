@@ -16,9 +16,18 @@ use Inertia\Response;
 class AdminController extends Controller
 {
     /**
-     * Admin dashboard
+     * Admin dashboard - Redirect to real-time dashboard
      */
     public function dashboard(): Response
+    {
+        // Use the new real-time dashboard
+        return Inertia::render('Admin/RealtimeDashboard');
+    }
+
+    /**
+     * Legacy dashboard (kept for backward compatibility)
+     */
+    public function legacyDashboard(): Response
     {
         $stats = [
             'total_users' => User::where('is_admin', false)->count(),
@@ -55,7 +64,8 @@ class AdminController extends Controller
             'completed_transactions' => Transaction::where('status', 'completed')->count(),
             'pending_transactions' => Transaction::where('status', 'pending')->count(),
             'total_transaction_value' => Transaction::where('status', 'completed')->sum('amount') ?? 0,
-            'platform_earnings' => Transaction::where('type', 'release')->where('status', 'completed')->sum('platform_fee') ?? 0,
+            // Platform fee (earnings) - collected from escrow and fee transactions
+            'platform_fee' => Transaction::whereIn('type', ['escrow', 'fee'])->where('status', 'completed')->sum('platform_fee') ?? 0,
             
             // Report Statistics
             'total_reports' => Report::count(),
@@ -220,7 +230,7 @@ class AdminController extends Controller
 
         $users = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        return Inertia::render('Admin/Users/Index', [
+        return Inertia::render('Admin/Users/EnhancedIndex', [
             'users' => $users,
             'filters' => $request->only(['user_type', 'profile_status', 'search']),
         ]);
@@ -539,7 +549,7 @@ class AdminController extends Controller
             'average_value' => Project::avg('agreed_amount') ?? 0,
         ];
 
-        return Inertia::render('Admin/Projects/Index', [
+        return Inertia::render('Admin/Projects/EnhancedIndex', [
             'projects' => $projects,
             'stats' => $stats,
             'filters' => $request->only(['status', 'employer_id', 'gig_worker_id', 'search']),
@@ -548,7 +558,19 @@ class AdminController extends Controller
     }
 
     /**
-     * Admin Payments Management
+     * Show specific project details
+     */
+    public function showProject(Project $project): Response
+    {
+        $project->load(['employer', 'gigWorker', 'job', 'contract', 'transactions']);
+
+        return Inertia::render('Admin/Projects/Show', [
+            'project' => $project,
+        ]);
+    }
+
+    /**
+     * Admin Payments Management with Real-time Data
      */
     public function payments(Request $request): Response
     {
@@ -582,17 +604,95 @@ class AdminController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
+        // Get paginated transactions with fresh data
         $transactions = $query->orderBy('created_at', 'desc')->paginate(15);
 
+        // Calculate real-time statistics
+        // Platform Fee = Total fees collected from ALL completed transactions (escrow + release)
+        // Note: Escrow transactions collect the fee upfront, release transactions don't add additional fees
+        $platformFeeFromEscrow = Transaction::where('type', 'escrow')
+            ->where('status', 'completed')
+            ->sum('platform_fee');
+        
+        $platformFeeFromOther = Transaction::whereIn('type', ['fee', 'refund'])
+            ->where('status', 'completed')
+            ->sum('platform_fee');
+        
+        // Total platform earnings (same as platform fee - these are the same thing)
+        $totalPlatformFee = $platformFeeFromEscrow + $platformFeeFromOther;
+
+        // Total transaction volume (all completed transactions)
+        $totalVolume = Transaction::where('status', 'completed')->sum('amount');
+
+        // Total amount paid to gig workers (net amount from release transactions)
+        $totalPaidToWorkers = Transaction::where('type', 'release')
+            ->where('status', 'completed')
+            ->sum('net_amount');
+
+        // Successful transactions count
+        $successfulTransactions = Transaction::where('status', 'completed')->count();
+
+        // Calculate average fee percentage from escrow transactions (where fees are collected)
+        $avgFeePercentage = Transaction::where('type', 'escrow')
+            ->where('status', 'completed')
+            ->where('amount', '>', 0)
+            ->selectRaw('AVG((platform_fee / amount) * 100) as avg_fee')
+            ->value('avg_fee') ?? 0;
+
+        // Pending transactions
+        $pendingTransactions = Transaction::where('status', 'pending')->count();
+        $pendingAmount = Transaction::where('status', 'pending')->sum('amount');
+
+        // Failed transactions
+        $failedTransactions = Transaction::where('status', 'failed')->count();
+
+        // Today's statistics
+        $todayPlatformFee = Transaction::whereIn('type', ['escrow', 'fee'])
+            ->where('status', 'completed')
+            ->whereDate('created_at', today())
+            ->sum('platform_fee');
+
+        $todayTransactions = Transaction::where('status', 'completed')
+            ->whereDate('created_at', today())
+            ->count();
+
+        // This week's statistics
+        $weekPlatformFee = Transaction::whereIn('type', ['escrow', 'fee'])
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->sum('platform_fee');
+
+        // This month's statistics
+        $monthPlatformFee = Transaction::whereIn('type', ['escrow', 'fee'])
+            ->where('status', 'completed')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('platform_fee');
+
         $stats = [
-            'total_revenue' => Transaction::where('type', 'release')->where('status', 'completed')->sum('platform_fee'),
-            'total_volume' => Transaction::where('type', 'release')->where('status', 'completed')->sum('amount'),
-            'successful_transactions' => Transaction::where('status', 'completed')->count(),
-            'average_fee_percentage' => Transaction::where('type', 'release')
-                ->where('status', 'completed')
-                ->where('amount', '>', 0)
-                ->selectRaw('AVG((platform_fee / amount) * 100) as avg_fee')
-                ->value('avg_fee') ?? 0,
+            // Main metrics
+            'platform_fee' => $totalPlatformFee, // Total platform earnings (fees collected)
+            'total_volume' => $totalVolume, // Total transaction volume
+            'paid_to_workers' => $totalPaidToWorkers, // Amount paid to gig workers
+            'successful_transactions' => $successfulTransactions,
+            'average_fee_percentage' => round($avgFeePercentage, 2),
+            
+            // Additional metrics
+            'pending_transactions' => $pendingTransactions,
+            'pending_amount' => $pendingAmount,
+            'failed_transactions' => $failedTransactions,
+            
+            // Time-based metrics
+            'today_platform_fee' => $todayPlatformFee,
+            'today_transactions' => $todayTransactions,
+            'week_platform_fee' => $weekPlatformFee,
+            'month_platform_fee' => $monthPlatformFee,
+            
+            // Breakdown by transaction type
+            'escrow_count' => Transaction::where('type', 'escrow')->where('status', 'completed')->count(),
+            'release_count' => Transaction::where('type', 'release')->where('status', 'completed')->count(),
+            'refund_count' => Transaction::where('type', 'refund')->where('status', 'completed')->count(),
+            'fee_count' => Transaction::where('type', 'fee')->where('status', 'completed')->count(),
         ];
 
         return Inertia::render('Admin/Payments/Index', [

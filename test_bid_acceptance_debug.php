@@ -54,15 +54,15 @@ try {
     echo "- Job: {$bid->job->title}\n";
     echo "- Client: {$bid->job->employer->first_name} {$bid->job->employer->last_name}\n";
     echo "- Freelancer: {$bid->freelancer->first_name} {$bid->freelancer->last_name}\n";
-    echo "- Amount: ₱{$bid->bid_amount}\n";
-    echo "- Client Balance: ₱{$bid->job->employer->escrow_balance}\n\n";
+    echo "- Amount: ₱" . number_format($bid->bid_amount, 2) . "\n";
+    echo "- Client Balance: ₱" . number_format($bid->job->employer->escrow_balance, 2) . "\n\n";
 
     // Ensure client has sufficient balance
     $client = $bid->job->employer;
     if ($client->escrow_balance < $bid->bid_amount) {
         echo "Adding funds to client account...\n";
         $client->increment('escrow_balance', $bid->bid_amount + 1000);
-        echo "New client balance: ₱{$client->fresh()->escrow_balance}\n\n";
+        echo "New client balance: ₱" . number_format($client->fresh()->escrow_balance, 2) . "\n\n";
     }
 
     echo "Starting bid acceptance process...\n";
@@ -85,8 +85,8 @@ try {
     echo "3. Calculating fees...\n";
     $platformFee = $bid->bid_amount * 0.05;
     $netAmount = $bid->bid_amount - $platformFee;
-    echo "   Platform fee: ₱{$platformFee}\n";
-    echo "   Net amount: ₱{$netAmount}\n";
+    echo "   Platform fee: ₱" . number_format($platformFee, 2) . "\n";
+    echo "   Net amount: ₱" . number_format($netAmount, 2) . "\n";
 
     // Step 4: Create project
     echo "4. Creating project...\n";
@@ -108,7 +108,7 @@ try {
     $oldBalance = $client->escrow_balance;
     $client->decrement('escrow_balance', $bid->bid_amount);
     $newBalance = $client->fresh()->escrow_balance;
-    echo "   Balance: ₱{$oldBalance} → ₱{$newBalance}\n";
+    echo "   Balance: ₱" . number_format($oldBalance, 2) . " → ₱" . number_format($newBalance, 2) . "\n";
 
     // Step 6: Create transaction
     echo "6. Creating escrow transaction...\n";

@@ -5,33 +5,8 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-// Modern loading spinner component
-const LoadingSpinner = () => (
-    <div className="flex items-center justify-center p-8">
-        <div className="relative">
-            <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 w-8 h-8 border-4 border-transparent border-t-blue-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-        </div>
-        <span className="ml-3 text-sm text-gray-600 font-medium">Loading notifications...</span>
-    </div>
-);
-
-// Skeleton loader for notifications
-const NotificationSkeleton = () => (
-    <div className="p-4 border-b border-gray-100 animate-pulse">
-        <div className="flex items-start space-x-3">
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
-            <div className="flex-1 min-w-0">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-            </div>
-        </div>
-    </div>
-);
-
-// Enhanced notification icons with better styling
-const NotificationIcon = ({ type, icon }) => {
+// Simplified notification icons
+const NotificationIcon = ({ type }) => {
     const iconMap = {
         'contract_signing': 'file-signature',
         'bid_status': 'check-circle',
@@ -44,19 +19,9 @@ const NotificationIcon = ({ type, icon }) => {
     };
 
     const iconClass = iconMap[type] || iconMap['default'];
-    const colorMap = {
-        'contract_signing': 'text-emerald-600',
-        'bid_status': 'text-blue-600',
-        'ai_recommendation': 'text-purple-600',
-        'contract_fully_signed': 'text-green-600',
-        'bid_accepted_messaging': 'text-indigo-600',
-        'message_received': 'text-blue-500',
-        'new_message': 'text-blue-500',
-        'default': 'text-gray-600'
-    };
 
     return (
-        <i className={`fas fa-${iconClass} ${colorMap[type] || colorMap['default']} text-sm`}></i>
+        <i className={`fas fa-${iconClass} text-blue-600 text-sm`}></i>
     );
 };
 
@@ -617,52 +582,39 @@ export default function AuthenticatedLayout({ header, children }) {
 
                         {/* User Menu - Right */}
                         <div className="flex items-center space-x-4">
-                            {/* Enhanced Notifications Dropdown */}
+                            {/* Notifications Dropdown */}
                             <div className="relative">
                                 <button
                                     onClick={handleNotificationButtonClick}
-                                    className="relative p-2 text-gray-400 hover:text-gray-600 transition-all duration-200 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                                    className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM10.5 3.5a6 6 0 0 1 6 6v2l1.5 3h-15l1.5-3v-2a6 6 0 0 1 6-6z" />
                                     </svg>
                                     {unreadCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[1.25rem] h-5 animate-pulse">
-                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-red-500 rounded-full">
+                                            {unreadCount > 9 ? '9+' : unreadCount}
                                         </span>
                                     )}
                                 </button>
 
-                                {/* Enhanced Notifications Dropdown */}
+                                {/* Simplified Notifications Dropdown */}
                                 {showingNotificationsDropdown && (
-                                    <div className="notifications-dropdown absolute right-0 mt-3 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden backdrop-blur-sm">
+                                    <div className="notifications-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
                                         {/* Header */}
-                                        <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+                                        <div className="px-4 py-3 border-b border-gray-200">
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-2">
-                                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                                                        </svg>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-base font-semibold text-gray-900">Notifications</h3>
-                                                        {unreadCount > 0 && (
-                                                            <p className="text-xs text-gray-600">{unreadCount} unread</p>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                                <h3 className="text-sm font-semibold text-gray-900">
+                                                    Notifications {unreadCount > 0 && `(${unreadCount})`}
+                                                </h3>
                                                 {unreadCount > 0 && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             markAllAsRead();
                                                         }}
-                                                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all duration-200 hover:scale-105"
+                                                        className="text-xs text-blue-600 hover:text-blue-700"
                                                     >
-                                                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                        </svg>
                                                         Mark all read
                                                     </button>
                                                 )}
@@ -670,112 +622,76 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </div>
 
                                         {/* Notifications List */}
-                                        <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                        <div className="max-h-96 overflow-y-auto">
                                             {loading ? (
-                                                <div className="space-y-0">
-                                                    <LoadingSpinner />
-                                                    {/* Show skeleton loaders while loading */}
-                                                    <div className="space-y-0">
-                                                        {[...Array(3)].map((_, i) => (
-                                                            <NotificationSkeleton key={i} />
-                                                        ))}
-                                                    </div>
+                                                <div className="p-4 text-center">
+                                                    <div className="inline-block w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
                                                 </div>
                                             ) : notifications.length === 0 ? (
                                                 <div className="p-8 text-center">
-                                                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                                                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-5 5v-5zM10.5 3.5a6 6 0 0 1 6 6v2l1.5 3h-15l1.5-3v-2a6 6 0 0 1 6-6z" />
-                                                        </svg>
-                                                    </div>
-                                                    <h4 className="text-sm font-medium text-gray-900 mb-1">No notifications</h4>
-                                                    <p className="text-xs text-gray-500">You're all caught up!</p>
+                                                    <svg className="w-12 h-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-5 5v-5zM10.5 3.5a6 6 0 0 1 6 6v2l1.5 3h-15l1.5-3v-2a6 6 0 0 1 6-6z" />
+                                                    </svg>
+                                                    <p className="text-sm text-gray-500">No notifications</p>
                                                 </div>
                                             ) : (
                                                 <div className="divide-y divide-gray-100">
                                                     {notifications.map((notification) => {
-                                                        const isOptimistic = optimisticUpdates.has(notification.id);
                                                         const isUnread = !notification.is_read;
 
                                                         return (
                                                             <div
                                                                 key={notification.id}
                                                                 onClick={() => handleNotificationClick(notification)}
-                                                                className={`notification-item group relative p-4 cursor-pointer transition-all duration-300 hover:bg-gray-50 ${
-                                                                    isUnread ? 'bg-blue-50/50 border-l-4 border-blue-500' : 'hover:bg-gray-25'
-                                                                } ${isOptimistic ? 'opacity-75' : ''}`}
+                                                                className={`p-3 cursor-pointer hover:bg-gray-50 ${
+                                                                    isUnread ? 'bg-blue-50' : ''
+                                                                }`}
                                                             >
-                                                                <div className="flex items-start space-x-4">
-                                                                    {/* Enhanced Icon */}
-                                                                    <div className="flex-shrink-0 relative">
-                                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm transition-all duration-200 group-hover:scale-105 ${
-                                                                            notification.type === 'contract_signing' ? 'bg-emerald-100 group-hover:bg-emerald-200' :
-                                                                            notification.type === 'bid_status' ? 'bg-blue-100 group-hover:bg-blue-200' :
-                                                                            notification.type === 'ai_recommendation' ? 'bg-purple-100 group-hover:bg-purple-200' :
-                                                                            notification.type === 'bid_accepted_messaging' ? 'bg-indigo-100 group-hover:bg-indigo-200' :
-                                                                            notification.type === 'message_received' ? 'bg-blue-100 group-hover:bg-blue-200' :
-                                                                            notification.type === 'new_message' ? 'bg-blue-100 group-hover:bg-blue-200' :
-                                                                            'bg-gray-100 group-hover:bg-gray-200'
-                                                                        }`}>
+                                                                <div className="flex items-start gap-3">
+                                                                    {/* Icon */}
+                                                                    <div className="flex-shrink-0 mt-0.5">
+                                                                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                                                                             <NotificationIcon type={notification.type} icon={notification.icon} />
                                                                         </div>
-                                                                        {isUnread && (
-                                                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse"></div>
-                                                                        )}
                                                                     </div>
 
                                                                     {/* Content */}
                                                                     <div className="flex-1 min-w-0">
-                                                                        <div className="flex items-start justify-between">
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className={`text-sm font-semibold leading-5 ${
-                                                                                    isUnread ? 'text-gray-900' : 'text-gray-700'
-                                                                                } group-hover:text-gray-900 transition-colors`}>
-                                                                                    {notification.title}
-                                                                                </p>
-                                                                                <p className={`text-sm mt-1 leading-5 ${
-                                                                                    isUnread ? 'text-gray-700' : 'text-gray-600'
-                                                                                } group-hover:text-gray-700 transition-colors line-clamp-2`}>
-                                                                                    {notification.message}
-                                                                                </p>
-                                                                                <div className="flex items-center mt-2 space-x-2">
-                                                                                    <p className="text-xs text-gray-500 font-medium">
-                                                                                        {new Date(notification.created_at).toLocaleDateString('en-US', {
-                                                                                            month: 'short',
-                                                                                            day: 'numeric',
-                                                                                            hour: '2-digit',
-                                                                                            minute: '2-digit'
-                                                                                        })}
-                                                                                    </p>
-                                                                                    {isUnread && (
-                                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                                                            New
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Action Button */}
-                                                                            {notification.data?.show_message_button && (
-                                                                                <div className="flex-shrink-0 ml-3">
-                                                                                    <button
-                                                                                        onClick={(e) => handleMessageButtonClick(e, notification)}
-                                                                                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
-                                                                                        title="Start messaging"
-                                                                                    >
-                                                                                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                                                            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                                                                                        </svg>
-                                                                                        Message
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
+                                                                        <p className={`text-sm ${isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                                                            {notification.title}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                                                                            {notification.message}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-400 mt-1">
+                                                                            {new Date(notification.created_at).toLocaleDateString('en-US', {
+                                                                                month: 'short',
+                                                                                day: 'numeric',
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            })}
+                                                                        </p>
                                                                     </div>
+
+                                                                    {/* Unread indicator */}
+                                                                    {isUnread && (
+                                                                        <div className="flex-shrink-0">
+                                                                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
 
-                                                                {/* Hover indicator */}
-                                                                <div className="absolute inset-y-0 right-0 w-1 bg-blue-500 transform scale-y-0 group-hover:scale-y-100 transition-transform duration-200 origin-center"></div>
+                                                                {/* Message Button */}
+                                                                {notification.data?.show_message_button && (
+                                                                    <div className="mt-2 ml-11">
+                                                                        <button
+                                                                            onClick={(e) => handleMessageButtonClick(e, notification)}
+                                                                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                                                        >
+                                                                            Send Message
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         );
                                                     })}
@@ -784,18 +700,17 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </div>
 
                                         {/* Footer */}
-                                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                                            <Link
-                                                href="/notifications"
-                                                className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                                                onClick={() => setShowingNotificationsDropdown(false)}
-                                            >
-                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                </svg>
-                                                View all notifications
-                                            </Link>
-                                        </div>
+                                        {notifications.length > 0 && (
+                                            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
+                                                <Link
+                                                    href="/notifications"
+                                                    className="block text-center text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                                    onClick={() => setShowingNotificationsDropdown(false)}
+                                                >
+                                                    View all
+                                                </Link>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

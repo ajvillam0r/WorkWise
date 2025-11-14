@@ -32,7 +32,7 @@ class EmployerSeeder extends Seeder
                 'work_type_needed' => 'Web Development, Mobile Apps, Digital Marketing',
                 'budget_range' => '₱50,000 - ₱200,000',
                 'project_intent' => 'Long-term partnerships with skilled developers',
-                'escrow_balance' => 150000.00,
+                'escrow_balance' => 150000.00, // ₱150,000.00
             ],
             [
                 'first_name' => 'John',
@@ -50,7 +50,7 @@ class EmployerSeeder extends Seeder
                 'work_type_needed' => 'Graphic Design, Content Writing, Social Media Management',
                 'budget_range' => '₱25,000 - ₱100,000',
                 'project_intent' => 'Creative projects and ongoing marketing campaigns',
-                'escrow_balance' => 75000.00,
+                'escrow_balance' => 75000.00, // ₱75,000.00
             ],
             [
                 'first_name' => 'Ana',
@@ -68,7 +68,7 @@ class EmployerSeeder extends Seeder
                 'work_type_needed' => 'Data Entry, Customer Service, Virtual Assistance',
                 'budget_range' => '₱15,000 - ₱50,000',
                 'project_intent' => 'Operational support and customer service enhancement',
-                'escrow_balance' => 100000.00,
+                'escrow_balance' => 100000.00, // ₱100,000.00
             ],
             [
                 'first_name' => 'Robert',
@@ -86,7 +86,7 @@ class EmployerSeeder extends Seeder
                 'work_type_needed' => 'Business Analysis, Process Automation, Training',
                 'budget_range' => '₱75,000 - ₱300,000',
                 'project_intent' => 'Strategic consulting and digital transformation projects',
-                'escrow_balance' => 200000.00,
+                'escrow_balance' => 200000.00, // ₱200,000.00
             ],
             [
                 'first_name' => 'Lisa',
@@ -104,7 +104,7 @@ class EmployerSeeder extends Seeder
                 'work_type_needed' => 'Website Development, Online Ordering System, Photography',
                 'budget_range' => '₱30,000 - ₱120,000',
                 'project_intent' => 'Digital transformation for restaurant business',
-                'escrow_balance' => 80000.00,
+                'escrow_balance' => 80000.00, // ₱80,000.00
             ],
         ];
 

@@ -37,7 +37,7 @@ class WorkWiseSeeder extends Seeder
             'budget_range' => '$5,000 - $10,000',
             'project_intent' => 'We need to build a modern web application for our startup.',
             'bio' => 'We are a fast-growing tech startup looking for talented freelancers.',
-            'escrow_balance' => 15000.00,
+            'escrow_balance' => 15000.00, // ₱15,000.00
         ]);
 
         $employer2 = User::create([
@@ -55,7 +55,7 @@ class WorkWiseSeeder extends Seeder
             'budget_range' => '$1,000 - $5,000',
             'project_intent' => 'Looking for ongoing design support for our client projects.',
             'bio' => 'Full-service digital agency specializing in web development and design.',
-            'escrow_balance' => 8500.00,
+            'escrow_balance' => 8500.00, // ₱8,500.00
         ]);
 
         $employer3 = User::create([
@@ -73,7 +73,7 @@ class WorkWiseSeeder extends Seeder
             'budget_range' => '$10,000 - $25,000',
             'project_intent' => 'Building mobile apps for e-commerce businesses.',
             'bio' => 'We help e-commerce businesses expand to mobile platforms.',
-            'escrow_balance' => 25000.00,
+            'escrow_balance' => 25000.00, // ₱25,000.00
         ]);
 
         // Create diverse gig worker accounts with different experience levels and skills

@@ -56,7 +56,7 @@ export default function WorkerDiscovery({ workers, filters, filter_options }) {
     };
 
     const WorkerCard = ({ worker }) => (
-        <Link href={route('worker-discovery.show', worker.id)} className="block">
+        <Link href={route('workers.show', worker.id)} className="block">
             <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 h-full">
                 {/* Header with Avatar and Match Score */}
                 <div className="flex items-start justify-between mb-4">
@@ -143,7 +143,7 @@ export default function WorkerDiscovery({ workers, filters, filter_options }) {
                 <div className="space-y-2 text-sm text-gray-600 mb-4">
                     <div className="flex items-center gap-2">
                         <CurrencyDollarIcon className="w-4 h-4 flex-shrink-0" />
-                        <span>${worker.hourly_rate}/hr</span>
+                        <span>₱{worker.hourly_rate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/hr</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <MapPinIcon className="w-4 h-4 flex-shrink-0" />
@@ -280,7 +280,7 @@ export default function WorkerDiscovery({ workers, filters, filter_options }) {
                                     </label>
                                     <input
                                         type="number"
-                                        placeholder="$ 0"
+                                        placeholder="₱ 0"
                                         value={localFilters.min_rate || ''}
                                         onChange={(e) => handleFilterChange('min_rate', e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
@@ -293,7 +293,7 @@ export default function WorkerDiscovery({ workers, filters, filter_options }) {
                                     </label>
                                     <input
                                         type="number"
-                                        placeholder="$ 9999"
+                                        placeholder="₱ 9999"
                                         value={localFilters.max_rate || ''}
                                         onChange={(e) => handleFilterChange('max_rate', e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"

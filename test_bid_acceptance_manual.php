@@ -20,15 +20,15 @@ echo "Found pending bid:\n";
 echo "- Bid ID: {$bid->id}\n";
 echo "- Job: {$bid->job->title}\n";
 echo "- Freelancer: {$bid->freelancer->first_name} {$bid->freelancer->last_name}\n";
-echo "- Amount: ₱{$bid->bid_amount}\n";
+echo "- Amount: ₱" . number_format($bid->bid_amount, 2) . "\n";
 echo "- Client: {$bid->job->employer->first_name} {$bid->job->employer->last_name}\n";
-echo "- Client Balance: ₱{$bid->job->employer->escrow_balance}\n\n";
+echo "- Client Balance: ₱" . number_format($bid->job->employer->escrow_balance, 2) . "\n\n";
 
 // Check if client has sufficient balance
 if ($bid->job->employer->escrow_balance < $bid->bid_amount) {
     echo "❌ Client has insufficient balance. Adding funds...\n";
     $bid->job->employer->increment('escrow_balance', $bid->bid_amount + 1000);
-    echo "✅ Added funds. New balance: ₱{$bid->job->employer->fresh()->escrow_balance}\n\n";
+    echo "✅ Added funds. New balance: ₱" . number_format($bid->job->employer->fresh()->escrow_balance, 2) . "\n\n";
 }
 
 echo "Attempting to accept bid...\n";
@@ -73,7 +73,7 @@ try {
     
     // Deduct from client balance
     $client->decrement('escrow_balance', $bid->bid_amount);
-    echo "✅ Deducted ₱{$bid->bid_amount} from client balance\n";
+    echo "✅ Deducted ₱" . number_format($bid->bid_amount, 2) . " from client balance\n";
     
     // Create transaction
     $transaction = App\Models\Transaction::create([
@@ -109,7 +109,7 @@ try {
     echo "- Project ID: {$project->id}\n";
     echo "- Contract ID: {$contract->id}\n";
     echo "- Bid Status: {$bid->fresh()->status}\n";
-    echo "- Client New Balance: ₱{$client->fresh()->escrow_balance}\n";
+    echo "- Client New Balance: ₱" . number_format($client->fresh()->escrow_balance, 2) . "\n";
     
 } catch (Exception $e) {
     DB::rollBack();

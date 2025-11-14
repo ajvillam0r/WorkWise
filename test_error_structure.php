@@ -12,8 +12,8 @@ echo "Testing error structure from withErrors...\n";
 $errors = [
     'error' => 'Insufficient escrow balance to accept this proposal.',
     'error_type' => 'insufficient_escrow',
-    'required_amount' => 110506.00,
-    'current_balance' => 100.00
+    'required_amount' => 110506.00, // ₱110,506.00
+    'current_balance' => 100.00 // ₱100.00
 ];
 
 echo "Error data structure:\n";

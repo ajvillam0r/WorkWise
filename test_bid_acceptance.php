@@ -24,11 +24,11 @@ try {
         exit;
     }
     
-    echo "Found bid: ID {$bid->id}, Amount: {$bid->bid_amount}, Status: {$bid->status}\n";
+    echo "Found bid: ID {$bid->id}, Amount: ₱" . number_format($bid->bid_amount, 2) . ", Status: {$bid->status}\n";
     
     // Get the client (employer)
     $client = User::find($bid->job->employer_id);
-    echo "Client: {$client->first_name} {$client->last_name}, Balance: {$client->escrow_balance}\n";
+    echo "Client: {$client->first_name} {$client->last_name}, Balance: ₱" . number_format($client->escrow_balance, 2) . "\n";
     
     // Authenticate as the client
     auth()->login($client);
@@ -57,7 +57,7 @@ try {
     
     echo "After acceptance:\n";
     echo "- Bid Status: {$bid->status}\n";
-    echo "- Client Balance: {$client->escrow_balance}\n";
+    echo "- Client Balance: ₱" . number_format($client->escrow_balance, 2) . "\n";
     
     // Check if project was created
     $project = \App\Models\Project::where('bid_id', $bid->id)->first();

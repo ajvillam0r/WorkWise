@@ -31,11 +31,11 @@ try {
     echo "- Job: {$bid->job->title}\n";
     echo "- Client: {$bid->job->employer->first_name} {$bid->job->employer->last_name}\n";
     echo "- Freelancer: {$bid->freelancer->first_name} {$bid->freelancer->last_name}\n";
-    echo "- Amount: ₱{$bid->bid_amount}\n\n";
+    echo "- Amount: ₱" . number_format($bid->bid_amount, 2) . "\n\n";
     
     // Get the client
     $client = User::find($bid->job->employer_id);
-    echo "Client balance before: ₱{$client->escrow_balance}\n";
+    echo "Client balance before: ₱" . number_format($client->escrow_balance, 2) . "\n";
     
     // Check if client has sufficient balance
     if ($client->escrow_balance < $bid->bid_amount) {
@@ -70,7 +70,7 @@ try {
     
     echo "=== Results After Bid Acceptance ===\n";
     echo "- Bid Status: {$bid->status}\n";
-    echo "- Client Balance: ₱{$client->escrow_balance}\n";
+    echo "- Client Balance: ₱" . number_format($client->escrow_balance, 2) . "\n";
     
     // Check if project was created
     $project = Project::where('bid_id', $bid->id)->first();
@@ -78,9 +78,9 @@ try {
         echo "- Project Created: Yes\n";
         echo "  - Project ID: {$project->id}\n";
         echo "  - Status: {$project->status}\n";
-        echo "  - Agreed Amount: ₱{$project->agreed_amount}\n";
-        echo "  - Platform Fee: ₱{$project->platform_fee}\n";
-        echo "  - Net Amount: ₱{$project->net_amount}\n";
+        echo "  - Agreed Amount: ₱" . number_format($project->agreed_amount, 2) . "\n";
+        echo "  - Platform Fee: ₱" . number_format($project->platform_fee, 2) . "\n";
+        echo "  - Net Amount: ₱" . number_format($project->net_amount, 2) . "\n";
         
         // Check if contract was created
         $contract = Contract::where('project_id', $project->id)->first();
@@ -88,7 +88,7 @@ try {
             echo "- Contract Created: Yes\n";
             echo "  - Contract ID: {$contract->contract_id}\n";
             echo "  - Status: {$contract->status}\n";
-            echo "  - Total Payment: ₱{$contract->total_payment}\n";
+            echo "  - Total Payment: ₱" . number_format($contract->total_payment, 2) . "\n";
             echo "  - Project Start Date: {$contract->project_start_date}\n";
             echo "  - Project End Date: {$contract->project_end_date}\n";
         } else {

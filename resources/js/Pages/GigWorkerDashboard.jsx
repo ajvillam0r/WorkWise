@@ -1,32 +1,26 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     BriefcaseIcon,
     CurrencyDollarIcon,
     UserIcon,
-    ChartBarIcon,
     ClockIcon,
     CheckCircleIcon,
     ExclamationTriangleIcon,
-    ArrowTrendingUpIcon,
     ArrowUpIcon,
     ArrowDownIcon,
-    EyeIcon,
     CalendarDaysIcon,
-    DocumentTextIcon,
     BanknotesIcon,
     TrophyIcon,
     ClipboardDocumentListIcon,
-    UserGroupIcon,
     StarIcon,
     PlusIcon,
-    FireIcon,
     LightBulbIcon,
     GiftIcon
 } from '@heroicons/react/24/outline';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function GigWorkerDashboard({ auth, stats, activeContracts, jobInvites, earningsSummary, aiRecommendations, recentActivity, skillsProgress, upcomingDeadlines }) {
+export default function GigWorkerDashboard({ auth, stats, activeContracts, earningsSummary, recentActivity, skillsProgress, upcomingDeadlines }) {
     const { user } = auth;
 
     // Enhanced StatCard component with better styling and trends
@@ -84,8 +78,8 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: 'PHP',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         }).format(amount || 0);
     };
 
@@ -518,7 +512,7 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                         href="/projects" 
                         className="text-sm text-red-600 hover:text-red-800 font-medium flex items-center"
                     >
-                        View All
+                        View All Projects
                         <ArrowUpIcon className="w-4 h-4 ml-1 rotate-45" />
                     </Link>
                 </div>
@@ -526,37 +520,127 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
             <div className="p-6">
                 {upcomingDeadlines && upcomingDeadlines.length > 0 ? (
                     <div className="space-y-4">
-                        {upcomingDeadlines.slice(0, 3).map((deadline, index) => (
-                            <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg border border-red-100">
-                                <div className="flex-1">
-                                    <h4 className="font-medium text-gray-900">{deadline.projectTitle}</h4>
-                                    <p className="text-sm text-gray-600">Client: {deadline.clientName}</p>
-                                    <div className="flex items-center mt-2 space-x-4">
-                                        <span className="text-sm text-red-600 font-medium flex items-center">
-                                            <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
-                                            Due in {deadline.daysLeft} days
-                                        </span>
-                                        <span className="text-sm text-gray-500">
-                                            {deadline.completionPercentage}% complete
-                                        </span>
+                        {upcomingDeadlines.map((deadline, index) => {
+                            const isUrgent = deadline.daysLeft <= 3;
+                            const isWarning = deadline.daysLeft > 3 && deadline.daysLeft <= 7;
+                            
+                            return (
+                                <div 
+                                    key={index} 
+                                    className={`p-5 rounded-lg border-2 transition-all duration-300 hover:shadow-md ${
+                                        isUrgent 
+                                            ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200 hover:border-red-300' 
+                                            : isWarning 
+                                            ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 hover:border-yellow-300'
+                                            : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300'
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center mb-2">
+                                                <h4 className="font-semibold text-gray-900 text-base">{deadline.projectTitle}</h4>
+                                                <span className={`ml-3 px-2.5 py-0.5 text-xs font-medium rounded-full ${
+                                                    deadline.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                    deadline.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {deadline.status === 'active' ? 'Active' : 
+                                                     deadline.status === 'in_progress' ? 'In Progress' : 
+                                                     deadline.status}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="space-y-2 mb-3">
+                                                <div className="flex items-center text-sm text-gray-700">
+                                                    <UserIcon className="w-4 h-4 mr-2 text-gray-500" />
+                                                    <span className="font-medium">Client:</span>
+                                                    <span className="ml-1">{deadline.clientName}</span>
+                                                </div>
+                                                
+                                                <div className="flex items-center text-sm text-gray-700">
+                                                    <CalendarDaysIcon className="w-4 h-4 mr-2 text-gray-500" />
+                                                    <span className="font-medium">Deadline:</span>
+                                                    <span className="ml-1">{deadline.deadlineFormatted || deadline.deadline}</span>
+                                                </div>
+                                                
+                                                {deadline.agreedAmount && (
+                                                    <div className="flex items-center text-sm text-gray-700">
+                                                        <CurrencyDollarIcon className="w-4 h-4 mr-2 text-gray-500" />
+                                                        <span className="font-medium">Project Value:</span>
+                                                        <span className="ml-1 text-green-600 font-semibold">
+                                                            {formatCurrency(deadline.agreedAmount)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center space-x-4">
+                                                <div className={`flex items-center text-sm font-semibold ${
+                                                    isUrgent ? 'text-red-600' : isWarning ? 'text-yellow-600' : 'text-blue-600'
+                                                }`}>
+                                                    {isUrgent && <ExclamationTriangleIcon className="w-5 h-5 mr-1.5" />}
+                                                    {isWarning && <ClockIcon className="w-5 h-5 mr-1.5" />}
+                                                    {!isUrgent && !isWarning && <CalendarDaysIcon className="w-5 h-5 mr-1.5" />}
+                                                    <span>
+                                                        {deadline.daysLeft === 0 ? 'Due Today!' : 
+                                                         deadline.daysLeft === 1 ? 'Due Tomorrow' : 
+                                                         `${deadline.daysLeft} days remaining`}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="flex items-center space-x-2">
+                                                    <div className="w-32 bg-gray-200 rounded-full h-2.5">
+                                                        <div 
+                                                            className={`h-2.5 rounded-full transition-all duration-300 ${
+                                                                deadline.completionPercentage >= 75 ? 'bg-green-500' :
+                                                                deadline.completionPercentage >= 50 ? 'bg-blue-500' :
+                                                                deadline.completionPercentage >= 25 ? 'bg-yellow-500' :
+                                                                'bg-red-500'
+                                                            }`}
+                                                            style={{ width: `${deadline.completionPercentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-sm text-gray-600 font-medium min-w-[3rem]">
+                                                        {deadline.completionPercentage}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="ml-4">
+                                            <Link 
+                                                href={`/projects/${deadline.id}`}
+                                                className={`inline-flex items-center px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-300 shadow-sm hover:shadow-md ${
+                                                    isUrgent 
+                                                        ? 'bg-red-600 hover:bg-red-700' 
+                                                        : isWarning 
+                                                        ? 'bg-yellow-600 hover:bg-yellow-700'
+                                                        : 'bg-blue-600 hover:bg-blue-700'
+                                                }`}
+                                            >
+                                                <BriefcaseIcon className="w-4 h-4 mr-1.5" />
+                                                View Project
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <Link 
-                                        href={`/projects/${deadline.id}`}
-                                        className="inline-flex items-center px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                                    >
-                                        Work Now
-                                    </Link>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <CheckCircleIcon className="w-12 h-12 text-green-400 mx-auto mb-4" />
-                        <p className="text-gray-500">No upcoming deadlines</p>
-                        <p className="text-sm text-gray-400 mt-2">You're all caught up!</p>
+                    <div className="text-center py-12">
+                        <CheckCircleIcon className="w-16 h-16 text-green-400 mx-auto mb-4" />
+                        <p className="text-gray-600 text-lg font-medium">No upcoming deadlines</p>
+                        <p className="text-sm text-gray-500 mt-2">You're all caught up! Great work!</p>
+                        <div className="mt-6">
+                            <Link 
+                                href="/jobs" 
+                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+                            >
+                                <PlusIcon className="w-5 h-5 mr-2" />
+                                Browse New Jobs
+                            </Link>
+                        </div>
                     </div>
                 )}
             </div>
@@ -646,14 +730,12 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                     {renderGigWorkerStats()}
                     
                     {/* Main Content Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div className="grid grid-cols-1 gap-8 mb-8">
                         {renderActiveContracts()}
-                        {renderJobInvites()}
                     </div>
                     
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div className="grid grid-cols-1 gap-8 mb-8">
                         {renderEarningsSummary()}
-                        {renderAIRecommendations()}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -670,7 +752,7 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                             </h3>
                         </div>
                         <div className="p-6">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <Link
                                     href="/jobs"
                                     className="flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group border border-blue-200"
@@ -678,14 +760,6 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, jobIn
                                     <BriefcaseIcon className="w-8 h-8 text-blue-600 mb-3 group-hover:scale-110 transition-transform" />
                                     <span className="text-sm font-medium text-gray-900">Browse Jobs</span>
                                     <span className="text-xs text-gray-500 mt-1">Find new opportunities</span>
-                                </Link>
-                                <Link
-                                    href="/ai/recommendations"
-                                    className="flex flex-col items-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group border border-purple-200"
-                                >
-                                    <ArrowTrendingUpIcon className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                                    <span className="text-sm font-medium text-gray-900">AI Recommendations</span>
-                                    <span className="text-xs text-gray-500 mt-1">Smart job matches</span>
                                 </Link>
                                 <Link
                                     href="/proposals"

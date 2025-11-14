@@ -33,7 +33,7 @@ class WorkWiseComprehensiveUnitTest extends TestCase
             'email' => 'employer@test.com',
             'password' => Hash::make('password123'),
             'user_type' => 'employer',
-            'escrow_balance' => 10000.00,
+            'escrow_balance' => 10000.00, // ₱10,000.00
         ]);
 
         $this->gigWorker = User::create([

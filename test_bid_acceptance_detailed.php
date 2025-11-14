@@ -17,7 +17,7 @@ try {
     }
     
     echo "Employer: {$employer->name} (ID: {$employer->id})\n";
-    echo "Current balance: {$employer->escrow_balance}\n";
+    echo "Current balance: ₱" . number_format($employer->escrow_balance, 2) . "\n";
 
     // Find the bid (ID: 1, amount: 110506)
     $bid = App\Models\Bid::find(1);
@@ -26,7 +26,7 @@ try {
         exit(1);
     }
     
-    echo "Bid ID: {$bid->id}, Amount: {$bid->bid_amount}, Status: {$bid->status}\n";
+    echo "Bid ID: {$bid->id}, Amount: ₱" . number_format($bid->bid_amount, 2) . ", Status: {$bid->status}\n";
     
     // Check the job
     $job = App\Models\GigJob::find($bid->job_id);

@@ -32,7 +32,7 @@ class AIMatchTestSeeder extends Seeder
             'project_intent' => 'Testing AI matching algorithms with various job requirements.',
             'bio' => 'Test client account for AI matching functionality testing.',
             'location' => 'Cebu City, Philippines',
-            'escrow_balance' => 50000.00,
+            'escrow_balance' => 50000.00, // ₱50,000.00
         ]);
 
         $this->command->info('👤 Created test client: ai.testclient@example.com / password');

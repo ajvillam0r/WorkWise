@@ -180,10 +180,10 @@ class GigJobController extends Controller
         // Load employer with profile data needed for clickable links (Requirement 9.1, 9.2)
         // Load gig worker data for each bid from users table (Requirement 9.1, 9.2)
         $job->load([
-            'employer:id,first_name,last_name,company_name,profile_picture',
+            'employer:id,first_name,last_name,company_name,profile_picture,user_type',
             'bids' => function ($query) {
                 $query->with([
-                    'gigWorker:id,first_name,last_name,professional_title,profile_picture'
+                    'gigWorker:id,first_name,last_name,professional_title,profile_picture,user_type'
                 ]);
             }
         ]);

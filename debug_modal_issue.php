@@ -13,7 +13,7 @@ try {
     $employers = App\Models\User::where('user_type', 'employer')->take(3)->get(['id', 'name', 'email', 'escrow_balance']);
     echo "Employer users with escrow balances:\n";
     foreach ($employers as $user) {
-        echo "- ID: {$user->id}, Name: {$user->name}, Balance: {$user->escrow_balance}\n";
+        echo "- ID: {$user->id}, Name: {$user->name}, Balance: ₱" . number_format($user->escrow_balance, 2) . "\n";
     }
 
     // Check pending bids

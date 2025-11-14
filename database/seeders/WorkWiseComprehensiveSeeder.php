@@ -54,7 +54,7 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'work_type_needed' => 'Web Development, Mobile Apps, Digital Marketing',
                 'budget_range' => '₱50,000 - ₱200,000',
                 'project_intent' => 'Long-term partnerships with skilled developers',
-                'escrow_balance' => 150000.00,
+                'escrow_balance' => 150000.00, // ₱150,000.00
             ],
             [
                 'first_name' => 'John',
@@ -71,7 +71,7 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'work_type_needed' => 'Graphic Design, Content Writing, Social Media Management',
                 'budget_range' => '₱25,000 - ₱100,000',
                 'project_intent' => 'Creative projects and ongoing marketing campaigns',
-                'escrow_balance' => 75000.00,
+                'escrow_balance' => 75000.00, // ₱75,000.00
             ],
             [
                 'first_name' => 'Ana',
@@ -88,7 +88,7 @@ class WorkWiseComprehensiveSeeder extends Seeder
                 'work_type_needed' => 'Data Entry, Customer Service, Virtual Assistance',
                 'budget_range' => '₱15,000 - ₱50,000',
                 'project_intent' => 'Operational support and customer service enhancement',
-                'escrow_balance' => 100000.00,
+                'escrow_balance' => 100000.00, // ₱100,000.00
             ],
         ];
 

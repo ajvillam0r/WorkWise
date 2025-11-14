@@ -90,13 +90,22 @@ export default function ProjectsIndex({ projects }) {
                                                         </h3>
                                                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                                                             <span>
-                                                                {isEmployer ? 'Gig Worker:' : 'Employer:'}
-                                                                <span className="font-medium ml-1">
+                                                                {isEmployer ? 'Gig Worker:' : 'Employer:'}{' '}
+                                                                <Link
+                                                                    href={isEmployer 
+                                                                        ? route('workers.show', project.gig_worker.id)
+                                                                        : route('employers.show', project.employer.id)
+                                                                    }
+                                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium ml-1"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                    }}
+                                                                >
                                                                     {isEmployer
                                                                         ? `${project.gig_worker.first_name} ${project.gig_worker.last_name}`
                                                                         : `${project.employer.first_name} ${project.employer.last_name}`
                                                                     }
-                                                                </span>
+                                                                </Link>
                                                             </span>
                                                             <span>•</span>
                                                             <span>Started {formatDistanceToNow(new Date(project.started_at))} ago</span>
@@ -108,7 +117,7 @@ export default function ProjectsIndex({ projects }) {
                                                     <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
                                                         <div className="text-sm text-blue-600 font-medium">Project Value</div>
                                                         <div className="text-lg font-semibold text-green-600">
-                                                            ₱{project.agreed_amount.toLocaleString()}
+                                                            ₱{project.agreed_amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </div>
                                                     </div>
                                                     <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">

@@ -40,9 +40,7 @@ class GigWorkerDashboardController extends Controller
             ],
             'stats' => $this->getGigWorkerStats($user),
             'activeContracts' => $this->getActiveContracts($user),
-            'jobInvites' => $this->getJobInvites($user),
             'earningsSummary' => $this->getEarningsSummary($user),
-            'aiRecommendations' => $this->getAIRecommendations($user),
             'recentActivity' => $this->getRecentActivity($user),
             'skillsProgress' => $this->getSkillsProgress($user),
             'upcomingDeadlines' => $this->getUpcomingDeadlines($user),
@@ -324,7 +322,7 @@ class GigWorkerDashboardController extends Controller
                 return [
                     'type' => 'bid',
                     'title' => 'Submitted bid for "' . $bid->job->title . '"',
-                    'description' => 'Bid amount: ₱' . number_format($bid->bid_amount, 2),
+                    'description' => 'Bid amount: ₱' . number_format((float)($bid->bid_amount ?? 0), 2),
                     'status' => $bid->status,
                     'created_at' => $bid->created_at,
                 ];
@@ -400,37 +398,30 @@ class GigWorkerDashboardController extends Controller
      */
     private function getUpcomingDeadlines($user)
     {
-        // Get deadlines from contract_deadlines table
-        $upcomingDeadlines = DB::table('contract_deadlines')
-            ->join('projects', 'contract_deadlines.contract_id', '=', 'projects.id')
-            ->join('gig_jobs', 'projects.job_id', '=', 'gig_jobs.id')
-            ->join('users', 'projects.employer_id', '=', 'users.id')
-            ->where('projects.gig_worker_id', $user->id)
-            ->where('contract_deadlines.status', 'pending')
-            ->where('contract_deadlines.due_date', '>', Carbon::now()->toDateString())
-            ->orderBy('contract_deadlines.due_date', 'asc')
-            ->select(
-                'projects.id as project_id',
-                'gig_jobs.title as project_title',
-                'users.name as client_name',
-                'contract_deadlines.due_date',
-                'contract_deadlines.milestone_name'
-            )
+        // Get active projects with deadlines
+        $activeProjects = Project::where('gig_worker_id', $user->id)
+            ->whereIn('status', ['active', 'in_progress'])
+            ->whereNotNull('deadline')
+            ->where('deadline', '>', Carbon::now())
+            ->with(['job', 'employer'])
+            ->orderBy('deadline', 'asc')
             ->limit(5)
             ->get();
 
-        return $upcomingDeadlines->map(function ($deadline) {
-            $dueDate = Carbon::parse($deadline->due_date);
+        return $activeProjects->map(function ($project) {
+            $dueDate = Carbon::parse($project->deadline);
             $daysLeft = Carbon::now()->diffInDays($dueDate, false);
             
             return [
-                'id' => $deadline->project_id,
-                'projectTitle' => $deadline->project_title ?? 'Untitled Project',
-                'clientName' => $deadline->client_name ?? 'Unknown Client',
-                'daysLeft' => max(0, $daysLeft),
-                'completionPercentage' => 0, // Default since we don't have this in contract_deadlines
-                'deadline' => $dueDate->toDateString(),
-                'milestone' => $deadline->milestone_name
+                'id' => $project->id,
+                'projectTitle' => $project->job->title ?? 'Untitled Project',
+                'clientName' => $project->employer->name ?? 'Unknown Client',
+                'daysLeft' => max(0, ceil($daysLeft)),
+                'completionPercentage' => $project->progress_percentage ?? 0,
+                'deadline' => $dueDate->format('Y-m-d'),
+                'deadlineFormatted' => $dueDate->format('M d, Y'),
+                'agreedAmount' => $project->agreed_amount,
+                'status' => $project->status,
             ];
         })->toArray();
     }

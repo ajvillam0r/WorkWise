@@ -10,7 +10,7 @@ echo "=== WORKFLOW STATUS CHECK ===\n\n";
 $pendingBids = App\Models\Bid::where('status', 'pending')->with(['job', 'freelancer'])->get();
 echo "1. PENDING BIDS: " . $pendingBids->count() . "\n";
 foreach($pendingBids as $bid) {
-    echo "   - Bid ID: {$bid->id}, Job: {$bid->job->title}, Freelancer: {$bid->freelancer->first_name} {$bid->freelancer->last_name}, Amount: ₱{$bid->bid_amount}\n";
+    echo "   - Bid ID: {$bid->id}, Job: {$bid->job->title}, Freelancer: {$bid->freelancer->first_name} {$bid->freelancer->last_name}, Amount: ₱" . number_format($bid->bid_amount, 2) . "\n";
 }
 
 // Check contracts
@@ -33,13 +33,13 @@ foreach($projects as $project) {
 $freelancers = App\Models\User::where('role', 'freelancer')->get();
 echo "\n4. FREELANCER BALANCES:\n";
 foreach($freelancers as $freelancer) {
-    echo "   - {$freelancer->first_name} {$freelancer->last_name}: ₱{$freelancer->escrow_balance}\n";
+    echo "   - {$freelancer->first_name} {$freelancer->last_name}: ₱" . number_format($freelancer->escrow_balance, 2) . "\n";
 }
 
 $clients = App\Models\User::where('role', 'client')->get();
 echo "\n5. CLIENT BALANCES:\n";
 foreach($clients as $client) {
-    echo "   - {$client->first_name} {$client->last_name}: ₱{$client->escrow_balance}\n";
+    echo "   - {$client->first_name} {$client->last_name}: ₱" . number_format($client->escrow_balance, 2) . "\n";
 }
 
 echo "\n=== END STATUS CHECK ===\n";

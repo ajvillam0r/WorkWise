@@ -110,7 +110,7 @@ export default function BidsIndex({ bids }) {
 
     const formatAmount = (value) => {
         const number = Number(value ?? 0);
-        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return number.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     const getStatusColor = (status) => {
@@ -294,9 +294,33 @@ export default function BidsIndex({ bids }) {
                                                 </h3>
                                                 <div className="text-sm text-gray-600 space-y-1">
                                                     {isGigWorker ? (
-                                                        <p>Posted by: {bid.job.employer?.first_name} {bid.job.employer?.last_name}</p>
+                                                        <p>
+                                                            Posted by:{' '}
+                                                            <a
+                                                                href={route('employers.show', bid.job.employer?.id)}
+                                                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    router.visit(route('employers.show', bid.job.employer?.id));
+                                                                }}
+                                                            >
+                                                                {bid.job.employer?.first_name} {bid.job.employer?.last_name}
+                                                            </a>
+                                                        </p>
                                                     ) : (
-                                                        <p>Bid by: {bid.gig_worker?.first_name} {bid.gig_worker?.last_name}</p>
+                                                        <p>
+                                                            Bid by:{' '}
+                                                            <Link
+                                                                href={route('workers.show', bid.gig_worker?.id)}
+                                                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                }}
+                                                            >
+                                                                {bid.gig_worker?.first_name} {bid.gig_worker?.last_name}
+                                                            </Link>
+                                                        </p>
                                                     )}
                                                     <p>Submitted: {formatDate(bid.submitted_at)}</p>
                                                 </div>

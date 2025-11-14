@@ -22,7 +22,7 @@ try {
     echo "   - Project ID: {$project->id}\n";
     echo "   - Client: {$project->client->first_name} {$project->client->last_name}\n";
     echo "   - Freelancer: {$project->freelancer->first_name} {$project->freelancer->last_name}\n";
-    echo "   - Amount: ₱{$project->agreed_amount}\n";
+    echo "   - Amount: ₱" . number_format($project->agreed_amount, 2) . "\n";
     echo "   - Status: {$project->status}\n\n";
     
     // Get the bid
@@ -34,7 +34,7 @@ try {
     
     echo "📝 Found bid:\n";
     echo "   - Bid ID: {$bid->id}\n";
-    echo "   - Amount: ₱{$bid->bid_amount}\n";
+    echo "   - Amount: ₱" . number_format($bid->bid_amount, 2) . "\n";
     echo "   - Status: {$bid->status}\n\n";
     
     // Test contract creation
@@ -48,7 +48,7 @@ try {
         echo "   - Contract ID: {$contract->id}\n";
         echo "   - Contract Number: {$contract->contract_id}\n";
         echo "   - Status: {$contract->status}\n";
-        echo "   - Total Payment: ₱{$contract->total_payment}\n\n";
+        echo "   - Total Payment: ₱" . number_format($contract->total_payment, 2) . "\n\n";
         
         // Test notification
         echo "🔄 Testing notification...\n";

@@ -192,6 +192,8 @@ class BidController extends Controller
                     'gig_worker_id' => $bid->gig_worker_id,
                     'bid_id' => $bid->id,
                     'agreed_amount' => $bid->bid_amount,
+                    'agreed_duration_days' => $bid->estimated_days,
+                    'deadline' => $bid->estimated_days ? now()->addDays($bid->estimated_days) : null,
                     'platform_fee' => $platformFee,
                     'net_amount' => $netAmount,
                     'status' => 'active',

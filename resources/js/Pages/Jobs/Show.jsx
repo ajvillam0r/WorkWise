@@ -87,9 +87,30 @@ export default function JobShow({ job, canBid }) {
     const { auth } = usePage().props;
     const [showBidForm, setShowBidForm] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const [processingBidId, setProcessingBidId] = useState(null);
     const [error, setError] = useState(null);
     const [showMessagesModal, setShowMessagesModal] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null);
+
+    // Debug: Log job data to verify gig worker IDs
+    React.useEffect(() => {
+        console.log('=== JOB DATA DEBUG ===');
+        console.log('Job ID:', job.id);
+        console.log('Job Title:', job.title);
+        console.log('Total Bids:', job.bids?.length || 0);
+        
+        if (job.bids && job.bids.length > 0) {
+            job.bids.forEach((bid, index) => {
+                console.log(`Bid ${index + 1}:`, {
+                    bidId: bid.id,
+                    gigWorkerId: bid.gig_worker?.id,
+                    gigWorkerName: bid.gig_worker ? `${bid.gig_worker.first_name} ${bid.gig_worker.last_name}` : 'N/A',
+                    expectedUrl: bid.gig_worker?.id ? `/workers/${bid.gig_worker.id}` : 'N/A'
+                });
+            });
+        }
+        console.log('=== END DEBUG ===');
+    }, [job]);
 
     // Helper function to safely parse required_skills
     const parseSkills = (skills) => {
@@ -164,6 +185,7 @@ export default function JobShow({ job, canBid }) {
 
     const handleConfirmBidAction = () => {
         setProcessing(true);
+        setProcessingBidId(confirmModal.bidId);
         setError(null);
 
         console.log('Sending bid update request:', {
@@ -179,6 +201,7 @@ export default function JobShow({ job, canBid }) {
                 preserveScroll: false,
                 onSuccess: (page) => {
                     setProcessing(false);
+                    setProcessingBidId(null);
                     setError(null);
                     setConfirmModal({ ...confirmModal, isOpen: false });
 
@@ -263,6 +286,7 @@ export default function JobShow({ job, canBid }) {
                     console.error('Bid update failed - onError callback:', errors);
                     console.log('onError - errors structure:', JSON.stringify(errors, null, 2));
                     setProcessing(false);
+                    setProcessingBidId(null);
                     setConfirmModal({ ...confirmModal, isOpen: false });
                     
                     // Check if this is an insufficient escrow error
@@ -305,7 +329,7 @@ export default function JobShow({ job, canBid }) {
 
     const formatAmount = (value) => {
         const number = Number(value ?? 0);
-        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return number.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     const getBudgetDisplay = () => {
@@ -523,9 +547,12 @@ export default function JobShow({ job, canBid }) {
                                                             <div>
                                                                 <h4 className="font-medium text-gray-900">
                                                                     {bid.gig_worker ? (
-                                                                        <Link 
+                                                                        <Link
                                                                             href={route('workers.show', bid.gig_worker.id)}
                                                                             className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                            }}
                                                                         >
                                                                             {`${bid.gig_worker.first_name} ${bid.gig_worker.last_name}`}
                                                                         </Link>
@@ -564,10 +591,10 @@ export default function JobShow({ job, canBid }) {
                                                                 <div className="flex space-x-2">
                                                                     <button 
                                                                         onClick={() => handleBidAction(bid.id, 'accepted')}
-                                                                        disabled={processing}
+                                                                        disabled={processing && processingBidId === bid.id}
                                                                         className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
                                                                     >
-                                                                        {processing ? (
+                                                                        {processing && processingBidId === bid.id && confirmModal.status === 'accepted' ? (
                                                                             <span className="flex items-center">
                                                                                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -579,10 +606,10 @@ export default function JobShow({ job, canBid }) {
                                                                     </button>
                                                                     <button 
                                                                         onClick={() => handleBidAction(bid.id, 'rejected')}
-                                                                        disabled={processing}
+                                                                        disabled={processing && processingBidId === bid.id}
                                                                         className="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                                                                     >
-                                                                        {processing ? (
+                                                                        {processing && processingBidId === bid.id && confirmModal.status === 'rejected' ? (
                                                                             <span className="flex items-center">
                                                                                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-red-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -799,12 +826,19 @@ export default function JobShow({ job, canBid }) {
                                         {getUserAvatar(job.employer)}
                                         <div>
                                             <h4 className="font-medium text-gray-900">
-                                                <Link 
-                                                    href={route('employers.show', job.employer.id)}
-                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                <button
+                                                    type="button"
+                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium relative z-10 cursor-pointer bg-transparent border-0 p-0"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        const employerUrl = route('employers.show', job.employer.id);
+                                                        console.log('Navigating to employer profile:', employerUrl);
+                                                        router.visit(employerUrl);
+                                                    }}
                                                 >
                                                     {job.employer.first_name} {job.employer.last_name}
-                                                </Link>
+                                                </button>
                                             </h4>
                                             <p className="text-sm text-gray-600">
                                                 {job.employer.professional_title || 'Employer'}

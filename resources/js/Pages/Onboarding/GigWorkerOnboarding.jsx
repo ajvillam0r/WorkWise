@@ -19,7 +19,7 @@ import { getFirstError, ERROR_CODES, SUPPORT_CONTACT } from '@/utils/errorHelper
 
 export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const [currentStep, setCurrentStep] = useState(0);
-    const totalSteps = 6; // Simplified: removed language and availability steps (0-5)
+    const totalSteps = 5; // Simplified: removed language, availability, and ID verification steps (0-4)
 
     // Use custom onboarding form hook with file handling and persistence
     const { 
@@ -50,12 +50,6 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             // Step 3: Portfolio
             portfolio_link: '',
             resume_file: null,
-
-            // Step 4: ID Verification
-            id_type: '',
-            id_front_image: null,
-            id_back_image: null,
-            kyc_country: '',
         },
         storageKey: `onboarding_gig_worker_${user?.id || 'guest'}`,
         enablePersistence: true
@@ -149,40 +143,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         }
     }, [data.specific_services, availableServices]);
 
-    // Auto-detect country when reaching ID verification step
-    useEffect(() => {
-        const detectCountry = async () => {
-            if (currentStep === 4) { // ID Verification step (now Step 4 after removing languages)
-                try {
-                    // Create a timeout promise that rejects after 3 seconds
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Detection timeout')), 3000)
-                    );
-                    
-                    // Race between fetch and timeout
-                    const fetchPromise = fetch('https://ipapi.co/json/')
-                        .then(response => response.json());
-                    
-                    const locationData = await Promise.race([fetchPromise, timeoutPromise]);
-                    
-                    // Only set country, nothing else
-                    setData(prevData => ({
-                        ...prevData,
-                        kyc_country: locationData.country_name || user.country || prevData.kyc_country
-                    }));
-                } catch (error) {
-                    console.error('Country detection failed:', error);
-                    // Fallback to registration country
-                    setData(prevData => ({
-                        ...prevData,
-                        kyc_country: user.country || prevData.kyc_country
-                    }));
-                }
-            }
-        };
-        
-        detectCountry();
-    }, [currentStep]);
+
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -352,8 +313,6 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                 return data.broad_category && 
                        data.specific_services.length >= 2 && 
                        data.skills_with_experience.length >= 3;
-            case 4: // ID Verification - Only country required, ID optional
-                return data.kyc_country;
             default:
                 return true;
         }
@@ -377,22 +336,12 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             case 1: return 'Tell us about yourself';
             case 2: return 'Your Skills & Services';
             case 3: return 'Showcase Your Work';
-            case 4: return 'Verify Your Identity';
-            case 5: return 'Review Your Profile';
+            case 4: return 'Review Your Profile';
             default: return 'Onboarding';
         }
     };
 
-    const idTypes = [
-        { value: 'national_id', label: 'National ID (PhilSys)' },
-        { value: 'drivers_license', label: "Driver's License" },
-        { value: 'passport', label: 'Passport' },
-        { value: 'philhealth_id', label: 'PhilHealth ID' },
-        { value: 'sss_id', label: 'SSS ID' },
-        { value: 'umid', label: 'UMID' },
-        { value: 'voters_id', label: "Voter's ID" },
-        { value: 'prc_id', label: 'PRC ID' },
-    ];
+
 
     return (
         <AuthenticatedLayout
@@ -479,9 +428,9 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                            <p className="text-sm text-yellow-800">
-                                                <strong>Note:</strong> Your profile will be reviewed by our team. ID verification is required to start bidding on projects.
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <p className="text-sm text-blue-800">
+                                                <strong>Note:</strong> You can complete ID verification later from your dashboard to start bidding on projects.
                                             </p>
                                         </div>
                                     </div>
@@ -966,130 +915,15 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                     </div>
                                 )}
 
-                                {/* Step 4: ID Verification */}
+                                {/* Step 4: Profile Preview (renumbered from Step 5) */}
                                 {currentStep === 4 && (
-                                    <div className="space-y-6">
-                                        {/* ID Images Section - Optional */}
-                                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="font-semibold text-gray-900">ID Verification (Optional)</h4>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setData('id_type', '');
-                                                        handleFileChange('id_front_image', null);
-                                                        handleFileChange('id_back_image', null);
-                                                    }}
-                                                    className="text-sm text-blue-600 hover:text-blue-800 underline"
-                                                >
-                                                    Skip ID Upload
-                                                </button>
-                                            </div>
-
-                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                                <p className="text-sm text-blue-800">
-                                                    <strong>Why verify?</strong> ID verification helps build trust and increases your chances to get hired. You can also upload this later from your profile. Your information is kept secure.
-                                                </p>
-                                            </div>
-
-                                            <div className="space-y-6">
-                                                <div>
-                                                    <InputLabel value="Select ID Type" />
-                                                    <select
-                                                        value={data.id_type}
-                                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                        onChange={(e) => setData('id_type', e.target.value)}
-                                                    >
-                                                        <option value="">-- Choose an ID type --</option>
-                                                        {idTypes.map((type) => (
-                                                            <option key={type.value} value={type.value}>
-                                                                {type.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <InputError message={errors.id_type} className="mt-2" />
-                                                </div>
-
-                                                <FileUploadInput
-                                                    name="id_front_image"
-                                                    label="Front of ID"
-                                                    accept="image/*"
-                                                    maxSize={5}
-                                                    required={false}
-                                                    preview="image"
-                                                    value={files.id_front_image || null}
-                                                    previewUrl={filePreviews.id_front_image || null}
-                                                    error={errors.id_front_image}
-                                                    onChange={(file) => handleFileChange('id_front_image', file)}
-                                                    helpText="Max size: 5MB. Ensure all details are clearly visible."
-                                                    loading={processing && files.id_front_image}
-                                                    uploadProgress={safeGetUploadProgress('id_front_image')}
-                                                    uploadStatus={safeGetUploadStatus('id_front_image')}
-                                                />
-
-                                                <FileUploadInput
-                                                    name="id_back_image"
-                                                    label="Back of ID"
-                                                    accept="image/*"
-                                                    maxSize={5}
-                                                    required={false}
-                                                    preview="image"
-                                                    value={files.id_back_image || null}
-                                                    previewUrl={filePreviews.id_back_image || null}
-                                                    error={errors.id_back_image}
-                                                    onChange={(file) => handleFileChange('id_back_image', file)}
-                                                    helpText="Max size: 5MB. Ensure all details are clearly visible."
-                                                    loading={processing && files.id_back_image}
-                                                    uploadProgress={safeGetUploadProgress('id_back_image')}
-                                                    uploadStatus={safeGetUploadStatus('id_back_image')}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Country Section - Auto-populated */}
-                                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50 mt-6">
-                                            <h4 className="text-lg font-semibold text-gray-800 mb-4">
-                                                Location Information
-                                            </h4>
-                                            
-                                            <p className="text-sm text-gray-600 mb-4">
-                                                Your country has been automatically detected for verification purposes.
-                                            </p>
-
-                                            <div>
-                                                <InputLabel value="Country *" />
-                                                <TextInput
-                                                    value={data.kyc_country}
-                                                    className="mt-1 block w-full bg-gray-100"
-                                                    onChange={(e) => setData('kyc_country', e.target.value)}
-                                                    placeholder="Country"
-                                                    required
-                                                    readOnly
-                                                />
-                                                <InputError message={errors.kyc_country} className="mt-2" />
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    This field is auto-populated based on your location
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                            <p className="text-sm text-yellow-800">
-                                                <strong>Privacy Note:</strong> Your ID will only be viewed by WorkWise admin for verification purposes and will be stored securely.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Step 5: Profile Preview (renumbered from Step 6) */}
-                                {currentStep === 5 && (
                                     <div className="space-y-6">
                                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border border-green-200">
                                             <h4 className="text-lg font-semibold text-green-900 mb-2">
                                                 ✨ You're Almost Done!
                                             </h4>
                                             <p className="text-gray-700">
-                                                Review your profile below. Once submitted, our team will review your information and verify your ID.
+                                                Review your profile below. Once submitted, you can start exploring opportunities on WorkWise!
                                             </p>
                                         </div>
 
@@ -1146,12 +980,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 </div>
                                             </div>
 
-                                            <div className="border-t pt-4">
-                                                <h5 className="font-semibold text-gray-900 mb-2">ID Verification</h5>
-                                                <p className="text-sm text-gray-700">
-                                                    {data.id_type ? `${idTypes.find(t => t.value === data.id_type)?.label} - Pending verification` : 'Not uploaded'}
-                                                </p>
-                                            </div>
+
                                         </div>
 
                                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

@@ -382,11 +382,25 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user's ID is verified
+     * Check if user has completed ID verification
+     * Returns true only if both ID images are uploaded AND status is verified
+     * 
+     * Note: PHP function names are case-insensitive, so this replaces the old isIdVerified() method
      */
-    public function isIdVerified(): bool
+    public function isIDVerified(): bool
     {
-        return $this->id_verification_status === 'verified';
+        return !empty($this->id_front_image) && 
+               !empty($this->id_back_image) && 
+               $this->id_verification_status === 'verified';
+    }
+
+    /**
+     * Check if user has uploaded ID documents (pending verification)
+     * Returns true if both front and back images are uploaded, regardless of verification status
+     */
+    public function hasIDDocuments(): bool
+    {
+        return !empty($this->id_front_image) && !empty($this->id_back_image);
     }
 
     /**

@@ -19,9 +19,14 @@ import {
     GiftIcon
 } from '@heroicons/react/24/outline';
 import { formatDistanceToNow } from 'date-fns';
+import IDVerificationBanner from '@/Components/IDVerificationBanner';
 
 export default function GigWorkerDashboard({ auth, stats, activeContracts, earningsSummary, recentActivity, skillsProgress, upcomingDeadlines }) {
     const { user } = auth;
+    const idStatus = user?.id_verification_status;
+
+    // Determine if banner should show - only for unverified users without ID documents
+    const shouldShowBanner = idStatus && !idStatus.is_verified && !idStatus.has_id_front;
 
     // Enhanced StatCard component with better styling and trends
     const StatCard = ({ title, value, icon: Icon, color = 'blue', trend, trendValue, subtitle, onClick }) => {
@@ -671,6 +676,17 @@ export default function GigWorkerDashboard({ auth, stats, activeContracts, earni
 
             <div className="py-12 bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    {/* ID Verification Banner */}
+                    {shouldShowBanner && (
+                        <IDVerificationBanner
+                            message="Complete your ID verification to start bidding on projects and build trust with employers."
+                            buttonText="Verify Your Identity"
+                            linkUrl="/id-verification"
+                            variant="warning"
+                            dismissible={true}
+                        />
+                    )}
+
                     {/* Enhanced Welcome Banner */}
                     <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-xl shadow-lg mb-8 overflow-hidden">
                         <div className="px-8 py-6 text-white relative">

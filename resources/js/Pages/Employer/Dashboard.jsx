@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ToastContainer } from '@/Components/Toast';
 import useToast from '@/Hooks/useToast';
+import IDVerificationBanner from '@/Components/IDVerificationBanner';
 import {
     BriefcaseIcon,
     UserGroupIcon,
@@ -827,6 +828,17 @@ export default function EmployerDashboard({
                             </div>
                         </div>
                     </div>
+
+                    {/* ID Verification Banner */}
+                    {user.id_verification_status && !user.id_verification_status.is_verified && !user.id_verification_status.has_id_front && (
+                        <IDVerificationBanner
+                            message="Verify your identity to build trust with gig workers."
+                            buttonText="Verify Your Identity"
+                            linkUrl="/id-verification"
+                            variant="info"
+                            dismissible={true}
+                        />
+                    )}
 
                     {/* Search and Filter Bar */}
                     <SearchAndFilterBar

@@ -74,6 +74,21 @@ class EmployerDashboardController extends Controller
         $activityStats = $this->activityService->getActivityStats($user);
 
         return Inertia::render('Employer/Dashboard', [
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'user_type' => $user->user_type,
+                    'profile_picture' => $user->profile_picture,
+                    'id_verification_status' => [
+                        'is_verified' => $user->isIDVerified(),
+                        'has_id_front' => !empty($user->id_front_image),
+                        'has_id_back' => !empty($user->id_back_image),
+                        'status' => $user->id_verification_status,
+                    ]
+                ]
+            ],
             'jobsSummary' => $jobsSummary,
             'proposalsReceived' => $proposalsReceived,
             'activeContracts' => $activeContracts,

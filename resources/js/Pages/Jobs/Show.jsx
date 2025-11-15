@@ -816,56 +816,7 @@ export default function JobShow({ job, canBid }) {
                             </div>
 
                             {/* Employer Information */}
-                            <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                                <div className="p-6">
-                                    <h3 className="text-lg font-semibold mb-4">About the Employer</h3>
-                                    <div className="flex items-center space-x-3 mb-4">
-                                        {getUserAvatar(job.employer)}
-                                        <div>
-                                            <h4 className="font-medium text-gray-900">
-                                                <a
-                                                    href={`/employers/${job.employer.id}`}
-                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                                                >
-                                                    {job.employer.first_name} {job.employer.last_name}
-                                                </a>
-                                            </h4>
-                                            <p className="text-sm text-gray-600">
-                                                {job.employer.professional_title || 'Employer'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {job.employer.bio && (
-                                        <p className="text-sm text-gray-700 mb-4">
-                                            {job.employer.bio}
-                                        </p>
-                                    )}
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Member since</span>
-                                            <span className="text-gray-900">
-                                                {new Date(job.employer.created_at).getFullYear()}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Location</span>
-                                            <span className="text-gray-900">
-                                                {getLocationDisplay(job.employer) || 'Location not specified'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {!isEmployer && (
-                                        <div className="mt-4 pt-4 border-t border-gray-200">
-                                            {/* <button
-                                                onClick={() => handleContactEmployer(job.employer.id)}
-                                                className="w-full inline-flex justify-center items-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                            >
-                                                  Contact Employer
-                                            </button> */}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            
 
                             {/* Similar Jobs
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">

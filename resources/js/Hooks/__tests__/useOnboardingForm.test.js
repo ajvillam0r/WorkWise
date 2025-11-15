@@ -293,11 +293,11 @@ describe('useOnboardingForm', () => {
 
             act(() => {
                 result.current.handleFileChange('profile_picture', mockImageFile1);
-                result.current.handleFileChange('id_front', mockImageFile2);
+                result.current.handleFileChange('resume_file', mockImageFile2);
             });
 
             const url1 = result.current.filePreviews.profile_picture;
-            const url2 = result.current.filePreviews.id_front;
+            const url2 = result.current.filePreviews.resume_file;
 
             unmount();
 

@@ -36,6 +36,13 @@ class GigWorkerDashboardController extends Controller
                     'profile_picture' => $user->profile_picture,
                     'professional_title' => $user->professional_title,
                     'hourly_rate' => $user->hourly_rate,
+                    // Add ID verification status
+                    'id_verification_status' => [
+                        'is_verified' => $user->isIDVerified(),
+                        'has_id_front' => !empty($user->id_front_image),
+                        'has_id_back' => !empty($user->id_back_image),
+                        'status' => $user->id_verification_status,
+                    ]
                 ]
             ],
             'stats' => $this->getGigWorkerStats($user),

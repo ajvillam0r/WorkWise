@@ -80,18 +80,6 @@ export function getStepForField(fieldName, stepMapping = {}) {
         // Step 3: Portfolio
         portfolio_link: 3,
         resume_file: 3,
-        
-        // Step 4: ID Verification
-        id_type: 4,
-        id_front_image: 4,
-        id_back_image: 4,
-        kyc_country: 4,
-        
-        // Step 5: Availability
-        working_hours: 5,
-        timezone: 5,
-        preferred_communication: 5,
-        availability_notes: 5,
     };
     
     // Default mapping for Employer onboarding

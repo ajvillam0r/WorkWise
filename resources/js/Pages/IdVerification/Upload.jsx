@@ -88,6 +88,12 @@ export default function Upload() {
             const uploadUrl = route('id-verification.upload-front');
             console.log('Uploading front ID to:', uploadUrl);
 
+            // Refresh CSRF token before upload
+            await fetch('/sanctum/csrf-cookie', {
+                credentials: 'same-origin',
+            });
+
+            // Get fresh CSRF token
             const csrfToken = document.head.querySelector('meta[name="csrf-token"]');
             
             const response = await fetch(uploadUrl, {
@@ -97,6 +103,7 @@ export default function Upload() {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+                credentials: 'same-origin',
                 body: formData,
             });
 
@@ -173,6 +180,12 @@ export default function Upload() {
             const uploadUrl = route('id-verification.upload-back');
             console.log('Uploading back ID to:', uploadUrl);
 
+            // Refresh CSRF token before upload
+            await fetch('/sanctum/csrf-cookie', {
+                credentials: 'same-origin',
+            });
+
+            // Get fresh CSRF token
             const csrfToken = document.head.querySelector('meta[name="csrf-token"]');
             
             const response = await fetch(uploadUrl, {
@@ -182,6 +195,7 @@ export default function Upload() {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+                credentials: 'same-origin',
                 body: formData,
             });
 

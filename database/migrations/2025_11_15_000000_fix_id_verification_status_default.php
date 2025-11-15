@@ -13,18 +13,30 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Step 1: Modify the column to make it nullable and remove default value
-        Schema::table('users', function (Blueprint $table) {
-            // Change the column to nullable with no default
-            $table->enum('id_verification_status', ['pending', 'verified', 'rejected'])
-                ->nullable()
-                ->default(null)
-                ->change();
-        });
+        // Check if we're using PostgreSQL
+        $driver = DB::connection()->getDriverName();
+        
+        if ($driver === 'pgsql') {
+            // PostgreSQL-specific approach
+            // Step 1: Drop the default value
+            DB::statement('ALTER TABLE users ALTER COLUMN id_verification_status DROP DEFAULT');
+            
+            // Step 2: Make the column nullable (if not already)
+            DB::statement('ALTER TABLE users ALTER COLUMN id_verification_status DROP NOT NULL');
+        } else {
+            // MySQL/SQLite approach
+            Schema::table('users', function (Blueprint $table) {
+                $table->enum('id_verification_status', ['pending', 'verified', 'rejected'])
+                    ->nullable()
+                    ->default(null)
+                    ->change();
+            });
+        }
 
         Log::info('ID_VERIFICATION_STATUS_COLUMN_UPDATED', [
             'event' => 'id_verification_status_column_updated',
             'action' => 'removed_default_pending',
+            'driver' => $driver,
             'timestamp' => now()->toIso8601String(),
         ]);
 
@@ -56,16 +68,26 @@ return new class extends Migration
             ->whereNull('id_verification_status')
             ->update(['id_verification_status' => 'pending']);
 
-        // Restore the default value to 'pending'
-        Schema::table('users', function (Blueprint $table) {
-            $table->enum('id_verification_status', ['pending', 'verified', 'rejected'])
-                ->default('pending')
-                ->change();
-        });
+        // Check if we're using PostgreSQL
+        $driver = DB::connection()->getDriverName();
+        
+        if ($driver === 'pgsql') {
+            // PostgreSQL-specific approach
+            // Restore the default value to 'pending'
+            DB::statement("ALTER TABLE users ALTER COLUMN id_verification_status SET DEFAULT 'pending'");
+        } else {
+            // MySQL/SQLite approach
+            Schema::table('users', function (Blueprint $table) {
+                $table->enum('id_verification_status', ['pending', 'verified', 'rejected'])
+                    ->default('pending')
+                    ->change();
+            });
+        }
 
         Log::info('ID_VERIFICATION_STATUS_ROLLBACK', [
             'event' => 'id_verification_status_rollback',
             'action' => 'restored_default_pending',
+            'driver' => $driver,
             'timestamp' => now()->toIso8601String(),
         ]);
     }

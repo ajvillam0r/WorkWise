@@ -49,6 +49,14 @@ class Project extends Model
         'net_amount' => 'decimal:2',
     ];
 
+    /**
+     * Get the employer (client) who posted this project
+     * 
+     * This is the primary relationship for accessing the employer/client user.
+     * Use this instead of the deprecated client() method.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, Project>
+     */
     public function employer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'employer_id');
@@ -56,12 +64,23 @@ class Project extends Model
 
     /**
      * Get the client (deprecated - use employer)
+     * 
+     * @deprecated Use employer() instead. This method is maintained for backward compatibility.
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, Project>
      */
     public function client(): BelongsTo
     {
         return $this->belongsTo(User::class, 'employer_id');
     }
 
+    /**
+     * Get the gig worker assigned to this project
+     * 
+     * This is the primary relationship for accessing the gig worker user.
+     * Use this instead of the deprecated freelancer() method.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, Project>
+     */
     public function gigWorker(): BelongsTo
     {
         return $this->belongsTo(User::class, 'gig_worker_id');
@@ -69,22 +88,45 @@ class Project extends Model
 
     /**
      * Get the freelancer (deprecated - use gigWorker)
+     * 
+     * @deprecated Use gigWorker() instead. This method is maintained for backward compatibility.
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, Project>
      */
     public function freelancer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'gig_worker_id');
     }
 
+    /**
+     * Get the job/gig that this project is based on
+     * 
+     * This relationship provides access to the original job posting details
+     * including title, description, budget, and requirements.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<GigJob, Project>
+     */
     public function job(): BelongsTo
     {
         return $this->belongsTo(GigJob::class, 'job_id');
     }
 
+    /**
+     * Get the bid that was accepted to create this project
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Bid, Project>
+     */
     public function bid(): BelongsTo
     {
         return $this->belongsTo(Bid::class, 'bid_id');
     }
 
+    /**
+     * Get all transactions associated with this project
+     * 
+     * Includes escrow deposits, payment releases, and platform fees.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Transaction>
+     */
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);

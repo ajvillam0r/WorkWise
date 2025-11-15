@@ -4,13 +4,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function FreelancerWallet({ 
-    totalEarnings, 
-    pendingEarnings, 
-    availableBalance, 
-    completedProjects, 
-    pendingPayments, 
-    transactions, 
-    currency 
+    totalEarnings = 0, 
+    pendingEarnings = 0, 
+    availableBalance = 0, 
+    completedProjects = [], 
+    pendingPayments = [], 
+    transactions = { data: [] }, 
+    currency = { symbol: '$', code: 'USD' }
 }) {
     const { flash } = usePage().props;
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
@@ -44,6 +44,10 @@ export default function FreelancerWallet({
         return badges[status] || 'bg-gray-100 text-gray-800';
     };
 
+    // Ensure transactions is properly structured
+    const safeTransactions = transactions?.data ?? [];
+    const safePendingPayments = Array.isArray(pendingPayments) ? pendingPayments : [];
+
     return (
         <AuthenticatedLayout
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight"> My Earnings</h2>}
@@ -76,7 +80,7 @@ export default function FreelancerWallet({
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Total Earnings</p>
                                     <p className="text-2xl font-bold text-green-600">
-                                        {currency.symbol}{formatAmount(totalEarnings)}
+                                        {currency?.symbol ?? '$'}{formatAmount(totalEarnings)}
                                     </p>
                                 </div>
                             </div>
@@ -93,7 +97,7 @@ export default function FreelancerWallet({
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Pending Payments</p>
                                     <p className="text-2xl font-bold text-yellow-600">
-                                        {currency.symbol}{formatAmount(pendingEarnings)}
+                                        {currency?.symbol ?? '$'}{formatAmount(pendingEarnings)}
                                     </p>
                                 </div>
                             </div>
@@ -111,7 +115,7 @@ export default function FreelancerWallet({
                                     <div>
                                         <p className="text-sm font-medium text-gray-600">Available Balance</p>
                                         <p className="text-2xl font-bold text-blue-600">
-                                            {currency.symbol}{formatAmount(availableBalance)}
+                                            {currency?.symbol ?? '$'}{formatAmount(availableBalance)}
                                         </p>
                                     </div>
                                 </div>
@@ -127,28 +131,38 @@ export default function FreelancerWallet({
                     </div>
 
                     {/* Pending Payments Section */}
-                    {pendingPayments.length > 0 && (
+                    {safePendingPayments.length > 0 && (
                         <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 mb-8">
                             <div className="p-8">
                                 <h3 className="text-lg font-medium mb-4">⏳ Pending Payments (Escrowed or Awaiting Release)</h3>
                                 <div className="space-y-4">
-                                    {pendingPayments.map((project) => (
-                                        <div key={project.id} className="border border-yellow-200 bg-gradient-to-br from-yellow-50 to-white rounded-xl p-6 shadow-md">
+                                    {safePendingPayments.map((project) => (
+                                        <div key={project?.id ?? Math.random()} className="border border-yellow-200 bg-gradient-to-br from-yellow-50 to-white rounded-xl p-6 shadow-md">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <h4 className="font-medium text-gray-900">{project.job.title}</h4>
-                                                    <p className="text-sm text-gray-600">Employer: {project.employer.first_name} {project.employer.last_name}</p>
-                                                    {project.status === 'completed' ? (
-                                                        <p className="text-sm text-gray-500">Completed {formatDistanceToNow(new Date(project.completed_at))} ago</p>
+                                                    <h4 className="font-medium text-gray-900">
+                                                        {project?.job?.title ?? 'Project #' + (project?.id ?? 'Unknown')}
+                                                    </h4>
+                                                    {project?.employer ? (
+                                                        <p className="text-sm text-gray-600">
+                                                            Employer: {project.employer.first_name ?? ''} {project.employer.last_name ?? ''}
+                                                        </p>
                                                     ) : (
+                                                        <p className="text-sm text-gray-500 italic">Employer information unavailable</p>
+                                                    )}
+                                                    {project?.status === 'completed' && project?.completed_at ? (
+                                                        <p className="text-sm text-gray-500">Completed {formatDistanceToNow(new Date(project.completed_at))} ago</p>
+                                                    ) : project?.started_at ? (
                                                         <p className="text-sm text-gray-500">Started {formatDistanceToNow(new Date(project.started_at))} ago</p>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500">Date unavailable</p>
                                                     )}
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-lg font-bold text-yellow-600">
-                                                        {currency.symbol}{formatAmount(project.net_amount)}
+                                                        {currency?.symbol ?? '$'}{formatAmount(project?.net_amount)}
                                                     </p>
-                                                    {project.status === 'completed' ? (
+                                                    {project?.status === 'completed' ? (
                                                         <span className="inline-flex items-center px-3 py-1 rounded-xl text-sm font-semibold shadow-md bg-yellow-100 text-yellow-800">
                                                             Awaiting Release
                                                         </span>
@@ -170,7 +184,7 @@ export default function FreelancerWallet({
                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
                         <div className="p-8">
                             <h3 className="text-lg font-medium mb-4">💸 Recent Payments Received</h3>
-                            {transactions.data.length > 0 ? (
+                            {safeTransactions.length > 0 ? (
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead>
@@ -190,19 +204,23 @@ export default function FreelancerWallet({
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {transactions.data.map((transaction) => (
-                                                <tr key={transaction.id}>
+                                            {safeTransactions.map((transaction) => (
+                                                <tr key={transaction?.id ?? Math.random()}>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {transaction.project?.job?.title || 'Project #' + transaction.project_id}
+                                                        {transaction?.project?.job?.title ?? 'Project #' + (transaction?.project_id ?? 'Unknown')}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                        {transaction.payer?.first_name} {transaction.payer?.last_name}
+                                                        {transaction?.payer?.first_name ?? ''} {transaction?.payer?.last_name ?? ''}
+                                                        {!transaction?.payer && <span className="text-gray-400 italic">N/A</span>}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                                        {currency.symbol}{formatAmount(transaction.net_amount)}
+                                                        {currency?.symbol ?? '$'}{formatAmount(transaction?.net_amount)}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {new Date(transaction.processed_at).toLocaleDateString()}
+                                                        {transaction?.processed_at 
+                                                            ? new Date(transaction.processed_at).toLocaleDateString()
+                                                            : 'N/A'
+                                                        }
                                                     </td>
                                                 </tr>
                                             ))}

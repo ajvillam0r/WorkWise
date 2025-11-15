@@ -245,11 +245,28 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // Project relationships
+    
+    /**
+     * Get all projects where this user is the employer/client
+     * 
+     * This is the primary relationship for accessing projects posted by this employer.
+     * Use this instead of the deprecated clientProjects() method.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
+     */
     public function employerProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'employer_id');
     }
 
+    /**
+     * Get all projects where this user is the gig worker
+     * 
+     * This is the primary relationship for accessing projects assigned to this gig worker.
+     * Use this instead of the deprecated freelancerProjects() method.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
+     */
     public function gigWorkerProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'gig_worker_id');
@@ -257,6 +274,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get client projects (deprecated - use employerProjects)
+     * 
+     * @deprecated Use employerProjects() instead. This method is maintained for backward compatibility.
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
      */
     public function clientProjects(): HasMany
     {
@@ -265,6 +285,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get freelancer projects (deprecated - use gigWorkerProjects)
+     * 
+     * @deprecated Use gigWorkerProjects() instead. This method is maintained for backward compatibility.
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
      */
     public function freelancerProjects(): HasMany
     {
@@ -350,7 +373,12 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get the user's deposits
+     * Get all deposits made by this user (employer)
+     * 
+     * This relationship provides access to all escrow deposits made by the employer
+     * for funding projects. Used in the wallet page to display deposit history.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Deposit>
      */
     public function deposits(): HasMany
     {

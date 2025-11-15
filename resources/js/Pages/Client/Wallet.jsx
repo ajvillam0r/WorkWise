@@ -5,7 +5,15 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '@/Components/CheckoutForm';
 
-export default function EmployerWallet({ deposits, paidProjects, transactions, totalSpent, escrowBalance, stripe_key, currency }) {
+export default function EmployerWallet({ 
+    deposits = { data: [] }, 
+    paidProjects = [], 
+    transactions = [], 
+    totalSpent = 0, 
+    escrowBalance = 0, 
+    stripe_key = null, 
+    currency = { symbol: '$', code: 'USD' } 
+}) {
     const [showAmountModal, setShowAmountModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [amount, setAmount] = useState('');
@@ -14,7 +22,7 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
     const [depositId, setDepositId] = useState(null);
     const [isCreatingIntent, setIsCreatingIntent] = useState(false);
     const [intentError, setIntentError] = useState(null);
-    const { flash } = usePage().props;
+    const { flash = {} } = usePage().props;
 
     useEffect(() => {
         if (stripe_key) {
@@ -115,6 +123,12 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                         </div>
                     )}
 
+                    {flash?.error && (
+                        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                            {flash.error}
+                        </div>
+                    )}
+
                     {/* Wallet Overview */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         {/* Escrow Balance */}
@@ -123,7 +137,7 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Escrow Balance</h3>
                                     <div className="text-3xl font-bold text-green-600">
-                                        {currency.symbol}{formatAmount(escrowBalance || 0)}
+                                        {currency?.symbol || '$'}{formatAmount(escrowBalance ?? 0)}
                                     </div>
                                     <p className="text-sm text-gray-500 mt-1">Available for project payments</p>
                                 </div>
@@ -147,7 +161,7 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Total Spent</p>
                                     <p className="text-2xl font-bold text-blue-600">
-                                        {currency.symbol}{formatAmount(totalSpent || 0)}
+                                        {currency?.symbol || '$'}{formatAmount(totalSpent ?? 0)}
                                     </p>
                                 </div>
                             </div>
@@ -155,46 +169,64 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                     </div>
 
                     {/* Recent Projects */}
-                    {paidProjects && paidProjects.length > 0 && (
+                    {paidProjects && Array.isArray(paidProjects) && paidProjects.length > 0 ? (
                         <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 mb-8">
                             <div className="p-8">
                                 <h3 className="text-lg font-medium mb-4">💼 Recent Project Payments</h3>
                                 <div className="space-y-4">
-                                    {paidProjects.map((project) => (
-                                        <div key={project.id} className="border border-blue-100 rounded-xl p-6 bg-gradient-to-br from-blue-50 to-white shadow-md">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="font-medium text-gray-900">{project.job.title}</h4>
-                                                    <p className="text-sm text-gray-600">
-                                                        Gig Worker: {project.gig_worker.first_name} {project.gig_worker.last_name}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">
-                                                        Status: {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-lg font-bold text-blue-600">
-                                                        {currency.symbol}{formatAmount(project.agreed_amount)}
-                                                    </p>
-                                                    {project.payment_released && (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                            Payment Released
-                                                        </span>
-                                                    )}
+                                    {paidProjects.map((project) => {
+                                        // Null safety checks for project data
+                                        const jobTitle = project?.job?.title || 'Untitled Project';
+                                        const gigWorkerFirstName = project?.gig_worker?.first_name || project?.freelancer?.first_name || '';
+                                        const gigWorkerLastName = project?.gig_worker?.last_name || project?.freelancer?.last_name || '';
+                                        const gigWorkerName = gigWorkerFirstName && gigWorkerLastName 
+                                            ? `${gigWorkerFirstName} ${gigWorkerLastName}` 
+                                            : gigWorkerFirstName || gigWorkerLastName || 'Unknown Worker';
+                                        const projectStatus = project?.status || 'unknown';
+                                        const agreedAmount = project?.agreed_amount ?? 0;
+                                        const paymentReleased = project?.payment_released ?? false;
+
+                                        return (
+                                            <div key={project?.id || Math.random()} className="border border-blue-100 rounded-xl p-6 bg-gradient-to-br from-blue-50 to-white shadow-md">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-medium text-gray-900">{jobTitle}</h4>
+                                                        <p className="text-sm text-gray-600">
+                                                            Gig Worker: {gigWorkerName}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500">
+                                                            Status: {projectStatus.charAt(0).toUpperCase() + projectStatus.slice(1)}
+                                                        </p>
+                                                        {(!project?.job || !project?.gig_worker) && (
+                                                            <p className="text-xs text-amber-600 mt-1">
+                                                                ⚠️ Some project details are unavailable
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-lg font-bold text-blue-600">
+                                                            {currency?.symbol || '$'}{formatAmount(agreedAmount)}
+                                                        </p>
+                                                        {paymentReleased && (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                Payment Released
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     {/* Deposit History */}
                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
                         <div className="p-8">
                             <h3 className="text-lg font-medium mb-4">💳 Deposit History</h3>
-                            {deposits?.data?.length > 0 ? (
+                            {deposits?.data && Array.isArray(deposits.data) && deposits.data.length > 0 ? (
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead>
@@ -211,25 +243,33 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {deposits.data.map((deposit) => (
-                                                <tr key={deposit.id}>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {new Date(deposit.created_at).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {currency.symbol}{formatAmount(deposit.amount)}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                            deposit.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                            deposit.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-red-100 text-red-800'
-                                                        }`}>
-                                                            {deposit.status.charAt(0).toUpperCase() + deposit.status.slice(1)}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {deposits.data.map((deposit) => {
+                                                const depositDate = deposit?.created_at 
+                                                    ? new Date(deposit.created_at).toLocaleDateString() 
+                                                    : 'Unknown date';
+                                                const depositAmount = deposit?.amount ?? 0;
+                                                const depositStatus = deposit?.status || 'unknown';
+                                                
+                                                return (
+                                                    <tr key={deposit?.id || Math.random()}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {depositDate}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {currency?.symbol || '$'}{formatAmount(depositAmount)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                                depositStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                                                                depositStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                                'bg-red-100 text-red-800'
+                                                            }`}>
+                                                                {depositStatus.charAt(0).toUpperCase() + depositStatus.slice(1)}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -273,7 +313,7 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                                     </label>
                                     <div className="relative rounded-md shadow-sm">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 sm:text-sm">{currency.symbol}</span>
+                                            <span className="text-gray-500 sm:text-sm">{currency?.symbol || '$'}</span>
                                         </div>
                                         <input
                                             type="number"
@@ -287,7 +327,7 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                                         />
                                     </div>
                                     <p className="mt-2 text-sm text-gray-500">
-                                        Minimum deposit: {currency.symbol}50.00
+                                        Minimum deposit: {currency?.symbol || '$'}50.00
                                     </p>
                                 </div>
 
@@ -349,7 +389,7 @@ export default function EmployerWallet({ deposits, paidProjects, transactions, t
                                             >
                                                 <CheckoutForm
                                                     amount={amount}
-                                                    currency={currency}
+                                                    currency={currency || { symbol: '$', code: 'USD' }}
                                                     clientSecret={clientSecret}
                                                     onSuccess={handleSuccess}
                                                     onCancel={handleCancel}

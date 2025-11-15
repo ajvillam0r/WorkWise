@@ -255,7 +255,7 @@ Route::get('/jobs', [GigJobController::class, 'index'])->middleware(['auth.redir
 Route::middleware('auth')->group(function () {
     // Onboarding routes
     Route::get('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'show'])->name('gig-worker.onboarding');
-    Route::post('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'store']);
+    Route::post('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'store'])->name('gig-worker.onboarding.store');
     Route::post('/onboarding/gig-worker/skip', [GigWorkerOnboardingController::class, 'skip'])->name('gig-worker.onboarding.skip');
 
     Route::get('/onboarding/employer', [EmployerOnboardingController::class, 'show'])->name('employer.onboarding');

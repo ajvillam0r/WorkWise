@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SkillAutocompleteInput from '@/Components/SkillAutocompleteInput';
 import FileUploadInput from '@/Components/FileUploadInput';
@@ -12,10 +12,21 @@ import useFieldValidation from '@/Hooks/useFieldValidation';
 import useToast from '@/Hooks/useToast';
 import { validationRules } from '@/utils/validationRules';
 import { getFirstError, ERROR_CODES, SUPPORT_CONTACT } from '@/utils/errorHelpers';
+import { startCsrfRefresh, stopCsrfRefresh } from '@/utils/csrfRefresh';
 
 export default function EmployerOnboarding({ user, industries, serviceCategories }) {
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 2;
+    
+    // Start CSRF token refresh to prevent 419 errors on long forms
+    useEffect(() => {
+        // Refresh CSRF token every 30 minutes to prevent session expiration
+        const refreshIntervalId = startCsrfRefresh(30);
+        
+        return () => {
+            stopCsrfRefresh(refreshIntervalId);
+        };
+    }, []);
     const [categorySearchInput, setCategorySearchInput] = useState('');
     const [touchedFields, setTouchedFields] = useState({});
     const [showErrorSummary, setShowErrorSummary] = useState(false);

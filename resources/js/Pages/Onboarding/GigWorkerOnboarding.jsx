@@ -16,6 +16,7 @@ import useFieldValidation from '@/Hooks/useFieldValidation';
 import useToast from '@/Hooks/useToast';
 import { validationRules } from '@/utils/validationRules';
 import { getFirstError, ERROR_CODES, SUPPORT_CONTACT } from '@/utils/errorHelpers';
+import { startCsrfRefresh, stopCsrfRefresh } from '@/utils/csrfRefresh';
 
 export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const [currentStep, setCurrentStep] = useState(0);
@@ -100,6 +101,16 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         500
     );
 
+    // Start CSRF token refresh to prevent 419 errors on long forms
+    useEffect(() => {
+        // Refresh CSRF token every 30 minutes to prevent session expiration
+        const refreshIntervalId = startCsrfRefresh(30);
+        
+        return () => {
+            stopCsrfRefresh(refreshIntervalId);
+        };
+    }, []);
+
     // Load categories from taxonomy
     useEffect(() => {
         if (skillsTaxonomy && skillsTaxonomy.services) {
@@ -149,7 +160,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         e.preventDefault();
         setShowErrorSummary(false);
         
-        post(route('gig-worker.onboarding'), {
+        post(route('gig-worker.onboarding.store'), {
             forceFormData: true,
             onError: (errors) => {
                 console.error('Onboarding submission errors:', errors);

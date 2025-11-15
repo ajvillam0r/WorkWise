@@ -253,6 +253,21 @@ Route::get('/debug-user', function () {
 Route::get('/jobs', [GigJobController::class, 'index'])->middleware(['auth.redirect'])->name('jobs.index');
 
 Route::middleware('auth')->group(function () {
+    // Test route for Stripe configuration (remove after verification)
+    Route::get('/test-stripe-config', function() {
+        return response()->json([
+            'stripe_key_exists' => !empty(config('stripe.key')),
+            'stripe_secret_exists' => !empty(config('stripe.secret')),
+            'stripe_webhook_exists' => !empty(config('stripe.webhook_secret')),
+            'stripe_key_prefix' => substr(config('stripe.key') ?? '', 0, 10),
+            'stripe_secret_prefix' => substr(config('stripe.secret') ?? '', 0, 10),
+            'currency' => config('stripe.currency'),
+            'services_stripe_key' => !empty(config('services.stripe.key')),
+            'services_stripe_secret' => !empty(config('services.stripe.secret')),
+            'app_currency' => config('app.currency'),
+        ]);
+    });
+
     // Onboarding routes
     Route::get('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'show'])->name('gig-worker.onboarding');
     Route::post('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'store'])->name('gig-worker.onboarding.store');

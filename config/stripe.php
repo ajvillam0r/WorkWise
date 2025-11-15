@@ -4,5 +4,5 @@ return [
     'key' => env('STRIPE_KEY'),
     'secret' => env('STRIPE_SECRET'),
     'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
-    'currency' => env('STRIPE_CURRENCY', 'usd'),
+    'currency' => env('STRIPE_CURRENCY', 'php'), // Default to PHP (Philippine Peso)
 ]; 

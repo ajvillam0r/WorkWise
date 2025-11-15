@@ -52,11 +52,27 @@ export default function UnifiedAnalytics({ auth }) {
     const fetchMetrics = useCallback(async () => {
         try {
             const response = await fetch(`/admin/api/analytics/overview?period=${period}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('API Error:', errorData);
+                throw new Error(errorData.message || 'Failed to fetch metrics');
+            }
             const data = await response.json();
+            if (data.error) {
+                console.error('Data Error:', data);
+                throw new Error(data.message || data.error);
+            }
             setMetrics(data);
             setLastUpdate(new Date());
         } catch (error) {
             console.error('Error fetching metrics:', error);
+            // Set empty metrics to prevent undefined errors
+            setMetrics({
+                users: { total: 0, gig_workers: 0, employers: 0, verified: 0, pending: 0, new_today: 0, new_this_week: 0, new_this_month: 0, email_verified: 0, id_verified: 0 },
+                jobs: { total_jobs: 0, active_jobs: 0, completed_jobs: 0, total_contracts: 0, active_contracts: 0, completed_contracts: 0, completion_rate: 0, avg_contract_value: 0, total_contract_value: 0, new_jobs_today: 0, new_contracts_today: 0 },
+                financial: { total_revenue: 0, platform_fees: 0, this_month_revenue: 0, this_month_platform_fees: 0, today_revenue: 0, today_platform_fees: 0, total_transactions: 0, completed_transactions: 0, pending_transactions: 0, success_rate: 0, avg_transaction: 0, total_payouts: 0 },
+                quality: { avg_match_quality: 0, avg_rating: 0, completion_rate: 0, cancellation_rate: 0, dispute_rate: 0, pending_disputes: 0, resolved_disputes: 0, perfect_ratings: 0, perfect_ratings_percentage: 0, total_reviews: 0 }
+            });
         }
     }, [period]);
 
@@ -64,10 +80,22 @@ export default function UnifiedAnalytics({ auth }) {
     const fetchChartData = useCallback(async () => {
         try {
             const [userGrowth, revenueTrend, jobTrends, qualityTrend] = await Promise.all([
-                fetch(`/admin/api/analytics/user-growth-chart?period=${period}`).then(r => r.json()),
-                fetch(`/admin/api/analytics/revenue-trend-chart?period=${period}`).then(r => r.json()),
-                fetch(`/admin/api/analytics/job-trends-chart?period=${period}`).then(r => r.json()),
-                fetch(`/admin/api/analytics/quality-trend-chart?period=${period}`).then(r => r.json())
+                fetch(`/admin/api/analytics/user-growth-chart?period=${period}`).then(async r => {
+                    if (!r.ok) throw new Error('Failed to fetch user growth');
+                    return r.json();
+                }),
+                fetch(`/admin/api/analytics/revenue-trend-chart?period=${period}`).then(async r => {
+                    if (!r.ok) throw new Error('Failed to fetch revenue trend');
+                    return r.json();
+                }),
+                fetch(`/admin/api/analytics/job-trends-chart?period=${period}`).then(async r => {
+                    if (!r.ok) throw new Error('Failed to fetch job trends');
+                    return r.json();
+                }),
+                fetch(`/admin/api/analytics/quality-trend-chart?period=${period}`).then(async r => {
+                    if (!r.ok) throw new Error('Failed to fetch quality trend');
+                    return r.json();
+                })
             ]);
 
             setChartData({
@@ -78,6 +106,13 @@ export default function UnifiedAnalytics({ auth }) {
             });
         } catch (error) {
             console.error('Error fetching chart data:', error);
+            // Set empty chart data
+            setChartData({
+                userGrowth: { labels: [], gig_workers: [], employers: [] },
+                revenueTrend: { labels: [], revenue: [], platform_fees: [] },
+                jobTrends: { labels: [], jobs_posted: [], contracts_created: [] },
+                qualityTrend: { labels: [], match_quality: [], avg_rating: [], completion_rate: [] }
+            });
         }
     }, [period]);
 

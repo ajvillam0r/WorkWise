@@ -103,6 +103,13 @@ export default function UsersIndex({ users, filters }) {
                     </div>
                     <div className="flex items-center space-x-3">
                         <Link
+                            href="/admin/id-verifications"
+                            className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                        >
+                            <span className="material-symbols-outlined mr-2">verified_user</span>
+                            ID Verifications
+                        </Link>
+                        <Link
                             href={route('admin.users.export', {
                                 format: 'csv',
                                 user_type: userTypeFilter,

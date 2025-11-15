@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Transition } from '@headlessui/react';
 import SuccessModal from '@/Components/SuccessModal';
 import VerificationBadge, { VerificationBadges } from '@/Components/VerificationBadge';
+import IDVerifiedBadge from '@/Components/IDVerifiedBadge';
 import { ToastContainer } from '@/Components/Toast';
 import useToast from '@/Hooks/useToast';
 import { validateSection, validateField } from '@/utils/validation';
@@ -514,32 +515,62 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                     )}
 
                                     {/* ID Verification Quick Access */}
-                                    <div className="mb-6">
-                                        <Link
-                                            href="/id-verification"
-                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-                                            </svg>
-                                            <span>ID Verification</span>
-                                            {user.id_verification_status === 'pending' && (
-                                                <span className="ml-1 px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-full">
-                                                    Pending
+                                    {/* Show button only when status is null or rejected */}
+                                    {(!user.id_verification_status || user.id_verification_status === 'rejected') && (
+                                        <div className="mb-6">
+                                            <Link
+                                                href="/id-verification"
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                                </svg>
+                                                <span>
+                                                    {user.id_verification_status === 'rejected' ? 'Re-upload ID' : 'Verify Your ID'}
                                                 </span>
-                                            )}
-                                            {user.id_verification_status === 'verified' && (
-                                                <span className="ml-1 px-2 py-0.5 bg-green-400 text-green-900 text-xs font-bold rounded-full">
-                                                    ✓
-                                                </span>
-                                            )}
-                                            {!user.id_verification_status && (
-                                                <span className="ml-1 px-2 py-0.5 bg-red-400 text-red-900 text-xs font-bold rounded-full">
-                                                    Required
-                                                </span>
-                                            )}
-                                        </Link>
-                                    </div>
+                                                {user.id_verification_status === 'rejected' && (
+                                                    <span className="ml-1 px-2 py-0.5 bg-red-400 text-red-900 text-xs font-bold rounded-full">
+                                                        Rejected
+                                                    </span>
+                                                )}
+                                                {!user.id_verification_status && (
+                                                    <span className="ml-1 px-2 py-0.5 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-full">
+                                                        Required
+                                                    </span>
+                                                )}
+                                            </Link>
+                                        </div>
+                                    )}
+
+                                    {/* Show status message card when pending */}
+                                    {user.id_verification_status === 'pending' && (
+                                        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                            <div className="flex items-center gap-2 text-yellow-800">
+                                                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                </svg>
+                                                <div>
+                                                    <p className="text-sm font-semibold">ID Verification Pending</p>
+                                                    <p className="text-xs mt-1">Your ID is under review</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Show status message card when verified */}
+                                    {user.id_verification_status === 'verified' && (
+                                        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                                            <div className="flex items-center gap-2 text-green-800">
+                                                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                                <div>
+                                                    <p className="text-sm font-semibold">ID Verified</p>
+                                                    <p className="text-xs mt-1">Your identity is confirmed</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Navigation Tabs */}
                                     <nav className="space-y-2">

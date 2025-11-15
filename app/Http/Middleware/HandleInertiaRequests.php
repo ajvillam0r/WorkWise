@@ -62,6 +62,10 @@ class HandleInertiaRequests extends Middleware
                 'city' => $authenticatedUser->city,
                 'postal_code' => $authenticatedUser->postal_code,
                 
+                // ID Verification fields
+                'id_verification_status' => $authenticatedUser->id_verification_status,
+                'id_verified_at' => $authenticatedUser->id_verified_at,
+                
                 // Gig worker fields
                 'hourly_rate' => $authenticatedUser->hourly_rate,
                 'broad_category' => $authenticatedUser->broad_category,

@@ -1,356 +1,361 @@
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import IdImageViewer from '@/Components/IdImageViewer';
 
-export default function Show({ user = {} }) {
-    // Safety check for user data
-    if (!user || !user.id) {
-        return (
-            <AdminLayout>
-                <Head title="ID Verification" />
-                <div className="py-12">
-                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                        <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                            <div className="text-center">
-                                <div className="text-6xl mb-4">⚠️</div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">User Not Found</h2>
-                                <p className="text-gray-600 mb-6">The requested user verification could not be loaded.</p>
-                                <Link
-                                    href={route('admin.id-verifications.index')}
-                                    className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700"
-                                >
-                                    ← Back to ID Verifications
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </AdminLayout>
-        );
-    }
-
-    const [showApproveModal, setShowApproveModal] = useState(false);
+export default function Show({ user, auth }) {
     const [showRejectModal, setShowRejectModal] = useState(false);
-    const [showRequestModal, setShowRequestModal] = useState(false);
+    const [showApproveModal, setShowApproveModal] = useState(false);
+    const [showImageModal, setShowImageModal] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [error, setError] = useState(null);
 
-    const approveForm = useForm({
-        notes: '',
-    });
-
-    const rejectForm = useForm({
-        notes: '',
-    });
-
-    const requestForm = useForm({
-        reason: '',
-    });
-
-    const handleApprove = (e) => {
-        e.preventDefault();
-        approveForm.post(`/admin/id-verifications/${user.id}/approve`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowApproveModal(false);
-            },
-        });
+    const openImageModal = (imageUrl) => {
+        setSelectedImage(imageUrl);
+        setShowImageModal(true);
     };
 
-    const handleReject = (e) => {
-        e.preventDefault();
-        rejectForm.post(`/admin/id-verifications/${user.id}/reject`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowRejectModal(false);
-            },
-        });
+    const closeImageModal = () => {
+        setShowImageModal(false);
+        setSelectedImage(null);
     };
 
-    const handleRequestResubmit = (e) => {
-        e.preventDefault();
-        requestForm.post(`/admin/id-verifications/${user.id}/request-resubmit`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowRequestModal(false);
-            },
-        });
+    const handleApprove = async () => {
+        setIsProcessing(true);
+        setError(null);
+
+        try {
+            router.post(
+                `/admin/id-verifications/${user.id}/approve`,
+                {},
+                {
+                    onSuccess: () => {
+                        setShowApproveModal(false);
+                        // Redirect back to index with success message
+                        router.visit('/admin/id-verifications', {
+                            preserveState: false,
+                        });
+                    },
+                    onError: (errors) => {
+                        setError(errors.message || 'Failed to approve verification');
+                        setIsProcessing(false);
+                    },
+                    onFinish: () => {
+                        setIsProcessing(false);
+                    }
+                }
+            );
+        } catch (err) {
+            setError('An unexpected error occurred');
+            setIsProcessing(false);
+        }
+    };
+
+    const handleReject = async () => {
+        if (!rejectionReason.trim()) {
+            setError('Please provide a reason for rejection');
+            return;
+        }
+
+        setIsProcessing(true);
+        setError(null);
+
+        try {
+            router.post(
+                `/admin/id-verifications/${user.id}/reject`,
+                { notes: rejectionReason },
+                {
+                    onSuccess: () => {
+                        setShowRejectModal(false);
+                        setRejectionReason('');
+                        // Redirect back to index with success message
+                        router.visit('/admin/id-verifications', {
+                            preserveState: false,
+                        });
+                    },
+                    onError: (errors) => {
+                        setError(errors.message || 'Failed to reject verification');
+                        setIsProcessing(false);
+                    },
+                    onFinish: () => {
+                        setIsProcessing(false);
+                    }
+                }
+            );
+        } catch (err) {
+            setError('An unexpected error occurred');
+            setIsProcessing(false);
+        }
     };
 
     const getStatusBadge = (status) => {
         const badges = {
-            pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending Review' },
-            verified: { bg: 'bg-green-100', text: 'text-green-800', label: 'Verified' },
-            rejected: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rejected' },
+            pending: 'bg-yellow-100 text-yellow-800',
+            verified: 'bg-green-100 text-green-800',
+            rejected: 'bg-red-100 text-red-800',
         };
-        const badge = badges[status] || badges.pending;
+        const labels = {
+            pending: 'Pending Review',
+            verified: 'Verified',
+            rejected: 'Rejected',
+        };
 
         return (
-            <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${badge.bg} ${badge.text}`}>
-                {badge.label}
+            <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${badges[status]}`}>
+                {labels[status]}
             </span>
         );
     };
 
+    const getIdTypeLabel = (idType) => {
+        const labels = {
+            'national_id': 'National ID',
+            'drivers_license': "Driver's License",
+            'passport': 'Passport',
+            'philhealth_id': 'PhilHealth',
+            'sss_id': 'SSS',
+            'umid': 'UMID',
+            'voters_id': "Voter's ID",
+            'prc_id': 'PRC',
+        };
+        return labels[idType] || idType || 'Not specified';
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     return (
-        <AdminLayout>
-            <Head title={`ID Verification - ${user?.first_name || ''} ${user?.last_name || ''}`} />
+        <AdminLayout user={auth.user}>
+            <Head title={`Verify ${user.first_name} ${user.last_name}`} />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    {/* Header */}
-                    <div className="mb-8 flex items-center justify-between">
-                        <div>
-                            <Link
-                                href={route('admin.id-verifications.index')}
-                                className="text-sm text-indigo-600 hover:text-indigo-900 mb-2 inline-block"
-                            >
-                                ← Back to ID Verifications
-                            </Link>
-                            <h1 className="text-3xl font-bold text-gray-900">
-                                {user?.first_name || 'N/A'} {user?.last_name || ''}
-                            </h1>
-                            <p className="mt-2 text-sm text-gray-600">{user?.email || 'No email'}</p>
-                        </div>
-                        <div>
-                            {getStatusBadge(user?.id_verification_status || 'pending')}
-                        </div>
+                    {/* Header with Back Button */}
+                    <div className="mb-8">
+                        <button
+                            onClick={() => router.visit('/admin/id-verifications')}
+                            className="text-indigo-600 hover:text-indigo-900 mb-4 inline-flex items-center"
+                        >
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Back to Verifications
+                        </button>
+                        <h1 className="text-3xl font-bold text-gray-900">ID Verification Review</h1>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Main Content - ID Images */}
-                        <div className="lg:col-span-2 space-y-6">
-                            {/* ID Images */}
-                            <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                                <h2 className="text-xl font-semibold mb-4">ID Images</h2>
-                                <div className="mb-4">
-                                    <span className="text-sm font-medium text-gray-700">ID Type: </span>
-                                    <span className="text-sm text-gray-900">{user?.id_type_label || 'Unknown'}</span>
+                    {/* Error Message */}
+                    {error && (
+                        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
                                 </div>
-
-                                <IdImageViewer
-                                    frontImage={user?.id_front_image_url}
-                                    backImage={user?.id_back_image_url}
-                                />
+                                <div className="ml-3">
+                                    <p className="text-sm text-red-800">{error}</p>
+                                </div>
                             </div>
-
-                            {/* Action Buttons */}
-                            {user?.id_verification_status === 'pending' && (
-                                <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                                    <h2 className="text-xl font-semibold mb-4">Actions</h2>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => setShowApproveModal(true)}
-                                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
-                                        >
-                                            ✓ Approve ID
-                                        </button>
-                                        <button
-                                            onClick={() => setShowRejectModal(true)}
-                                            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-medium"
-                                        >
-                                            ✗ Reject ID
-                                        </button>
-                                        <button
-                                            onClick={() => setShowRequestModal(true)}
-                                            className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors font-medium"
-                                        >
-                                            🔄 Request Resubmit
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Verification Notes */}
-                            {user?.id_verification_notes && (
-                                <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                                    <h2 className="text-xl font-semibold mb-4">Verification Notes</h2>
-                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{user.id_verification_notes}</p>
-                                </div>
-                            )}
                         </div>
+                    )}
 
-                        {/* Sidebar - User Info */}
-                        <div className="space-y-6">
-                            {/* Profile Info */}
-                            <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                                <h2 className="text-lg font-semibold mb-4">User Information</h2>
-                                <div className="space-y-3">
-                                    {user?.profile_photo_url && (
-                                        <div className="flex justify-center">
-                                            <img
-                                                src={user.profile_photo_url}
-                                                alt="Profile"
-                                                className="w-24 h-24 rounded-full object-cover"
-                                            />
-                                        </div>
-                                    )}
-                                    <div>
-                                        <div className="text-xs text-gray-500">Name</div>
-                                        <div className="text-sm font-medium">{user?.first_name || 'N/A'} {user?.last_name || ''}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-500">Email</div>
-                                        <div className="text-sm">{user?.email || 'N/A'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-500">Professional Title</div>
-                                        <div className="text-sm">{user?.professional_title || 'N/A'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-500">Hourly Rate</div>
-                                        <div className="text-sm">₱{user?.hourly_rate ? parseFloat(user.hourly_rate).toFixed(2) : '0.00'}/hour</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-500">Profile Status</div>
-                                        <div className="text-sm capitalize">{user?.profile_status || 'N/A'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-500">Member Since</div>
-                                        <div className="text-sm">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Address Information */}
-                            <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                                <h2 className="text-lg font-semibold mb-4">Address Information</h2>
-                                <div className="space-y-3">
-                                    {user?.country && (
-                                        <div>
-                                            <div className="text-xs text-gray-500">Registration Country</div>
-                                            <div className="text-sm font-medium">{user.country}</div>
-                                        </div>
-                                    )}
-                                    
-                                    {user?.street_address && (
-                                        <>
-                                            <div className="border-t pt-3">
-                                                <div className="text-xs text-gray-500 font-semibold mb-2">KYC Address</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-gray-500">Street Address</div>
-                                                <div className="text-sm">{user?.street_address}</div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <div className="text-xs text-gray-500">City</div>
-                                                    <div className="text-sm">{user?.city}</div>
-                                                </div>
-                                                {user?.barangay && (
-                                                    <div>
-                                                        <div className="text-xs text-gray-500">Barangay</div>
-                                                        <div className="text-sm">{user.barangay}</div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <div className="text-xs text-gray-500">Postal Code</div>
-                                                    <div className="text-sm">{user?.postal_code}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-gray-500">Country</div>
-                                                    <div className="text-sm">{user?.country}</div>
-                                                </div>
-                                            </div>
-                                            {user?.address_verified_at && (
-                                                <div>
-                                                    <div className="text-xs text-gray-500">Verified On</div>
-                                                    <div className="text-sm">{new Date(user.address_verified_at).toLocaleDateString()}</div>
-                                                </div>
-                                            )}
-                                            
-                                            {/* Country Mismatch Warning */}
-                                            {user?.country && user?.street_address && (
-                                                (() => {
-                                                    // Extract country from full address or compare with registration country
-                                                    const registrationCountry = user.country;
-                                                    // In a real scenario, you might parse city/country differently
-                                                    // For now, we're showing a warning if needed
-                                                    return null; // Can add conditional logic here if needed
-                                                })()
-                                            )}
-                                        </>
-                                    )}
-                                    
-                                    {!user?.street_address && (
-                                        <div className="text-sm text-gray-500 italic">
-                                            No complete address provided yet
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Skills */}
-                            {user?.skills_with_experience && user.skills_with_experience.length > 0 && (
-                                <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold mb-4">Skills</h2>
-                                    <div className="flex flex-wrap gap-2">
-                                        {user.skills_with_experience.map((skill, index) => (
-                                            <span
-                                                key={index}
-                                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                            >
-                                                {skill?.skill}
+                    {/* User Information Card */}
+                    <div className="bg-white shadow-sm sm:rounded-lg p-6 mb-6">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                    {user.profile_photo ? (
+                                        <img
+                                            className="h-20 w-20 rounded-full object-cover"
+                                            src={`/storage/${user.profile_photo}`}
+                                            alt={`${user.first_name} ${user.last_name}`}
+                                        />
+                                    ) : (
+                                        <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span className="text-2xl text-gray-500 font-medium">
+                                                {user.first_name?.[0]}{user.last_name?.[0]}
                                             </span>
-                                        ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="ml-6">
+                                    <h2 className="text-2xl font-bold text-gray-900">
+                                        {user.first_name} {user.last_name}
+                                    </h2>
+                                    <p className="text-sm text-gray-600 mt-1">{user.email}</p>
+                                    <div className="mt-2 flex items-center gap-3">
+                                        <span className="text-sm text-gray-500">
+                                            User Type: <span className="font-medium text-gray-900 capitalize">{user.user_type}</span>
+                                        </span>
+                                        <span className="text-gray-300">•</span>
+                                        {getStatusBadge(user.id_verification_status)}
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        </div>
 
-                            {/* Portfolio */}
-                            {user?.portfolio_items && user.portfolio_items.length > 0 && (
-                                <div className="bg-white shadow-sm sm:rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold mb-4">Portfolio</h2>
-                                    <div className="text-sm text-gray-600">
-                                        {user.portfolio_items.length} project{user.portfolio_items.length !== 1 ? 's' : ''} uploaded
-                                    </div>
+                        {/* Additional User Details */}
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 pt-6 border-t border-gray-200">
+                            <div>
+                                <p className="text-sm font-medium text-gray-500">ID Type</p>
+                                <p className="mt-1 text-sm text-gray-900">{getIdTypeLabel(user.id_type)}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-gray-500">Submission Date</p>
+                                <p className="mt-1 text-sm text-gray-900">{formatDate(user.created_at)}</p>
+                            </div>
+                            {user.id_verified_at && (
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500">Verified Date</p>
+                                    <p className="mt-1 text-sm text-gray-900">{formatDate(user.id_verified_at)}</p>
+                                </div>
+                            )}
+                            {user.id_verification_notes && (
+                                <div className="md:col-span-2">
+                                    <p className="text-sm font-medium text-gray-500">Notes</p>
+                                    <p className="mt-1 text-sm text-gray-900">{user.id_verification_notes}</p>
                                 </div>
                             )}
                         </div>
                     </div>
+
+                    {/* ID Images */}
+                    <div className="bg-white shadow-sm sm:rounded-lg p-6 mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">ID Documents</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Front ID */}
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Front of ID</h4>
+                                {user.id_front_image ? (
+                                    <div className="relative group">
+                                        <img
+                                            src={user.id_front_image}
+                                            alt="Front ID"
+                                            className="w-full rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition"
+                                            onClick={() => openImageModal(user.id_front_image)}
+                                        />
+                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition rounded-lg flex items-center justify-center">
+                                            <svg className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                            </svg>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2 text-center">Click to enlarge</p>
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                                        <p className="text-gray-500">No front image uploaded</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Back ID */}
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Back of ID</h4>
+                                {user.id_back_image ? (
+                                    <div className="relative group">
+                                        <img
+                                            src={user.id_back_image}
+                                            alt="Back ID"
+                                            className="w-full rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition"
+                                            onClick={() => openImageModal(user.id_back_image)}
+                                        />
+                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition rounded-lg flex items-center justify-center">
+                                            <svg className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                            </svg>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2 text-center">Click to enlarge</p>
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                                        <p className="text-gray-500">No back image uploaded</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {user.id_verification_status === 'pending' && (
+                        <div className="bg-white shadow-sm sm:rounded-lg p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Review Actions</h3>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setShowApproveModal(true)}
+                                    disabled={isProcessing}
+                                    className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                >
+                                    {isProcessing ? 'Processing...' : '✓ Approve Verification'}
+                                </button>
+                                <button
+                                    onClick={() => setShowRejectModal(true)}
+                                    disabled={isProcessing}
+                                    className="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                >
+                                    {isProcessing ? 'Processing...' : '✕ Reject Verification'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {user.id_verification_status === 'verified' && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                            <div className="flex items-center">
+                                <svg className="w-6 h-6 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <p className="text-green-800 font-medium">This ID has been verified</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {user.id_verification_status === 'rejected' && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                            <div className="flex items-center">
+                                <svg className="w-6 h-6 text-red-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                                <p className="text-red-800 font-medium">This ID has been rejected</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Approve Modal */}
+            {/* Approve Confirmation Modal */}
             {showApproveModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold mb-4">Approve ID Verification</h3>
-                        <form onSubmit={handleApprove}>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Are you sure you want to approve this ID? The user will be notified via email.
-                            </p>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Notes (Optional)
-                                </label>
-                                <textarea
-                                    value={approveForm.data.notes}
-                                    onChange={(e) => approveForm.setData('notes', e.target.value)}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    rows="3"
-                                    placeholder="Add any internal notes..."
-                                />
-                            </div>
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowApproveModal(false)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                                    disabled={approveForm.processing}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-                                    disabled={approveForm.processing}
-                                >
-                                    {approveForm.processing ? 'Approving...' : 'Approve'}
-                                </button>
-                            </div>
-                        </form>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Approve ID Verification</h3>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Are you sure you want to approve this ID verification? The user will be notified and receive a verified badge.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowApproveModal(false)}
+                                disabled={isProcessing}
+                                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleApprove}
+                                disabled={isProcessing}
+                                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:opacity-50"
+                            >
+                                {isProcessing ? 'Approving...' : 'Confirm Approval'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -359,93 +364,72 @@ export default function Show({ user = {} }) {
             {showRejectModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold mb-4">Reject ID Verification</h3>
-                        <form onSubmit={handleReject}>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Rejection Reason *
-                                </label>
-                                <textarea
-                                    value={rejectForm.data.notes}
-                                    onChange={(e) => rejectForm.setData('notes', e.target.value)}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    rows="4"
-                                    placeholder="e.g., Image is blurry, ID expired, document not valid, etc. This message will be sent to the user."
-                                    required
-                                />
-                                {rejectForm.errors.notes && (
-                                    <p className="mt-1 text-sm text-red-600">{rejectForm.errors.notes}</p>
-                                )}
-                            </div>
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRejectModal(false)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                                    disabled={rejectForm.processing}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-                                    disabled={rejectForm.processing}
-                                >
-                                    {rejectForm.processing ? 'Rejecting...' : 'Reject'}
-                                </button>
-                            </div>
-                        </form>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Reject ID Verification</h3>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Reason for Rejection <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value.slice(0, 500))}
+                                placeholder="Please provide a clear reason for rejection (e.g., 'Image is blurry', 'ID is expired', 'Name doesn't match')"
+                                className="w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                rows="4"
+                                required
+                            />
+                            <div className="text-xs text-gray-500 mt-1">{rejectionReason.length}/500 characters</div>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-6">
+                            The user will be notified with this reason and can resubmit their ID documents.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowRejectModal(false);
+                                    setRejectionReason('');
+                                    setError(null);
+                                }}
+                                disabled={isProcessing}
+                                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleReject}
+                                disabled={isProcessing || !rejectionReason.trim()}
+                                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isProcessing ? 'Rejecting...' : 'Confirm Rejection'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Request Resubmit Modal */}
-            {showRequestModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold mb-4">Request ID Resubmission</h3>
-                        <form onSubmit={handleRequestResubmit}>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Request the user to submit a new ID with corrections.
-                            </p>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Reason for Resubmission *
-                                </label>
-                                <textarea
-                                    value={requestForm.data.reason}
-                                    onChange={(e) => requestForm.setData('reason', e.target.value)}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    rows="3"
-                                    placeholder="e.g., Please upload a clearer image, Ensure all corners are visible, etc."
-                                    required
-                                />
-                                {requestForm.errors.reason && (
-                                    <p className="mt-1 text-sm text-red-600">{requestForm.errors.reason}</p>
-                                )}
-                            </div>
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRequestModal(false)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                                    disabled={requestForm.processing}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
-                                    disabled={requestForm.processing}
-                                >
-                                    {requestForm.processing ? 'Sending...' : 'Send Request'}
-                                </button>
-                            </div>
-                        </form>
+            {/* Image Zoom Modal */}
+            {showImageModal && selectedImage && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+                    onClick={closeImageModal}
+                >
+                    <div className="relative max-w-6xl max-h-full">
+                        <button
+                            onClick={closeImageModal}
+                            className="absolute -top-12 right-0 text-white hover:text-gray-300 transition"
+                        >
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <img
+                            src={selectedImage}
+                            alt="ID Document"
+                            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                            onClick={(e) => e.stopPropagation()}
+                        />
                     </div>
                 </div>
             )}
         </AdminLayout>
     );
 }
-

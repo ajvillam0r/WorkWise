@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import IDVerifiedBadge from '@/Components/IDVerifiedBadge';
 import { 
     MapPinIcon, 
     StarIcon, 
@@ -74,9 +75,14 @@ export default function EmployerProfile({ user, reviews, rating_summary, job_sta
                                 <div className="mt-4 sm:mt-0 sm:ml-6 flex-1">
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                         <div>
-                                            <h1 className="text-3xl font-bold text-gray-900">
-                                                {user.company_name || `${user.first_name} ${user.last_name}`}
-                                            </h1>
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <h1 className="text-3xl font-bold text-gray-900">
+                                                    {user.company_name || `${user.first_name} ${user.last_name}`}
+                                                </h1>
+                                                {user.id_verification_status === 'verified' && (
+                                                    <IDVerifiedBadge size="md" showText={true} />
+                                                )}
+                                            </div>
                                             {user.industry && (
                                                 <p className="text-lg text-gray-600 mt-1">
                                                     {user.industry}

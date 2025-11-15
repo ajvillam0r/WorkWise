@@ -401,10 +401,10 @@ export default function Index({ verifications = { data: [], links: [] }, stats =
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <div className="flex-shrink-0 h-10 w-10">
-                                                        {user.profile_photo ? (
+                                                        {user.profile_picture_url ? (
                                                             <img
                                                                 className="h-10 w-10 rounded-full object-cover"
-                                                                src={`/storage/${user.profile_photo}`}
+                                                                src={user.profile_picture_url}
                                                                 alt=""
                                                             />
                                                         ) : (

@@ -291,6 +291,8 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('IdVerification/Upload');
     })->name('id-verification.show');
     Route::post('/api/id-verification/upload', [IdVerificationController::class, 'upload'])->name('id-verification.upload');
+    Route::post('/api/id-verification/upload-front', [IdVerificationController::class, 'uploadFront'])->name('id-verification.upload-front');
+    Route::post('/api/id-verification/upload-back', [IdVerificationController::class, 'uploadBack'])->name('id-verification.upload-back');
     Route::post('/api/id-verification/resubmit', [IdVerificationController::class, 'resubmit'])->name('id-verification.resubmit');
 
     // Employer-only routes (job management)

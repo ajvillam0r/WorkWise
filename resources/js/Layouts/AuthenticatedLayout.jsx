@@ -15,13 +15,22 @@ const NotificationIcon = ({ type }) => {
         'bid_accepted_messaging': 'comment-dots',
         'message_received': 'envelope',
         'new_message': 'envelope-open',
+        'id_verification_approved': 'check-circle',
+        'id_verification_rejected': 'times-circle',
         'default': 'bell'
     };
 
     const iconClass = iconMap[type] || iconMap['default'];
+    
+    // Use green color for approved, red for rejected
+    const colorClass = type === 'id_verification_approved' 
+        ? 'text-green-600' 
+        : type === 'id_verification_rejected' 
+        ? 'text-red-600' 
+        : 'text-blue-600';
 
     return (
-        <i className={`fas fa-${iconClass} text-blue-600 text-sm`}></i>
+        <i className={`fas fa-${iconClass} ${colorClass} text-sm`}></i>
     );
 };
 
@@ -165,8 +174,17 @@ export default function AuthenticatedLayout({ header, children }) {
             markAsRead(notification.id);
         }
         
-        // Handle message-related notifications by navigating to messages page
-        if (notification.type === 'bid_accepted_messaging') {
+        // Handle ID verification notifications
+        if (notification.type === 'id_verification_approved') {
+            // Redirect to profile page for approved verifications
+            console.log('ID verification approved - redirecting to profile');
+            router.visit('/profile');
+        } else if (notification.type === 'id_verification_rejected') {
+            // Redirect to ID verification page for rejected verifications
+            console.log('ID verification rejected - redirecting to ID verification page');
+            router.visit('/id-verification');
+        } else if (notification.type === 'bid_accepted_messaging') {
+            // Handle message-related notifications by navigating to messages page
             const targetUserId = notification.data?.message_target_user_id;
             console.log('Bid accepted messaging notification - targetUserId:', targetUserId);
 

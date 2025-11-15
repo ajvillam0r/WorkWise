@@ -3,6 +3,15 @@ window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+// Set up CSRF token for axios
+let token = document.head.querySelector('meta[name="csrf-token"]');
+
+if (token) {
+    window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
+} else {
+    console.error('CSRF token not found: https://laravel.com/docs/csrf#csrf-x-csrf-token');
+}
+
 // Enhanced route helper with current() functionality
 window.route = function(name, params = {}) {
     const routes = {
@@ -39,6 +48,16 @@ window.route = function(name, params = {}) {
         'contracts.processSignature': (id) => `/contracts/${id}/signature`,
         'contracts.downloadPdf': (id) => `/contracts/${id}/pdf`,
         'browse.freelancers': '/browse-freelancers',
+        'id-verification.show': '/id-verification',
+        'id-verification.upload': '/api/id-verification/upload',
+        'id-verification.upload-front': '/api/id-verification/upload-front',
+        'id-verification.upload-back': '/api/id-verification/upload-back',
+        'id-verification.resubmit': '/api/id-verification/resubmit',
+        'admin.id-verifications.index': '/admin/id-verifications',
+        'admin.id-verifications.show': (userId) => `/admin/id-verifications/${userId}`,
+        'admin.id-verifications.approve': (userId) => `/admin/id-verifications/${userId}/approve`,
+        'admin.id-verifications.reject': (userId) => `/admin/id-verifications/${userId}/reject`,
+        'admin.id-verifications.requestResubmit': (userId) => `/admin/id-verifications/${userId}/request-resubmit`,
         'login': '/login',
         'logout': '/logout',
         'register': '/register',

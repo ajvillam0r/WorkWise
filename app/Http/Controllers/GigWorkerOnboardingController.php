@@ -107,21 +107,11 @@ class GigWorkerOnboardingController extends Controller
             'portfolio_link' => 'nullable|url|max:500',
             'resume_file' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
 
-            // Step 4: ID Verification & Address
+            // Step 4: ID Verification
             'id_type' => 'nullable|string|in:national_id,drivers_license,passport,philhealth_id,sss_id,umid,voters_id,prc_id',
             'id_front_image' => 'nullable|image|max:5120',
             'id_back_image' => 'nullable|image|max:5120',
-            'street_address' => 'required|string|max:255',
-            'city' => 'required|string|max:100',
-            'postal_code' => 'required|string|max:20',
             'kyc_country' => 'required|string|max:100',
-
-            // Step 5: Availability
-            'working_hours' => 'required|array',
-            'timezone' => 'required|string|max:100',
-            'preferred_communication' => 'required|array|min:1',
-            'preferred_communication.*' => 'string|in:email,chat,video_call,phone',
-            'availability_notes' => 'nullable|string|max:500',
         ], [
             // Custom validation messages
             'professional_title.required' => 'Professional title is required.',
@@ -148,15 +138,7 @@ class GigWorkerOnboardingController extends Controller
             'resume_file.file' => 'Resume must be a valid file.',
             'resume_file.mimes' => 'Resume must be a PDF, DOC, or DOCX file.',
             'resume_file.max' => 'Resume file must not exceed 5MB. Please compress your document.',
-            'street_address.required' => 'Street address is required.',
-            'city.required' => 'City is required.',
-            'postal_code.required' => 'Postal code is required.',
             'kyc_country.required' => 'Country is required.',
-            
-            'working_hours.required' => 'Please set your working hours.',
-            'timezone.required' => 'Timezone selection is required.',
-            'preferred_communication.required' => 'Please select at least one communication method.',
-            'preferred_communication.min' => 'Please select at least one communication method.',
         ]);
 
         // Handle profile picture upload to R2 using FileUploadService
@@ -392,9 +374,6 @@ class GigWorkerOnboardingController extends Controller
             $validated['country'] = $validated['kyc_country'];
         }
         unset($validated['kyc_country']); // Remove temporary field
-        
-        // Mark address as verified when ID is submitted
-        $validated['address_verified_at'] = now();
 
         // Handle resume file upload to R2 using FileUploadService
         if ($request->hasFile('resume_file')) {
@@ -471,7 +450,7 @@ class GigWorkerOnboardingController extends Controller
                 'profile_completed' => true,
                 'profile_status' => 'pending', // Requires admin approval
                 'tutorial_completed' => true,
-                'onboarding_step' => 6, // Completed all steps (changed from 7 after removing language step)
+                'onboarding_step' => 4, // Completed all steps
             ]));
             
             Log::info('ONBOARDING_PROFILE_UPDATED', [
@@ -538,7 +517,7 @@ class GigWorkerOnboardingController extends Controller
         ]);
 
         return redirect()->route('gig-worker.dashboard')->with('success',
-            'Your profile has been submitted for review. You\'ll be notified once your ID is verified and profile is approved.');
+            'Profile completed successfully! You\'ll be notified once your profile is approved.');
     }
 
     /**

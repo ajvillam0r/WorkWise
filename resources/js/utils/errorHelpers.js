@@ -81,14 +81,10 @@ export function getStepForField(fieldName, stepMapping = {}) {
         portfolio_link: 3,
         resume_file: 3,
         
-        // Step 4: ID Verification & Address
+        // Step 4: ID Verification
         id_type: 4,
         id_front_image: 4,
         id_back_image: 4,
-        street_address: 4,
-        city: 4,
-        barangay: 4,
-        postal_code: 4,
         kyc_country: 4,
         
         // Step 5: Availability

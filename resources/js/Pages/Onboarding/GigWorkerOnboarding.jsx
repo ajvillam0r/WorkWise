@@ -19,7 +19,7 @@ import { getFirstError, ERROR_CODES, SUPPORT_CONTACT } from '@/utils/errorHelper
 
 export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const [currentStep, setCurrentStep] = useState(0);
-    const totalSteps = 7; // Changed from 8 (removed language step)
+    const totalSteps = 6; // Simplified: removed language and availability steps (0-5)
 
     // Use custom onboarding form hook with file handling and persistence
     const { 
@@ -51,29 +51,11 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             portfolio_link: '',
             resume_file: null,
 
-            // Step 4: ID Verification & Address
+            // Step 4: ID Verification
             id_type: '',
             id_front_image: null,
             id_back_image: null,
-            street_address: '',
-            city: '',
-            barangay: '',
-            postal_code: '',
             kyc_country: '',
-
-            // Step 5: Availability
-            working_hours: {
-                monday: { enabled: true, start: '09:00', end: '17:00' },
-                tuesday: { enabled: true, start: '09:00', end: '17:00' },
-                wednesday: { enabled: true, start: '09:00', end: '17:00' },
-                thursday: { enabled: true, start: '09:00', end: '17:00' },
-                friday: { enabled: true, start: '09:00', end: '17:00' },
-                saturday: { enabled: false, start: '09:00', end: '17:00' },
-                sunday: { enabled: false, start: '09:00', end: '17:00' },
-            },
-            timezone: 'Asia/Manila',
-            preferred_communication: [],
-            availability_notes: '',
         },
         storageKey: `onboarding_gig_worker_${user?.id || 'guest'}`,
         enablePersistence: true
@@ -85,7 +67,6 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
 
     // State for UI
     const [availableCategories, setAvailableCategories] = useState([]);
-    const [detectedAddress, setDetectedAddress] = useState(null);
     const [availableServices, setAvailableServices] = useState([]);
     const [availableSkills, setAvailableSkills] = useState([]);
     const [skillSearchInput, setSkillSearchInput] = useState('');
@@ -168,37 +149,39 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         }
     }, [data.specific_services, availableServices]);
 
-    // Auto-detect address when reaching ID verification step
+    // Auto-detect country when reaching ID verification step
     useEffect(() => {
-        const detectAddress = async () => {
+        const detectCountry = async () => {
             if (currentStep === 4) { // ID Verification step (now Step 4 after removing languages)
                 try {
-                    const response = await fetch('https://ipapi.co/json/');
-                    const locationData = await response.json();
+                    // Create a timeout promise that rejects after 3 seconds
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Detection timeout')), 3000)
+                    );
                     
-                    // Pre-fill address fields
+                    // Race between fetch and timeout
+                    const fetchPromise = fetch('https://ipapi.co/json/')
+                        .then(response => response.json());
+                    
+                    const locationData = await Promise.race([fetchPromise, timeoutPromise]);
+                    
+                    // Only set country, nothing else
                     setData(prevData => ({
                         ...prevData,
-                        street_address: locationData.city ? `${locationData.city}` : prevData.street_address,
-                        city: locationData.city || prevData.city,
-                        postal_code: locationData.postal || prevData.postal_code,
                         kyc_country: locationData.country_name || user.country || prevData.kyc_country
                     }));
-                    
-                    setDetectedAddress({
-                        full: `${locationData.city}, ${locationData.region}, ${locationData.country_name}`,
-                        city: locationData.city,
-                        region: locationData.region,
-                        postal: locationData.postal,
-                        country: locationData.country_name
-                    });
                 } catch (error) {
-                    console.error('Address detection failed:', error);
+                    console.error('Country detection failed:', error);
+                    // Fallback to registration country
+                    setData(prevData => ({
+                        ...prevData,
+                        kyc_country: user.country || prevData.kyc_country
+                    }));
                 }
             }
         };
         
-        detectAddress();
+        detectCountry();
     }, [currentStep]);
 
     const handleSubmit = (e) => {
@@ -369,10 +352,8 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                 return data.broad_category && 
                        data.specific_services.length >= 2 && 
                        data.skills_with_experience.length >= 3;
-            case 4: // ID Verification - Address required, ID optional
-                return data.street_address && data.city && data.postal_code && data.kyc_country;
-            case 5: // Availability
-                return data.preferred_communication.length >= 1;
+            case 4: // ID Verification - Only country required, ID optional
+                return data.kyc_country;
             default:
                 return true;
         }
@@ -388,27 +369,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         }
     };
 
-    const toggleCommunication = (method) => {
-        if (data.preferred_communication.includes(method)) {
-            setData('preferred_communication', data.preferred_communication.filter(m => m !== method));
-        } else {
-            setData('preferred_communication', [...data.preferred_communication, method]);
-        }
-    };
 
-    const toggleWorkingDay = (day) => {
-        setData('working_hours', {
-            ...data.working_hours,
-            [day]: { ...data.working_hours[day], enabled: !data.working_hours[day].enabled }
-        });
-    };
-
-    const updateWorkingHours = (day, field, value) => {
-        setData('working_hours', {
-            ...data.working_hours,
-            [day]: { ...data.working_hours[day], [field]: value }
-        });
-    };
 
     const getStepTitle = () => {
         switch (currentStep) {
@@ -417,8 +378,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             case 2: return 'Your Skills & Services';
             case 3: return 'Showcase Your Work';
             case 4: return 'Verify Your Identity';
-            case 5: return 'Set Your Availability';
-            case 6: return 'Review Your Profile';
+            case 5: return 'Review Your Profile';
             default: return 'Onboarding';
         }
     };
@@ -513,15 +473,8 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 <div className="flex items-start gap-3">
                                                     <div className="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">3</div>
                                                     <div>
-                                                        <p className="font-medium text-gray-900">Portfolio & Verification</p>
-                                                        <p className="text-sm text-gray-600">Showcase your work and verify your identity</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-start gap-3">
-                                                    <div className="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">4</div>
-                                                    <div>
-                                                        <p className="font-medium text-gray-900">Availability</p>
-                                                        <p className="text-sm text-gray-600">Let employers know when you're available</p>
+                                                        <p className="font-medium text-gray-900">Portfolio & Review</p>
+                                                        <p className="text-sm text-gray-600">Showcase your work and review your profile</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1093,215 +1046,43 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                             </div>
                                         </div>
 
-                                        {/* Address Section - Required */}
-                                        <div className="border border-red-200 rounded-lg p-6 bg-red-50 mt-6">
+                                        {/* Country Section - Auto-populated */}
+                                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50 mt-6">
                                             <h4 className="text-lg font-semibold text-gray-800 mb-4">
-                                                Complete Address
+                                                Location Information
                                             </h4>
                                             
-                                            {detectedAddress && (
-                                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                                    <div className="flex items-start justify-between">
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-blue-900 mb-1">
-                                                                📍 Detected Location:
-                                                            </p>
-                                                            <p className="text-sm text-blue-800">
-                                                                {detectedAddress.full}
-                                                            </p>
-                                                            <p className="text-xs text-blue-600 mt-1">
-                                                                We've pre-filled your address based on your location. You can edit if needed.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
                                             <p className="text-sm text-gray-600 mb-4">
-                                                Please provide your complete address for verification purposes.
+                                                Your country has been automatically detected for verification purposes.
                                             </p>
 
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <InputLabel value="Street Address *" />
-                                                    <TextInput
-                                                        value={data.street_address}
-                                                        className="mt-1 block w-full"
-                                                        onChange={(e) => setData('street_address', e.target.value)}
-                                                        placeholder="House/Unit No., Street Name"
-                                                        required
-                                                    />
-                                                    <InputError message={errors.street_address} className="mt-2" />
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <InputLabel value="City *" />
-                                                        <TextInput
-                                                            value={data.city}
-                                                            className="mt-1 block w-full"
-                                                            onChange={(e) => setData('city', e.target.value)}
-                                                            placeholder="City"
-                                                            required
-                                                        />
-                                                        <InputError message={errors.city} className="mt-2" />
-                                                    </div>
-
-                                                    <div>
-                                                        <InputLabel value="Barangay (Optional)" />
-                                                        <TextInput
-                                                            value={data.barangay}
-                                                            className="mt-1 block w-full"
-                                                            onChange={(e) => setData('barangay', e.target.value)}
-                                                            placeholder="Barangay"
-                                                        />
-                                                        <InputError message={errors.barangay} className="mt-2" />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <InputLabel value="Postal/ZIP Code *" />
-                                                        <TextInput
-                                                            value={data.postal_code}
-                                                            className="mt-1 block w-full"
-                                                            onChange={(e) => setData('postal_code', e.target.value)}
-                                                            placeholder="Postal Code"
-                                                            required
-                                                        />
-                                                        <InputError message={errors.postal_code} className="mt-2" />
-                                                    </div>
-
-                                                    <div>
-                                                        <InputLabel value="Country *" />
-                                                        <TextInput
-                                                            value={data.kyc_country}
-                                                            className="mt-1 block w-full"
-                                                            onChange={(e) => setData('kyc_country', e.target.value)}
-                                                            placeholder="Country"
-                                                            required
-                                                        />
-                                                        <InputError message={errors.kyc_country} className="mt-2" />
-                                                    </div>
-                                                </div>
+                                            <div>
+                                                <InputLabel value="Country *" />
+                                                <TextInput
+                                                    value={data.kyc_country}
+                                                    className="mt-1 block w-full bg-gray-100"
+                                                    onChange={(e) => setData('kyc_country', e.target.value)}
+                                                    placeholder="Country"
+                                                    required
+                                                    readOnly
+                                                />
+                                                <InputError message={errors.kyc_country} className="mt-2" />
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    This field is auto-populated based on your location
+                                                </p>
                                             </div>
                                         </div>
 
                                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                             <p className="text-sm text-yellow-800">
-                                                <strong>Privacy Note:</strong> Your ID and address will only be viewed by WorkWise admin for verification purposes and will be stored securely.
+                                                <strong>Privacy Note:</strong> Your ID will only be viewed by WorkWise admin for verification purposes and will be stored securely.
                                             </p>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Step 5: Availability */}
+                                {/* Step 5: Profile Preview (renumbered from Step 6) */}
                                 {currentStep === 5 && (
-                                    <div className="space-y-6">
-                                        <p className="text-gray-600 text-center">
-                                            Let employers know when you're available to work
-                                        </p>
-
-                                        <div>
-                                            <InputLabel value="Timezone *" />
-                                            <select
-                                                value={data.timezone}
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                onChange={(e) => setData('timezone', e.target.value)}
-                                                required
-                                            >
-                                                <option value="Asia/Manila">Asia/Manila (GMT+8)</option>
-                                                <option value="Asia/Tokyo">Asia/Tokyo (GMT+9)</option>
-                                                <option value="Asia/Singapore">Asia/Singapore (GMT+8)</option>
-                                                <option value="America/New_York">America/New York (GMT-5)</option>
-                                                <option value="America/Los_Angeles">America/Los Angeles (GMT-8)</option>
-                                                <option value="Europe/London">Europe/London (GMT+0)</option>
-                                            </select>
-                                            <InputError message={errors.timezone} className="mt-2" />
-                                        </div>
-
-                                        <div>
-                                            <InputLabel value="Working Hours *" />
-                                            <p className="text-xs text-gray-600 mb-2">Select days and set your typical working hours</p>
-                                            <div className="space-y-2">
-                                                {Object.entries(data.working_hours).map(([day, hours]) => (
-                                                    <div key={day} className="flex items-center gap-3 p-2 bg-gray-50 rounded-md">
-                                                        <label className="flex items-center w-32">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={hours.enabled}
-                                                                onChange={() => toggleWorkingDay(day)}
-                                                                className="mr-2"
-                                                            />
-                                                            <span className="capitalize font-medium">{day}</span>
-                                                        </label>
-                                                        {hours.enabled && (
-                                                            <>
-                                                                <input
-                                                                    type="time"
-                                                                    value={hours.start}
-                                                                    onChange={(e) => updateWorkingHours(day, 'start', e.target.value)}
-                                                                    className="border-gray-300 rounded-md text-sm"
-                                                                />
-                                                                <span>to</span>
-                                                                <input
-                                                                    type="time"
-                                                                    value={hours.end}
-                                                                    onChange={(e) => updateWorkingHours(day, 'end', e.target.value)}
-                                                                    className="border-gray-300 rounded-md text-sm"
-                                                                />
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <InputLabel value="Preferred Communication Methods (Select at least 1) *" />
-                                            <div className="mt-2 grid grid-cols-2 gap-2">
-                                                {[
-                                                    { value: 'email', label: '📧 Email', icon: '📧' },
-                                                    { value: 'chat', label: '💬 Chat/Messaging', icon: '💬' },
-                                                    { value: 'video_call', label: '📹 Video Call', icon: '📹' },
-                                                    { value: 'phone', label: '📞 Phone Call', icon: '📞' }
-                                                ].map((method) => (
-                                                    <label
-                                                        key={method.value}
-                                                        className={`flex items-center p-3 rounded-md cursor-pointer transition-colors ${
-                                                            data.preferred_communication.includes(method.value)
-                                                                ? 'bg-blue-100 border-2 border-blue-500'
-                                                                : 'bg-gray-50 border-2 border-gray-200 hover:bg-gray-100'
-                                                        }`}
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={data.preferred_communication.includes(method.value)}
-                                                            onChange={() => toggleCommunication(method.value)}
-                                                            className="mr-2"
-                                                        />
-                                                        <span className="text-sm font-medium">{method.label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                            <InputError message={errors.preferred_communication} className="mt-2" />
-                                        </div>
-
-                                        <div>
-                                            <InputLabel value="Additional Availability Notes (Optional)" />
-                                            <textarea
-                                                value={data.availability_notes}
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                rows="3"
-                                                placeholder="e.g., I can be flexible with urgent projects, prefer morning meetings, etc."
-                                                onChange={(e) => setData('availability_notes', e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Step 6: Profile Preview */}
-                                {currentStep === 6 && (
                                     <div className="space-y-6">
                                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border border-green-200">
                                             <h4 className="text-lg font-semibold text-green-900 mb-2">
@@ -1370,15 +1151,6 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 <p className="text-sm text-gray-700">
                                                     {data.id_type ? `${idTypes.find(t => t.value === data.id_type)?.label} - Pending verification` : 'Not uploaded'}
                                                 </p>
-                                            </div>
-
-                                            <div className="border-t pt-4">
-                                                <h5 className="font-semibold text-gray-900 mb-2">Availability</h5>
-                                                <div className="text-sm space-y-1 text-gray-700">
-                                                    <p><strong>Timezone:</strong> {data.timezone}</p>
-                                                    <p><strong>Working Days:</strong> {Object.entries(data.working_hours).filter(([_, h]) => h.enabled).length} days/week</p>
-                                                    <p><strong>Communication:</strong> {data.preferred_communication.join(', ')}</p>
-                                                </div>
                                             </div>
                                         </div>
 

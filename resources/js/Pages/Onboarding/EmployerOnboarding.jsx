@@ -15,15 +15,14 @@ import { getFirstError, ERROR_CODES, SUPPORT_CONTACT } from '@/utils/errorHelper
 
 export default function EmployerOnboarding({ user, industries, serviceCategories }) {
     const [currentStep, setCurrentStep] = useState(1);
-    const totalSteps = 3;
+    const totalSteps = 2;
     const [categorySearchInput, setCategorySearchInput] = useState('');
     const [touchedFields, setTouchedFields] = useState({});
     const [showErrorSummary, setShowErrorSummary] = useState(false);
     const [errorCodes, setErrorCodes] = useState({});
-    const [uploadFailures, setUploadFailures] = useState({});
     
     // Toast notifications
-    const { toasts, removeToast, success, error: showError, warning } = useToast();
+    const { toasts, removeToast, success, error: showError } = useToast();
 
     // Use custom onboarding form hook with file handling and persistence
     const { 
@@ -54,10 +53,6 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
             typical_project_duration: '',
             preferred_experience_level: '',
             hiring_frequency: '',
-            
-            // Step 3: Verification (optional)
-            business_registration_document: null,
-            tax_id: '',
         },
         storageKey: `onboarding_employer_${user?.id || 'guest'}`,
         enablePersistence: true
@@ -103,8 +98,7 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                 // Navigate to the step with the first error
                 const firstError = getFirstError(errors, {
                     company_name: 1, company_size: 1, industry: 1, company_website: 1, company_description: 1, profile_picture: 1,
-                    primary_hiring_needs: 2, typical_project_budget: 2, typical_project_duration: 2, preferred_experience_level: 2, hiring_frequency: 2,
-                    business_registration_document: 3, tax_id: 3
+                    primary_hiring_needs: 2, typical_project_budget: 2, typical_project_duration: 2, preferred_experience_level: 2, hiring_frequency: 2
                 });
                 
                 if (firstError && firstError.step !== null) {
@@ -139,8 +133,7 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
     const handleErrorClick = (fieldName) => {
         const stepMapping = {
             company_name: 1, company_size: 1, industry: 1, company_website: 1, company_description: 1, profile_picture: 1,
-            primary_hiring_needs: 2, typical_project_budget: 2, typical_project_duration: 2, preferred_experience_level: 2, hiring_frequency: 2,
-            business_registration_document: 3, tax_id: 3
+            primary_hiring_needs: 2, typical_project_budget: 2, typical_project_duration: 2, preferred_experience_level: 2, hiring_frequency: 2
         };
         
         const firstError = getFirstError({ [fieldName]: errors[fieldName] }, stepMapping);
@@ -155,17 +148,6 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }, 100);
-        }
-    };
-    
-    // Handle file upload retry
-    const handleFileRetry = (fieldName) => {
-        setUploadFailures(prev => ({ ...prev, [fieldName]: false }));
-        warning(`Retrying upload for ${fieldName.replace(/_/g, ' ')}...`, 3000);
-        
-        const fileInput = document.querySelector(`input[name="${fieldName}"]`);
-        if (fileInput) {
-            fileInput.click();
         }
     };
 
@@ -254,7 +236,7 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
     const canProceedToNextStep = () => {
         if (currentStep === 1) return isStep1Valid;
         if (currentStep === 2) return isStep2Valid;
-        return true; // Step 3 is optional
+        return true;
     };
 
     return (
@@ -288,7 +270,7 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                     {/* Progress Bar */}
                     <div className="mb-8">
                         <div className="flex justify-between items-center">
-                            {[1, 2, 3].map((step) => (
+                            {[1, 2].map((step) => (
                                 <div key={step} className="flex items-center flex-1">
                                     <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full text-sm sm:text-base ${
                                         currentStep >= step ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-600'
@@ -306,7 +288,6 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                         <div className="flex justify-between mt-2">
                             <span className="text-xs sm:text-sm font-medium text-gray-700">Company Info</span>
                             <span className="text-xs sm:text-sm font-medium text-gray-700">Hiring Needs</span>
-                            <span className="text-xs sm:text-sm font-medium text-gray-700">Verification</span>
                         </div>
                     </div>
 
@@ -721,84 +702,6 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                                         {errors.hiring_frequency && (
                                             <p className="mt-1 text-sm text-red-600">{errors.hiring_frequency}</p>
                                         )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Step 3: Verification */}
-                            {currentStep === 3 && (
-                                <div className="space-y-6">
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                            Verification (Optional)
-                                        </h3>
-                                        <p className="text-sm text-gray-600 mb-6">
-                                            Adding verification documents increases trust with gig workers but is optional.
-                                        </p>
-                                    </div>
-
-                                    {/* Business Registration Document */}
-                                    <FileUploadInput
-                                        name="business_registration_document"
-                                        label="Business Registration Document"
-                                        accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf"
-                                        maxSize={5}
-                                        required={false}
-                                        preview="document"
-                                        value={getFile('business_registration_document')}
-                                        previewUrl={getPreview('business_registration_document')}
-                                        error={errors.business_registration_document}
-                                        onChange={(file) => handleFileChange('business_registration_document', file)}
-                                        helpText="Upload your business registration, tax certificate, or similar document (PDF, JPG, PNG - Max 5MB)"
-                                        loading={processing && getFile('business_registration_document')}
-                                        uploadProgress={safeGetUploadProgress('business_registration_document')}
-                                        uploadStatus={safeGetUploadStatus('business_registration_document')}
-                                    />
-
-                                    {/* Tax ID */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Tax ID / EIN (Optional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={data.tax_id}
-                                            onChange={(e) => setData('tax_id', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base sm:text-sm min-h-[44px]"
-                                            placeholder="Your tax identification number"
-                                        />
-                                        <p className="mt-1 text-sm text-gray-500">
-                                            Used for invoicing and tax documentation
-                                        </p>
-                                        {errors.tax_id && (
-                                            <p className="mt-1 text-sm text-red-600">{errors.tax_id}</p>
-                                        )}
-                                    </div>
-
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                        <div className="flex">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <div className="ml-3">
-                                                <h3 className="text-sm font-medium text-blue-800">
-                                                    Ready to start hiring!
-                                                </h3>
-                                                <div className="mt-2 text-sm text-blue-700">
-                                                    <p>
-                                                        You're almost done! Once you complete your profile, you'll be able to:
-                                                    </p>
-                                                    <ul className="list-disc ml-5 mt-2 space-y-1">
-                                                        <li>Post unlimited job listings</li>
-                                                        <li>Receive proposals from qualified gig workers</li>
-                                                        <li>Access AI-powered candidate matching</li>
-                                                        <li>Manage projects and payments securely</li>
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             )}

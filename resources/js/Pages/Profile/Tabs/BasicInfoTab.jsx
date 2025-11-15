@@ -1,7 +1,7 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import EditableField from '@/Components/EditableField';
 import SectionHeader from '@/Components/SectionHeader';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 
 const BasicInfoTab = memo(function BasicInfoTab({
     data,
@@ -17,6 +17,19 @@ const BasicInfoTab = memo(function BasicInfoTab({
     onCancel,
     onSave,
 }) {
+    const { flash } = usePage().props;
+    const [verificationSent, setVerificationSent] = useState(false);
+
+    // Check if verification link was sent
+    React.useEffect(() => {
+        if (flash?.status === 'verification-link-sent') {
+            setVerificationSent(true);
+            // Reset after 5 seconds
+            const timer = setTimeout(() => setVerificationSent(false), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [flash]);
+
     return (
         <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
             <div className="p-8">
@@ -179,6 +192,22 @@ const BasicInfoTab = memo(function BasicInfoTab({
                     {/* Verification Status Section */}
                     <div className="border-t border-gray-200 pt-6 mt-6">
                         <h4 className="text-lg font-semibold text-gray-900 mb-4">Verification Status</h4>
+                        
+                        {/* Success Message */}
+                        {verificationSent && (
+                            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-green-600">✓</span>
+                                    <p className="text-sm text-green-800 font-medium">
+                                        Verification email sent! Please check your inbox at {user.email}
+                                    </p>
+                                </div>
+                                <p className="text-xs text-green-700 mt-1 ml-6">
+                                    Don't forget to check your spam folder if you don't see it.
+                                </p>
+                            </div>
+                        )}
+
                         <div className="space-y-4">
                             {/* Email Verification */}
                             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -199,9 +228,10 @@ const BasicInfoTab = memo(function BasicInfoTab({
                                             href={route('verification.send')}
                                             method="post"
                                             as="button"
-                                            className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                            className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm transition-colors disabled:opacity-50"
+                                            disabled={processing}
                                         >
-                                            Verify Email
+                                            {processing ? 'Sending...' : 'Verify Email'}
                                         </Link>
                                     )}
                                 </div>

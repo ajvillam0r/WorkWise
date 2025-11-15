@@ -64,7 +64,6 @@ class EmployerOnboardingController extends Controller
             'user_id' => $user->id,
             'email' => $user->email,
             'has_profile_picture' => $request->hasFile('profile_picture'),
-            'has_business_document' => $request->hasFile('business_registration_document'),
             'company_name' => $request->input('company_name'),
             'company_size' => $request->input('company_size'),
             'industry' => $request->input('industry'),
@@ -87,10 +86,6 @@ class EmployerOnboardingController extends Controller
             'typical_project_duration' => 'required|in:short_term,medium_term,long_term,ongoing',
             'preferred_experience_level' => 'required|in:any,beginner,intermediate,expert',
             'hiring_frequency' => 'required|in:one_time,occasional,regular,ongoing',
-            
-            // Step 3: Verification (optional)
-            'business_registration_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'tax_id' => 'nullable|string|max:50',
         ], [
             // Step 1 validation messages
             'company_size.required' => 'Please select your company size to help us understand your hiring needs.',
@@ -117,12 +112,6 @@ class EmployerOnboardingController extends Controller
             'preferred_experience_level.in' => 'Please select a valid experience level option.',
             'hiring_frequency.required' => 'Please indicate how frequently you plan to hire gig workers.',
             'hiring_frequency.in' => 'Please select a valid hiring frequency option.',
-            
-            // Step 3 validation messages
-            'business_registration_document.file' => 'Business registration document must be a valid file.',
-            'business_registration_document.mimes' => 'Business registration document must be a PDF, JPG, JPEG, or PNG file.',
-            'business_registration_document.max' => 'Business registration document must not exceed 5MB in size.',
-            'tax_id.max' => 'Tax ID must not exceed 50 characters.',
         ]);
 
         // Handle profile picture upload to R2 using FileUploadService
@@ -192,72 +181,6 @@ class EmployerOnboardingController extends Controller
             }
         }
 
-        // Handle business registration document upload to R2 using FileUploadService
-        if ($request->hasFile('business_registration_document')) {
-            Log::info('Business registration document upload started', [
-                'user_id' => $user->id,
-                'file_name' => $request->file('business_registration_document')->getClientOriginalName(),
-                'file_size' => $request->file('business_registration_document')->getSize(),
-            ]);
-
-            // Validate file before upload
-            $validation = $this->fileUploadService->validateFile(
-                $request->file('business_registration_document'),
-                [
-                    'type' => 'document',
-                    'user_id' => $user->id,
-                    'user_type' => 'employer',
-                ]
-            );
-
-            if (!$validation['success']) {
-                Log::warning('Business registration document validation failed', [
-                    'user_id' => $user->id,
-                    'error' => $validation['error'],
-                    'error_code' => $validation['error_code'],
-                ]);
-
-                // Document is optional - show warning but don't block onboarding
-                return back()->withErrors([
-                    'business_registration_document' => $validation['error'] . ' You can upload this later from your profile settings.'
-                ])->withInput();
-            }
-
-            // Set longer timeout for large file uploads
-            set_time_limit(120);
-
-            // Upload with retry logic
-            $uploadResult = $this->fileUploadService->uploadWithRetry(
-                $request->file('business_registration_document'),
-                'business_documents',
-                2,
-                [
-                    'user_id' => $user->id,
-                    'user_type' => 'employer',
-                ]
-            );
-
-            if ($uploadResult['success']) {
-                $validated['business_registration_document'] = $uploadResult['url'];
-                
-                Log::info('Business registration document uploaded successfully', [
-                    'user_id' => $user->id,
-                    'url' => $uploadResult['url'],
-                    'path' => $uploadResult['path'],
-                ]);
-            } else {
-                Log::warning('Business registration document upload failed - continuing without it', [
-                    'user_id' => $user->id,
-                    'error' => $uploadResult['error'],
-                    'error_code' => $uploadResult['error_code'],
-                ]);
-
-                // Document is optional - continue without it, don't block onboarding
-                // Remove from validated data to avoid storing null/empty value
-                unset($validated['business_registration_document']);
-            }
-        }
-
         // Update user profile with transaction for data consistency
         try {
             $user->update(array_merge($validated, [
@@ -275,7 +198,6 @@ class EmployerOnboardingController extends Controller
                     'company_size' => $user->company_size,
                     'industry' => $user->industry,
                     'profile_picture_uploaded' => isset($validated['profile_picture']),
-                    'business_document_uploaded' => isset($validated['business_registration_document']),
                     'primary_hiring_needs_count' => count($validated['primary_hiring_needs'] ?? []),
                     'typical_project_budget' => $validated['typical_project_budget'] ?? null,
                     'hiring_frequency' => $validated['hiring_frequency'] ?? null,
@@ -285,7 +207,7 @@ class EmployerOnboardingController extends Controller
             ]);
 
             return redirect()->route('employer.dashboard')->with('success',
-                'Welcome to WorkWise! Your employer profile is complete. You can now start posting jobs and hiring talented gig workers.');
+                'Welcome to WorkWise! Your profile is complete and you can now start posting jobs and hiring talented gig workers.');
                 
         } catch (\Exception $e) {
             Log::error('ONBOARDING_PROFILE_UPDATE_FAILED', [

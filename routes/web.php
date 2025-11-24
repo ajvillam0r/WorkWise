@@ -44,6 +44,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Http\Controllers\Auth\SupabaseAuthController;
+
+Route::post('/auth/supabase/callback', [SupabaseAuthController::class, 'callback'])->name('auth.supabase.callback');
 
 Route::get('/', function () {
     // Check if user is authenticated

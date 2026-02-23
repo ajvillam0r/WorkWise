@@ -1,22 +1,47 @@
 import InputError from '@/Components/InputError';
 import GoogleAuthButton from '@/Components/GoogleAuthButton';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import { supabase } from '../../supabase';
 
 export default function Login({ status, canResetPassword }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, processing, errors, setError, clearErrors } = useForm({
         email: '',
         password: '',
         remember: false,
     });
 
     const [showPassword, setShowPassword] = useState(false);
+    const [isSupabaseProcessing, setIsSupabaseProcessing] = useState(false);
 
-    const submit = (e) => {
+    const submit = async (e) => {
         e.preventDefault();
+        setIsSupabaseProcessing(true);
+        clearErrors();
 
-        post(route('login'), {
-            onFinish: () => reset('password'),
+        // 1. Authenticate with Supabase
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+        });
+
+        if (error) {
+            setError('email', error.message);
+            setIsSupabaseProcessing(false);
+            return;
+        }
+
+        // 2. Send Supabase User ID to Backend to create Session
+        router.post(route('auth.supabase.callback'), {
+            email: authData.user.email,
+            id: authData.user.id,
+            access_token: authData.session.access_token, // Optional: for backend verification
+        }, {
+            onFinish: () => setIsSupabaseProcessing(false),
+            onError: (errors) => {
+                console.error('Backend Login Error:', errors);
+                setError('email', 'Failed to sync with server.');
+            }
         });
     };
 
@@ -47,7 +72,7 @@ export default function Login({ status, canResetPassword }) {
             <div className="relative min-h-screen bg-white">
                 {/* Animated Background Shapes */}
                 <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
 
                 {/* Enhanced Header */}
                 <header className="relative z-10 border-b border-gray-200">
@@ -56,20 +81,7 @@ export default function Login({ status, canResetPassword }) {
                             <Link href="/" className="flex items-center">
                                 <span className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-all duration-700">WorkWise</span>
                             </Link>
-                            
-                            {/* Enhanced Navigation
-                            <nav className="hidden md:flex items-center space-x-6">
-                                <Link href="/about" className="text-sm text-gray-600 hover:text-blue-600 transition-colors">
-                                    About
-                                </Link>
-                                <Link href="/jobs" className="text-sm text-gray-600 hover:text-blue-600 transition-colors">
-                                    Browse Jobs
-                                </Link>
-                                <Link href="/help" className="text-sm text-gray-600 hover:text-blue-600 transition-colors">
-                                    Help
-                                </Link>
-                            </nav> */}
-                            
+
                             <div className="flex items-center space-x-4">
                                 <span className="text-sm text-gray-600">Don't have an account?</span>
                                 <Link
@@ -174,18 +186,18 @@ export default function Login({ status, canResetPassword }) {
                             {/* Submit Button */}
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || isSupabaseProcessing}
                                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105"
                             >
-                                {processing ? 'Logging in...' : 'Log in'}
+                                {processing || isSupabaseProcessing ? 'Logging in...' : 'Log in'}
                             </button>
 
-                            
+
 
                             {/* Google Login Button */}
-                            <GoogleAuthButton 
-                                action="login" 
-                                disabled={processing}
+                            <GoogleAuthButton
+                                action="login"
+                                disabled={processing || isSupabaseProcessing}
                             />
 
                             {/* Sign up Link */}

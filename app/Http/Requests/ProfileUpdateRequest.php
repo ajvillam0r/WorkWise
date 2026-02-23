@@ -59,6 +59,10 @@ class ProfileUpdateRequest extends FormRequest
                 'timezone' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'preferred_communication' => ['sometimes', 'nullable', 'array'],
                 'availability_notes' => ['sometimes', 'nullable', 'string', 'max:500'],
+                
+                // Portfolio fields
+                'portfolio_link' => ['sometimes', 'nullable', 'url', 'max:500'],
+                'resume_file' => ['sometimes', 'nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'], // 5MB max
             ]);
         } else {
             // Employer-specific fields - use 'sometimes' for partial updates

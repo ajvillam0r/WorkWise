@@ -23,6 +23,21 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * Normalize storage URL to a relative path so img src works regardless of APP_URL/host.
+     */
+    private function normalizeStorageUrl(?string $url): ?string
+    {
+        if (empty($url)) {
+            return null;
+        }
+        if (str_starts_with($url, 'http') && str_contains($url, '/storage/supabase/')) {
+            $path = parse_url($url, PHP_URL_PATH);
+            return $path ?: $url;
+        }
+        return $url;
+    }
+
+    /**
      * Define the props that are shared by default.
      *
      * @return array<string, mixed>
@@ -65,6 +80,8 @@ class HandleInertiaRequests extends Middleware
                 // ID Verification fields
                 'id_verification_status' => $authenticatedUser->id_verification_status,
                 'id_verified_at' => $authenticatedUser->id_verified_at,
+                'id_front_image' => $this->normalizeStorageUrl($authenticatedUser->id_front_image),
+                'id_back_image' => $this->normalizeStorageUrl($authenticatedUser->id_back_image),
                 
                 // Gig worker fields
                 'hourly_rate' => $authenticatedUser->hourly_rate,
@@ -98,6 +115,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'csrf_token' => csrf_token(),
             'auth' => [
                 'user' => $user,
                 'needsEmailVerification' => $request->user() ? is_null($request->user()->email_verified_at) : false,

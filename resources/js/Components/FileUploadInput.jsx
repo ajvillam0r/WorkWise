@@ -269,9 +269,9 @@ export default function FileUploadInput({
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     };
 
-    // Determine if we should show preview
-    const showPreview = value && preview !== 'none';
-    const isImage = preview === 'image' && value?.type?.startsWith('image/');
+    // Determine if we should show preview (file selected or server preview URL)
+    const showPreview = (value || previewUrl) && preview !== 'none';
+    const isImage = preview === 'image' && (value?.type?.startsWith('image/') || previewUrl);
     const isDocument = preview === 'document' || (value && !value.type?.startsWith('image/'));
 
     // Display error (validation error takes precedence over prop error)
@@ -416,7 +416,7 @@ export default function FileUploadInput({
                         {/* File Info - Mobile Optimized */}
                         <div className="flex-1 min-w-0">
                             <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
-                                {value?.name}
+                                {value?.name || (previewUrl && preview === 'image' ? 'Uploaded image' : '')}
                             </p>
                             <p className="text-xs text-gray-500">
                                 {value?.size ? formatFileSize(value.size) : ''}

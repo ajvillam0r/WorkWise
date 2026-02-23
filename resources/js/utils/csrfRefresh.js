@@ -26,6 +26,10 @@ export async function refreshCsrfToken() {
             if (csrfToken) {
                 // Update the meta tag
                 updateCsrfMetaTag(csrfToken);
+                // Keep axios default header in sync
+                if (typeof window !== 'undefined' && window.axios) {
+                    window.axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
+                }
                 console.log('CSRF token refreshed successfully');
                 return csrfToken;
             }

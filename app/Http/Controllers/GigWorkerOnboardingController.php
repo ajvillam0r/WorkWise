@@ -87,37 +87,33 @@ class GigWorkerOnboardingController extends Controller
         $validated = $request->validate([
             // Step 1: Basic Info
             'professional_title' => 'required|string|max:255',
-            'hourly_rate' => 'required|numeric|min:5|max:10000',
+            'hourly_rate' => 'nullable|numeric|min:5|max:10000',
             'bio' => 'required|string|min:50|max:2000',
             'profile_picture' => 'nullable|image|max:2048',
 
-            // Step 2: Hierarchical Skills
-            'broad_category' => 'required|string|max:255',
-            'specific_services' => 'required|array|min:2',
+            // Step 2: Unified Skills
+            'broad_category' => 'nullable|string|max:255', // Kept for backward compatibility if needed, or can be removed if not submitted
+            'specific_services' => 'nullable|array',
             'specific_services.*' => 'string|max:255',
-            'skills_with_experience' => 'required|array|min:3',
+            'skills_with_experience' => 'required|array|min:1', // Reduced minimum to 1 since we're allowing free text and focusing on quality
             'skills_with_experience.*.skill' => 'required|string|max:100',
             'skills_with_experience.*.experience_level' => 'required|in:beginner,intermediate,expert',
 
-            // Step 3: Portfolio (simplified)
+            // Step 3: Portfolio & Resume (both optional, both can be provided)
             'portfolio_link' => 'nullable|url|max:500',
             'resume_file' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
         ], [
             // Custom validation messages
             'professional_title.required' => 'Professional title is required.',
-            'hourly_rate.required' => 'Hourly rate is required.',
-            'hourly_rate.min' => 'Hourly rate must be at least ₱5.',
-            'hourly_rate.max' => 'Hourly rate cannot exceed ₱10,000.',
+            'hourly_rate.min' => 'Expected hourly rate must be at least ₱5.',
+            'hourly_rate.max' => 'Expected hourly rate cannot exceed ₱10,000.',
             'bio.required' => 'Professional bio is required.',
             'bio.min' => 'Bio must be at least 50 characters long.',
             'profile_picture.image' => 'Profile picture must be an image file.',
             'profile_picture.max' => 'Profile picture must not exceed 2MB.',
             
-            'broad_category.required' => 'Service category is required.',
-            'specific_services.required' => 'Please select at least 2 specific services.',
-            'specific_services.min' => 'Please select at least 2 specific services.',
-            'skills_with_experience.required' => 'Please add at least 3 skills with experience levels.',
-            'skills_with_experience.min' => 'Please add at least 3 skills with experience levels.',
+            'skills_with_experience.required' => 'Please add at least 1 skill with an experience level.',
+            'skills_with_experience.min' => 'Please add at least 1 skill with an experience level.',
             'skills_with_experience.*.skill.required' => 'Skill name is required.',
             'skills_with_experience.*.experience_level.required' => 'Experience level is required for each skill.',
             

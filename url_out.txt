@@ -1,0 +1,4 @@
+﻿Stored URL: https://pjuxfiycxkwxiteoqogo.supabase.co/storage/v1/object/public/WorkWise/id_verification/2/front/2UCDGeYnRf9opkk6Brn1banhHlhmB1nluo1YKuXb.jpg
+
+HTTP Status: 400
+Final URL: https://pjuxfiycxkwxiteoqogo.supabase.co/storage/v1/object/public/WorkWise/id_verification/2/front/2UCDGeYnRf9opkk6Brn1banhHlhmB1nluo1YKuXb.jpg

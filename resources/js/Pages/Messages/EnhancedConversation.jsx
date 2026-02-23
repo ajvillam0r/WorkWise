@@ -131,12 +131,12 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
 
             if (response.data.messages && response.data.messages.length > 0) {
                 const newMessages = response.data.messages;
-                
+
                 // Filter out any messages that already exist (prevent duplicates)
                 setMessageList(prev => {
                     const existingIds = new Set(prev.map(m => m.id));
                     const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m.id));
-                    
+
                     if (uniqueNewMessages.length > 0) {
                         const maxId = Math.max(...newMessages.map(m => m.id));
                         setLastMessageId(maxId);
@@ -153,7 +153,7 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
         }
     }, [user.id, lastMessageId, scrollToBottom]);
 
-    // Poll for new messages every 5 seconds
+    // Poll for new messages every 15 seconds
     useEffect(() => {
         // Clear any existing interval
         if (pollingIntervalRef.current) {
@@ -161,7 +161,7 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
         }
 
         // Set up new polling interval
-        pollingIntervalRef.current = setInterval(fetchNewMessages, 5000);
+        pollingIntervalRef.current = setInterval(fetchNewMessages, 15000);
 
         // Cleanup on unmount
         return () => {
@@ -199,7 +199,7 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            
+
             const response = await fetch(`/messages/${messageId}`, {
                 method: 'DELETE',
                 headers: {
@@ -321,7 +321,7 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                 // Add new message to list
                 setMessageList(prev => [...prev, result.message]);
                 setLastMessageId(result.message.id);
-                
+
                 // Scroll to bottom
                 setTimeout(() => scrollToBottom(true), 100);
             } else {
@@ -330,12 +330,12 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
         } catch (error) {
             console.error('Error sending message:', error);
             console.error('Error details:', error.message);
-            
+
             // Restore message on error
             setNewMessage(messageText);
             setAttachment(fileToSend);
             setReplyingTo(replyToMessage);
-            
+
             // Show specific error message
             alert(error.message || 'Failed to send message. Please try again.');
         } finally {
@@ -389,9 +389,8 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                             {/* Three-dot menu button */}
                             <button
                                 onClick={() => setOpenMenuId(openMenuId === message.id ? null : message.id)}
-                                className={`absolute ${isOwnMessage ? 'left-0 -ml-8' : 'right-0 -mr-8'} top-2 p-1 rounded-full hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity ${
-                                    openMenuId === message.id ? 'opacity-100' : ''
-                                }`}
+                                className={`absolute ${isOwnMessage ? 'left-0 -ml-8' : 'right-0 -mr-8'} top-2 p-1 rounded-full hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity ${openMenuId === message.id ? 'opacity-100' : ''
+                                    }`}
                                 title="Message options"
                             >
                                 <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
@@ -418,89 +417,85 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                                 </div>
                             )}
 
-                            <div className={`message-bubble px-4 py-3 rounded-2xl shadow-sm ${
-                                isOwnMessage
+                            <div className={`message-bubble px-4 py-3 rounded-2xl shadow-sm ${isOwnMessage
                                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-md'
                                     : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'
-                            } ${isDeleting ? 'opacity-50' : ''}`}>
+                                } ${isDeleting ? 'opacity-50' : ''}`}>
                                 {/* Replied message preview */}
                                 {repliedMessage && (
-                                    <div className={`mb-2 pb-2 border-l-2 pl-3 ${
-                                        isOwnMessage ? 'border-white/30' : 'border-blue-500/30'
-                                    }`}>
+                                    <div className={`mb-2 pb-2 border-l-2 pl-3 ${isOwnMessage ? 'border-white/30' : 'border-blue-500/30'
+                                        }`}>
                                         <div className={`text-xs font-medium ${isOwnMessage ? 'text-blue-100' : 'text-blue-600'}`}>
                                             Replying to {repliedMessage.sender.first_name}
                                         </div>
                                         <div className={`text-xs mt-1 ${isOwnMessage ? 'text-white/70' : 'text-gray-600'} truncate`}>
-                                            {repliedMessage.type === 'file' 
-                                                ? `📎 ${repliedMessage.attachment_name}` 
+                                            {repliedMessage.type === 'file'
+                                                ? `📎 ${repliedMessage.attachment_name}`
                                                 : repliedMessage.message}
                                         </div>
                                     </div>
                                 )}
-                            {message.type === 'file' && message.attachment_name ? (
-                                isImageFile(message.attachment_name) ? (
-                                    <div className="space-y-2">
-                                        <a
-                                            href={`/messages/${message.id}/download`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="block group"
-                                        >
-                                            <img
-                                                src={message.attachment_path || `/messages/${message.id}/download`}
-                                                alt={message.attachment_name}
-                                                className="max-w-xs rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-                                                style={{ maxHeight: '300px', objectFit: 'cover' }}
-                                            />
-                                            <div className={`mt-2 text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-600'} group-hover:underline`}>
-                                                {message.attachment_name}
-                                            </div>
-                                        </a>
-                                        {message.message && (
-                                            <div className="mt-2 whitespace-pre-wrap leading-relaxed">{message.message}</div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                                isOwnMessage ? 'bg-white/20' : 'bg-blue-100'
-                                            }`}>
-                                                {getFileIcon(message.attachment_name, 'w-5 h-5', isOwnMessage)}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-medium text-sm truncate">{message.attachment_name}</div>
-                                                <div className="flex items-center space-x-2">
-                                                    <span className={`text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'}`}>
-                                                        {getFileExtension(message.attachment_name).toUpperCase()}
-                                                    </span>
-                                                    <a
-                                                        href={`/messages/${message.id}/download`}
-                                                        className={`text-xs ${isOwnMessage ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-800'} hover:underline transition-colors flex items-center`}
-                                                    >
-                                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                        </svg>
-                                                        Download
-                                                    </a>
+                                {message.type === 'file' && message.attachment_name ? (
+                                    isImageFile(message.attachment_name) ? (
+                                        <div className="space-y-2">
+                                            <a
+                                                href={`/messages/${message.id}/download`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block group"
+                                            >
+                                                <img
+                                                    src={message.attachment_path || `/messages/${message.id}/download`}
+                                                    alt={message.attachment_name}
+                                                    className="max-w-xs rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                                                    style={{ maxHeight: '300px', objectFit: 'cover' }}
+                                                />
+                                                <div className={`mt-2 text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-600'} group-hover:underline`}>
+                                                    {message.attachment_name}
+                                                </div>
+                                            </a>
+                                            {message.message && (
+                                                <div className="mt-2 whitespace-pre-wrap leading-relaxed">{message.message}</div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-3">
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isOwnMessage ? 'bg-white/20' : 'bg-blue-100'
+                                                    }`}>
+                                                    {getFileIcon(message.attachment_name, 'w-5 h-5', isOwnMessage)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-sm truncate">{message.attachment_name}</div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className={`text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'}`}>
+                                                            {getFileExtension(message.attachment_name).toUpperCase()}
+                                                        </span>
+                                                        <a
+                                                            href={`/messages/${message.id}/download`}
+                                                            className={`text-xs ${isOwnMessage ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-800'} hover:underline transition-colors flex items-center`}
+                                                        >
+                                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                            </svg>
+                                                            Download
+                                                        </a>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            {message.message && (
+                                                <div className="mt-2 whitespace-pre-wrap leading-relaxed">{message.message}</div>
+                                            )}
                                         </div>
-                                        {message.message && (
-                                            <div className="mt-2 whitespace-pre-wrap leading-relaxed">{message.message}</div>
-                                        )}
-                                    </div>
-                                )
-                            ) : (
-                                <div className="whitespace-pre-wrap leading-relaxed">{message.message}</div>
-                            )}
+                                    )
+                                ) : (
+                                    <div className="whitespace-pre-wrap leading-relaxed">{message.message}</div>
+                                )}
                             </div>
                         </div>
 
-                        <div className={`flex items-center text-xs ${
-                            isOwnMessage ? 'justify-end' : 'justify-start'
-                        }`}>
+                        <div className={`flex items-center text-xs ${isOwnMessage ? 'justify-end' : 'justify-start'
+                            }`}>
                             <span className="text-gray-500 opacity-70">
                                 {formatMessageTime(message.created_at)}
                             </span>
@@ -542,11 +537,10 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                                     {user.first_name} {user.last_name}
                                 </h2>
                                 <div className="flex items-center space-x-3 mt-1">
-                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                        user.user_type === 'employer'
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${user.user_type === 'employer'
                                             ? 'bg-blue-100 text-blue-800'
                                             : 'bg-emerald-100 text-emerald-800'
-                                    }`}>
+                                        }`}>
                                         {user.user_type === 'employer' ? 'Employer' : 'Gig Worker'}
                                     </span>
                                     {user.professional_title && (
@@ -625,8 +619,8 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-blue-700 truncate">
-                                                    {replyingTo.type === 'file' 
-                                                        ? `📎 ${replyingTo.attachment_name}` 
+                                                    {replyingTo.type === 'file'
+                                                        ? `📎 ${replyingTo.attachment_name}`
                                                         : replyingTo.message}
                                                 </p>
                                             </div>

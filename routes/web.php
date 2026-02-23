@@ -38,12 +38,16 @@ use App\Http\Controllers\IdVerificationController;
 use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\SimpleTestController;
+use App\Http\Controllers\AISkillController;
 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Http\Controllers\Auth\SupabaseAuthController;
+
+Route::post('/auth/supabase/callback', [SupabaseAuthController::class, 'callback'])->name('auth.supabase.callback');
 
 Route::get('/', function () {
     // Check if user is authenticated
@@ -227,10 +231,6 @@ Route::get('/test-basic', function () {
     return response()->json(['status' => 'ok', 'message' => 'Basic routing works!']);
 })->name('test.basic');
 
-// Direct login route to bypass any route name issues
-Route::get('/login-direct', function () {
-    return redirect('/login');
-})->name('login.direct');
 
 // Debug user status
 Route::get('/debug-user', function () {
@@ -288,8 +288,8 @@ Route::middleware('auth')->group(function () {
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::post('/profile', [ProfileController::class, 'update']); // For file uploads with method spoofing
+    Route::patch('/profile', [ProfileController::class, 'update'])->middleware('fraud.detection')->name('profile.update');
+    Route::post('/profile', [ProfileController::class, 'update'])->middleware('fraud.detection'); // For file uploads with method spoofing
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Profile viewing routes
@@ -300,6 +300,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/r2/{path}', [ProfileController::class, 'proxyR2File'])
         ->where('path', '.*')
         ->name('r2.proxy');
+
+    // Supabase Proxy route (serving private S3 bucket files securely)
+    Route::get('/storage/supabase/{path}', function ($path) {
+        try {
+            $disk = \Illuminate\Support\Facades\Storage::disk('supabase');
+            if (!$disk->exists($path)) abort(404);
+            return response($disk->get($path), 200)
+                ->header('Content-Type', $disk->mimeType($path))
+                ->header('Cache-Control', 'public, max-age=31536000')
+                ->header('Access-Control-Allow-Origin', '*');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Supabase proxy failed: ' . $e->getMessage(), ['path' => $path]);
+            abort(404);
+        }
+    })->where('path', '.*')->name('supabase.proxy');
 
     // ID Verification routes
     Route::get('/id-verification', function () {
@@ -313,7 +328,7 @@ Route::middleware('auth')->group(function () {
     // Employer-only routes (job management)
     Route::middleware(['employer'])->group(function () {
         Route::get('/jobs/create', [GigJobController::class, 'create'])->name('jobs.create');
-        Route::post('/jobs', [GigJobController::class, 'store'])->name('jobs.store');
+        Route::post('/jobs', [GigJobController::class, 'store'])->middleware('fraud.detection')->name('jobs.store');
         Route::get('/jobs/{job}/edit', [GigJobController::class, 'edit'])->name('jobs.edit');
         Route::patch('/jobs/{job}', [GigJobController::class, 'update'])->name('jobs.update');
         Route::delete('/jobs/{job}', [GigJobController::class, 'destroy'])->name('jobs.destroy');
@@ -335,7 +350,7 @@ Route::middleware('auth')->group(function () {
 
     // Gig Worker-only routes (bidding)
     Route::middleware(['gig_worker'])->group(function () {
-        Route::post('/bids', [BidController::class, 'store'])->name('bids.store');
+        Route::post('/bids', [BidController::class, 'store'])->middleware('fraud.detection')->name('bids.store');
     });
 
     // Bid routes (mixed permissions)
@@ -352,15 +367,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages/unread/count', [MessageController::class, 'unreadCount'])->name('messages.unread.count');
     Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead'])->name('messages.read');
     Route::get('/messages/recent/conversations', [MessageController::class, 'getRecentConversations'])->name('messages.recent');
-    Route::get('/messages/unread/count', [MessageController::class, 'getUnreadCount'])->name('messages.unread.count');
     Route::get('/messages/conversation/{userId}', [MessageController::class, 'getConversation'])->name('messages.getConversation');
     Route::patch('/messages/conversation/{userId}/read', [MessageController::class, 'markConversationAsRead'])->name('messages.conversation.read');
     Route::patch('/messages/conversation/{conversationId}/status', [MessageController::class, 'updateConversationStatus'])->name('messages.conversation.status');
     Route::get('/messages/{user}/new', [MessageController::class, 'getNewMessages'])->name('messages.new');
 
-    Route::get('/reports', function () {
-        return Inertia::render('Reports/Index');
-    })->name('reports.index');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/create', [ReportController::class, 'create'])->name('reports.create');
+    Route::post('/reports', [ReportController::class, 'store'])->name('reports.store');
+    Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show');
 
     // Transaction reports routes
     Route::get('/reports/transactions', [ReportController::class, 'transactions'])->name('reports.transactions');
@@ -419,11 +434,11 @@ Route::middleware('auth')->group(function () {
 
     // Payment routes - mixed permissions
     Route::get('/projects/{project}/payment', [PaymentController::class, 'show'])->name('payment.show');
-    Route::post('/projects/{project}/payment/intent', [PaymentController::class, 'createPaymentIntent'])->name('payment.intent');
+    Route::post('/projects/{project}/payment/intent', [PaymentController::class, 'createPaymentIntent'])->middleware('fraud.detection')->name('payment.intent');
     Route::post('/payment/confirm', [PaymentController::class, 'confirmPayment'])->name('payment.confirm');
     Route::get('/payment/history', [PaymentController::class, 'history'])->name('payment.history');
     Route::get('/transactions/{transaction}', [PaymentController::class, 'transaction'])->name('transactions.show');
-    Route::post('/payments/deposit', [PaymentController::class, 'deposit'])->name('payments.deposit');
+    Route::post('/payments/deposit', [PaymentController::class, 'deposit'])->middleware('fraud.detection')->name('payments.deposit');
 
     // Review routes
     Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
@@ -491,6 +506,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/api/recommendations/skills', [AIRecommendationController::class, 'recommendSkills'])->name('api.recommendations.skills');
     Route::post('/api/recommendations/skills/accept', [AIRecommendationController::class, 'acceptSuggestion'])->name('api.recommendations.accept');
     Route::get('/api/recommendations/skills/all', [AIRecommendationController::class, 'allSkills'])->name('api.recommendations.all');
+    
+    // AI Skill correction for onboarding
+    Route::post('/api/ai-skills/correct', [AISkillController::class, 'correct'])->name('api.ai-skills.correct');
 });
 
 // Admin routes
@@ -569,6 +587,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/api/analytics/revenue-trend-chart', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'revenueTrendChart']);
     Route::get('/api/analytics/job-trends-chart', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'jobTrendsChart']);
     Route::get('/api/analytics/quality-trend-chart', [\App\Http\Controllers\Admin\RealtimeAnalyticsController::class, 'qualityTrendChart']);
+
+    // Employer Verifications
+    Route::get('/employers/verifications', [\App\Http\Controllers\Admin\EmployerVerificationController::class, 'index'])->name('employers.verifications.index');
+    Route::post('/employers/verifications/{user}/approve', [\App\Http\Controllers\Admin\EmployerVerificationController::class, 'approve'])->name('employers.verifications.approve');
+    Route::post('/employers/verifications/{user}/reject', [\App\Http\Controllers\Admin\EmployerVerificationController::class, 'reject'])->name('employers.verifications.reject');
 
     // User Verifications
     Route::get('/verifications', [AdminVerificationController::class, 'index'])->name('verifications');

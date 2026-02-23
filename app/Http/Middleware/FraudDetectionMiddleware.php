@@ -375,24 +375,34 @@ class FraudDetectionMiddleware
         // Determine response based on risk level
         if ($fraudResult['risk_score'] >= 90) {
             // Critical - block the request
-            return response()->json([
-                'error' => 'Request blocked due to security concerns',
-                'message' => 'Your account is under review. Please contact support.',
-            ], 403);
+            if ($request->expectsJson() && !$request->inertia()) {
+                return response()->json([
+                    'error' => 'Request blocked due to security concerns',
+                    'message' => 'Your account is under review. Please contact support.',
+                ], 403);
+            }
+            return back()->withErrors(['fraud_alert' => 'Your account is under review. Please contact support.']);
         } elseif ($fraudResult['risk_score'] >= 70) {
             // High risk - require additional verification
-            return response()->json([
-                'error' => 'Additional verification required',
-                'message' => 'Please verify your identity to continue.',
-                'verification_required' => true,
-            ], 422);
+            if ($request->expectsJson() && !$request->inertia()) {
+                return response()->json([
+                    'error' => 'Additional verification required',
+                    'message' => 'Please verify your identity to continue.',
+                    'verification_required' => true,
+                ], 422);
+            }
+            return back()->withErrors(['fraud_alert' => 'Additional verification required. Please verify your identity to continue.']);
         }
 
         // Medium risk - log and continue with warning
-        return response()->json([
-            'warning' => 'Suspicious activity detected',
-            'message' => 'Your activity has been flagged for review.',
-        ], 200);
+        if ($request->expectsJson() && !$request->inertia()) {
+            return response()->json([
+                'warning' => 'Suspicious activity detected',
+                'message' => 'Your activity has been flagged for review.',
+            ], 200);
+        }
+        
+        return session()->flash('warning', 'Your activity has been flagged for review.');
     }
 
     /**

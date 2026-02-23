@@ -16,18 +16,18 @@ import useFieldValidation from '@/Hooks/useFieldValidation';
 import useToast from '@/Hooks/useToast';
 import { validationRules } from '@/utils/validationRules';
 import { getFirstError, ERROR_CODES, SUPPORT_CONTACT } from '@/utils/errorHelpers';
-import { startCsrfRefresh, stopCsrfRefresh } from '@/utils/csrfRefresh';
+import { startCsrfRefresh, stopCsrfRefresh, refreshCsrfToken } from '@/utils/csrfRefresh';
 
 export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const [currentStep, setCurrentStep] = useState(0);
     const totalSteps = 5; // Simplified: removed language, availability, and ID verification steps (0-4)
 
     // Use custom onboarding form hook with file handling and persistence
-    const { 
-        data, 
-        setData, 
-        post, 
-        processing, 
+    const {
+        data,
+        setData,
+        post,
+        processing,
         errors,
         files,
         filePreviews,
@@ -70,7 +70,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const [showErrorSummary, setShowErrorSummary] = useState(false);
     const [errorCodes, setErrorCodes] = useState({});
     const [uploadFailures, setUploadFailures] = useState({});
-    
+
     // Toast notifications
     const { toasts, removeToast, success, error: showError, warning } = useToast();
 
@@ -84,7 +84,6 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const hourlyRateValidation = useFieldValidation(
         data.hourly_rate,
         [
-            validationRules.required('Hourly rate'),
             validationRules.numeric('Hourly rate'),
             validationRules.minValue(5, 'Hourly rate'),
             validationRules.maxValue(10000, 'Hourly rate')
@@ -105,71 +104,76 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     useEffect(() => {
         // Refresh CSRF token every 30 minutes to prevent session expiration
         const refreshIntervalId = startCsrfRefresh(30);
-        
+
         return () => {
             stopCsrfRefresh(refreshIntervalId);
         };
     }, []);
 
-    // Load categories from taxonomy
+    // Load all skills from taxonomy initially for search
     useEffect(() => {
         if (skillsTaxonomy && skillsTaxonomy.services) {
+            const allSkills = [];
+            skillsTaxonomy.services.forEach(service => {
+                service.categories.forEach(cat => {
+                    cat.skills.forEach(skill => {
+                        if (!allSkills.includes(skill)) allSkills.push(skill);
+                    });
+                });
+            });
+            setAvailableSkills(allSkills);
             setAvailableCategories(skillsTaxonomy.services);
         }
     }, [skillsTaxonomy]);
 
-    // Update available services when broad category changes
-    useEffect(() => {
-        if (data.broad_category && availableCategories.length > 0) {
-            const selected = availableCategories.find(cat => cat.name === data.broad_category);
-            if (selected) {
-                setAvailableServices(selected.categories || []);
-                // Only reset if services actually changed
-                if (data.specific_services.length > 0) {
-                    setData('specific_services', []);
-                    setData('skills_with_experience', []);
-                }
-                setAvailableSkills([]);
+    const handleAddCustomSkill = async (skillName) => {
+        if (!skillName) return;
+
+        // Check for duplicate
+        if (data.skills_with_experience.find(s => s.skill.toLowerCase() === skillName.toLowerCase())) {
+            warning('Skill already added');
+            setSkillSearchInput('');
+            return;
+        }
+
+        // Add skill
+        toggleSkillSelection(skillName);
+        setSkillSearchInput('');
+
+        // Try AI correction/normalization
+        try {
+            const response = await axios.post(route('api.ai-skills.correct'), { skill: skillName });
+            if (response.data.corrected && response.data.corrected !== skillName) {
+                // Update with corrected version
+                setData('skills_with_experience', data.skills_with_experience.map(s =>
+                    s.skill === skillName ? { ...s, skill: response.data.corrected } : s
+                ));
+                success(`Corrected "${skillName}" to "${response.data.corrected}"`);
             }
+        } catch (e) {
+            console.error('Skill correction failed', e);
         }
-    }, [data.broad_category, availableCategories]);
-
-    // Update available skills when specific services change
-    useEffect(() => {
-        if (data.specific_services.length > 0 && availableServices.length > 0) {
-            const allSkills = [];
-            data.specific_services.forEach(serviceName => {
-                const service = availableServices.find(s => s.name === serviceName);
-                if (service && service.skills) {
-                    service.skills.forEach(skill => {
-                        if (!allSkills.includes(skill)) {
-                            allSkills.push(skill);
-                        }
-                    });
-                }
-            });
-            setAvailableSkills(allSkills);
-        } else if (data.specific_services.length === 0) {
-            setAvailableSkills([]);
-        }
-    }, [data.specific_services, availableServices]);
+    };
 
 
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setShowErrorSummary(false);
-        
+
+        // Refresh CSRF token before submit to avoid 419 after long form (e.g. with uploads)
+        await refreshCsrfToken();
+
         post(route('gig-worker.onboarding.store'), {
             forceFormData: true,
             onError: (errors) => {
                 console.error('Onboarding submission errors:', errors);
-                
+
                 // Determine error codes based on error messages
                 const codes = {};
                 Object.entries(errors).forEach(([field, message]) => {
                     const msg = Array.isArray(message) ? message[0] : message;
-                    
+
                     // Assign error codes based on message content
                     if (msg.includes('required') || msg.includes('must be provided')) {
                         codes[field] = ERROR_CODES.REQUIRED_FIELD_MISSING;
@@ -187,15 +191,15 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                         codes[field] = ERROR_CODES.SERVER_ERROR;
                     }
                 });
-                
+
                 setErrorCodes(codes);
                 setShowErrorSummary(true);
-                
+
                 // Navigate to the step with the first error
                 const firstError = getFirstError(errors);
                 if (firstError && firstError.step !== null) {
                     setCurrentStep(firstError.step);
-                    
+
                     // Show error toast
                     showError(
                         `Please fix ${Object.keys(errors).length} error${Object.keys(errors).length > 1 ? 's' : ''} in your form`,
@@ -205,7 +209,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                     // Generic error toast if we can't determine the step
                     showError('Please review and fix the errors in your form', 5000);
                 }
-                
+
                 // Scroll to top to show error summary
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
@@ -217,20 +221,21 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
         });
     };
 
-    const handleSkip = () => {
+    const handleSkip = async () => {
+        await refreshCsrfToken();
         post(route('gig-worker.onboarding.skip'));
     };
-    
+
     // Handle error click to navigate to field
     const handleErrorClick = (fieldName) => {
         const firstError = getFirstError({ [fieldName]: errors[fieldName] });
         if (firstError && firstError.step !== null) {
             setCurrentStep(firstError.step);
-            
+
             // Scroll to top after navigation
             setTimeout(() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-                
+
                 // Try to focus the field
                 const element = document.getElementById(fieldName) || document.querySelector(`[name="${fieldName}"]`);
                 if (element) {
@@ -240,12 +245,12 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             }, 100);
         }
     };
-    
+
     // Handle file upload retry
     const handleFileRetry = (fieldName) => {
         setUploadFailures(prev => ({ ...prev, [fieldName]: false }));
         warning(`Retrying upload for ${fieldName.replace(/_/g, ' ')}...`, 3000);
-        
+
         // Trigger file input click to allow user to select file again
         const fileInput = document.querySelector(`input[name="${fieldName}"]`);
         if (fileInput) {
@@ -263,22 +268,22 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             } else {
                 // Mark that user attempted to proceed (to show validation errors)
                 setAttemptedProceed(true);
-                
+
                 // Mark validation fields as touched for Step 1
                 if (currentStep === 1) {
                     professionalTitleValidation.markAsTouched();
                     hourlyRateValidation.markAsTouched();
                     bioValidation.markAsTouched();
                 }
-                
+
                 // Show error message based on current step
                 let errorMsg = 'Please complete all required fields before proceeding.';
                 if (currentStep === 1) {
                     const errors = [];
                     if (!data.professional_title) errors.push('Professional title');
-                    if (!data.hourly_rate || data.hourly_rate < 5 || data.hourly_rate > 10000) errors.push('Valid hourly rate (₱5-₱10,000)');
                     if (!data.bio || data.bio.length < 50) errors.push('Professional bio (minimum 50 characters)');
-                    
+                    if (data.hourly_rate && (data.hourly_rate < 5 || data.hourly_rate > 10000)) errors.push('Valid hourly rate (₱5-₱10,000)');
+
                     if (errors.length > 0) {
                         errorMsg = `Please complete the following:\n• ${errors.join('\n• ')}`;
                     }
@@ -319,11 +324,9 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
     const canProceedFromStep = (step) => {
         switch (step) {
             case 1: // Basic Info
-                return data.professional_title && data.hourly_rate && data.bio && data.bio.length >= 50;
+                return data.professional_title && data.bio && data.bio.length >= 50;
             case 2: // Skills
-                return data.broad_category && 
-                       data.specific_services.length >= 2 && 
-                       data.skills_with_experience.length >= 3;
+                return data.skills_with_experience.length >= 3;
             default:
                 return true;
         }
@@ -363,7 +366,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
             }
         >
             <Head title="Gig Worker Onboarding" />
-            
+
             {/* Toast Notifications */}
             <ToastContainer toasts={toasts} removeToast={removeToast} />
 
@@ -381,7 +384,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                     showErrorCodes={true}
                                 />
                             )}
-                            
+
                             {/* Progress Bar - Mobile Optimized */}
                             <div className="mb-4 sm:mb-6 md:mb-8">
                                 <div className="flex items-center justify-between mb-2">
@@ -393,7 +396,7 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                     </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2 sm:h-2.5">
-                                    <div 
+                                    <div
                                         className="bg-blue-600 h-2 sm:h-2.5 rounded-full transition-all duration-300"
                                         style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}
                                     ></div>
@@ -453,41 +456,40 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                         <div>
                                             <InputLabel htmlFor="professional_title" value="Professional Title *" />
                                             <div className="relative">
-                                                <select
+                                                <TextInput
                                                     id="professional_title"
                                                     value={data.professional_title}
-                                                    className={`mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm ${
-                                                        attemptedProceed && !data.professional_title ? 'border-red-300 bg-red-50' : ''
-                                                    } ${
-                                                        professionalTitleValidation.isValid ? 'border-green-300 bg-green-50' : ''
-                                                    }`}
+                                                    list="professional-titles"
+                                                    className={`mt-1 block w-full ${attemptedProceed && !data.professional_title ? 'border-red-300 bg-red-50' : ''
+                                                        } ${professionalTitleValidation.isValid ? 'border-green-300 bg-green-50' : ''
+                                                        }`}
                                                     onChange={(e) => {
                                                         setData('professional_title', e.target.value);
                                                         professionalTitleValidation.markAsTouched();
                                                     }}
                                                     onBlur={() => professionalTitleValidation.markAsTouched()}
+                                                    placeholder="e.g. Full Stack Web Developer"
                                                     required
-                                                >
-                                                    <option value="">Select your professional title</option>
-                                                    <option value="Web Developer">Web Developer</option>
-                                                    <option value="Mobile Developer">Mobile Developer</option>
-                                                    <option value="Frontend Developer">Frontend Developer</option>
-                                                    <option value="Backend Developer">Backend Developer</option>
-                                                    <option value="Full Stack Developer">Full Stack Developer</option>
-                                                    <option value="UI/UX Designer">UI/UX Designer</option>
-                                                    <option value="Graphic Designer">Graphic Designer</option>
-                                                    <option value="Content Writer">Content Writer</option>
-                                                    <option value="Copywriter">Copywriter</option>
-                                                    <option value="Digital Marketer">Digital Marketer</option>
-                                                    <option value="SEO Specialist">SEO Specialist</option>
-                                                    <option value="Social Media Manager">Social Media Manager</option>
-                                                    <option value="Video Editor">Video Editor</option>
-                                                    <option value="Photographer">Photographer</option>
-                                                    <option value="Virtual Assistant">Virtual Assistant</option>
-                                                    <option value="Data Analyst">Data Analyst</option>
-                                                    <option value="Project Manager">Project Manager</option>
-                                                    <option value="Other">Other (specify in bio)</option>
-                                                </select>
+                                                />
+                                                <datalist id="professional-titles">
+                                                    <option value="Web Developer" />
+                                                    <option value="Mobile Developer" />
+                                                    <option value="Frontend Developer" />
+                                                    <option value="Backend Developer" />
+                                                    <option value="Full Stack Developer" />
+                                                    <option value="UI/UX Designer" />
+                                                    <option value="Graphic Designer" />
+                                                    <option value="Content Writer" />
+                                                    <option value="Copywriter" />
+                                                    <option value="Digital Marketer" />
+                                                    <option value="SEO Specialist" />
+                                                    <option value="Social Media Manager" />
+                                                    <option value="Video Editor" />
+                                                    <option value="Photographer" />
+                                                    <option value="Virtual Assistant" />
+                                                    <option value="Data Analyst" />
+                                                    <option value="Project Manager" />
+                                                </datalist>
                                                 {professionalTitleValidation.isValid && (
                                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                                         <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -509,19 +511,17 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                         </div>
 
                                         <div>
-                                            <InputLabel htmlFor="hourly_rate" value="Hourly Rate (PHP) *" />
+                                            <InputLabel htmlFor="hourly_rate" value="Expected Hourly Rate (PHP) (Optional)" />
                                             <div className="relative">
                                                 <TextInput
                                                     id="hourly_rate"
                                                     type="number"
                                                     value={data.hourly_rate}
-                                                    className={`mt-1 block w-full ${
-                                                        attemptedProceed && (!data.hourly_rate || data.hourly_rate < 5 || data.hourly_rate > 10000) 
-                                                            ? 'border-red-300 bg-red-50' 
-                                                            : ''
-                                                    } ${
-                                                        hourlyRateValidation.isValid ? 'border-green-300 bg-green-50' : ''
-                                                    }`}
+                                                    className={`mt-1 block w-full ${attemptedProceed && (!data.hourly_rate || data.hourly_rate < 5 || data.hourly_rate > 10000)
+                                                        ? 'border-red-300 bg-red-50'
+                                                        : ''
+                                                        } ${hourlyRateValidation.isValid ? 'border-green-300 bg-green-50' : ''
+                                                        }`}
                                                     placeholder="500"
                                                     min="5"
                                                     max="10000"
@@ -530,7 +530,6 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                         hourlyRateValidation.markAsTouched();
                                                     }}
                                                     onBlur={() => hourlyRateValidation.markAsTouched()}
-                                                    required
                                                 />
                                                 {hourlyRateValidation.isValid && (
                                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -558,11 +557,9 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 <textarea
                                                     id="bio"
                                                     value={data.bio}
-                                                    className={`mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm ${
-                                                        attemptedProceed && (!data.bio || data.bio.length < 50) ? 'border-red-300 bg-red-50' : ''
-                                                    } ${
-                                                        bioValidation.isValid ? 'border-green-300 bg-green-50' : ''
-                                                    }`}
+                                                    className={`mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm ${attemptedProceed && (!data.bio || data.bio.length < 50) ? 'border-red-300 bg-red-50' : ''
+                                                        } ${bioValidation.isValid ? 'border-green-300 bg-green-50' : ''
+                                                        }`}
                                                     rows="6"
                                                     placeholder="Describe your experience, expertise, what makes you unique, and what you're passionate about..."
                                                     onChange={(e) => {
@@ -616,148 +613,104 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                     </div>
                                 )}
 
-                                {/* Step 2: Hierarchical Skills Selection */}
+                                {/* Step 2: Unified Skill Selection */}
                                 {currentStep === 2 && (
                                     <div className="space-y-6">
-                                        <p className="text-gray-600 text-center mb-4">
-                                            Select your primary category, then choose the specific services you offer, and finally pick your skills.
-                                        </p>
-
-                                        {/* Broad Category Selection */}
-                                        <div>
-                                            <InputLabel value="1. Select Your Primary Category *" />
-                                            <select
-                                                value={data.broad_category}
-                                                className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                                onChange={(e) => setData('broad_category', e.target.value)}
-                                                required
-                                            >
-                                                <option value="">-- Choose a category --</option>
-                                                {availableCategories.map((cat) => (
-                                                    <option key={cat.id} value={cat.name}>
-                                                        {cat.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <InputError message={errors.broad_category} className="mt-2" />
+                                        <div className="text-center mb-4">
+                                            <p className="text-gray-600">
+                                                Add your expertise areas and set your experience level for each.
+                                            </p>
                                         </div>
 
-                                        {/* Specific Services Selection */}
-                                        {data.broad_category && (
-                                            <div>
-                                                <InputLabel value="2. Select Specific Services (Choose 2 or more) *" />
-                                                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 border border-gray-200 rounded-md">
-                                                    {availableServices.map((service) => (
-                                                        <label
-                                                            key={service.id}
-                                                            className={`flex items-center p-3 rounded-md cursor-pointer transition-colors ${
-                                                                data.specific_services.includes(service.name)
-                                                                    ? 'bg-blue-100 border-2 border-blue-500'
-                                                                    : 'bg-gray-50 border-2 border-gray-200 hover:bg-gray-100'
-                                                            }`}
-                                                        >
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={data.specific_services.includes(service.name)}
-                                                                onChange={() => toggleService(service.name)}
-                                                                className="mr-2"
-                                                            />
-                                                            <span className="text-sm font-medium">{service.name}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                                <InputError message={errors.specific_services} className="mt-2" />
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Selected: {data.specific_services.length} service(s)
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Skills Selection with Experience Levels */}
-                                        {data.specific_services.length > 0 && availableSkills.length > 0 && (
-                                            <div>
-                                                <InputLabel value="3. Select Your Skills & Set Experience Level (Choose 3 or more) *" />
-                                                <p className="text-xs text-gray-600 mb-2">
-                                                    Type to search and add skills quickly, or click on skills below
-                                                </p>
-                                                
-                                                {/* Skill Autocomplete Input */}
-                                                <div className="mb-4">
+                                        <div>
+                                            <InputLabel value="Search & Add Skills (Choose 3 or more) *" />
+                                            <div className="mt-2 flex gap-2">
+                                                <div className="flex-1">
                                                     <SkillAutocompleteInput
                                                         value={skillSearchInput}
                                                         onChange={setSkillSearchInput}
                                                         onSelect={(skill) => {
                                                             if (!data.skills_with_experience.find(s => s.skill === skill)) {
                                                                 toggleSkillSelection(skill);
+                                                                setSkillSearchInput('');
                                                             }
                                                         }}
                                                         skills={availableSkills}
-                                                        placeholder="Type to search skills (e.g., 'react', 'php')..."
-                                                        maxSuggestions={10}
+                                                        placeholder="e.g. React, PHP, Graphic Design..."
+                                                        maxSuggestions={8}
                                                     />
                                                 </div>
+                                                <PrimaryButton
+                                                    type="button"
+                                                    onClick={() => handleAddCustomSkill(skillSearchInput)}
+                                                    className="h-10 px-4"
+                                                    disabled={!skillSearchInput.trim()}
+                                                >
+                                                    Add
+                                                </PrimaryButton>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Press Enter or click Add to include a skill. AI will suggest improvements!
+                                            </p>
+                                        </div>
 
-                                                <div className="space-y-3 max-h-96 overflow-y-auto border border-gray-200 rounded-md p-3">
-                                                    {availableSkills.map((skill, index) => {
-                                                        const skillData = data.skills_with_experience.find(s => s.skill === skill);
-                                                        const isSelected = !!skillData;
+                                        {/* Selected Skills List */}
+                                        <div className="space-y-3">
+                                            <h4 className="font-medium text-gray-900 border-b pb-1">Your Selected Skills</h4>
+                                            {data.skills_with_experience.length === 0 ? (
+                                                <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-lg text-gray-400">
+                                                    No skills added yet. Start typing above to add your expertise.
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                                    {data.skills_with_experience.map((skillData, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="p-3 rounded-lg border-2 bg-blue-50 border-blue-200 shadow-sm transition-all"
+                                                        >
+                                                            <div className="flex items-center justify-between gap-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                                    <span className="font-semibold text-blue-900">{skillData.skill}</span>
+                                                                </div>
 
-                                                        return (
-                                                            <div
-                                                                key={index}
-                                                                className={`p-3 rounded-md border-2 transition-all ${
-                                                                    isSelected
-                                                                        ? 'bg-blue-50 border-blue-500'
-                                                                        : 'bg-white border-gray-200'
-                                                                }`}
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <label className="flex items-center cursor-pointer flex-1">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isSelected}
-                                                                            onChange={() => toggleSkillSelection(skill)}
-                                                                            className="mr-2"
-                                                                        />
-                                                                        <span className="font-medium text-gray-900">{skill}</span>
-                                                                    </label>
-
-                                                                    {isSelected && (
-                                                                        <div className="flex gap-2 ml-4">
-                                                                            {['beginner', 'intermediate', 'expert'].map((level) => (
-                                                                                <button
-                                                                                    key={level}
-                                                                                    type="button"
-                                                                                    onClick={() => updateSkillExperience(skill, level)}
-                                                                                    className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                                                                                        skillData.experience_level === level
-                                                                                            ? 'bg-blue-600 text-white'
-                                                                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+                                                                    <div className="flex bg-white rounded-full p-1 border border-blue-100 shadow-inner">
+                                                                        {['beginner', 'intermediate', 'expert'].map((level) => (
+                                                                            <button
+                                                                                key={level}
+                                                                                type="button"
+                                                                                onClick={() => updateSkillExperience(skillData.skill, level)}
+                                                                                className={`px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full transition-all ${skillData.experience_level === level
+                                                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                                                    : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'
                                                                                     }`}
-                                                                                >
-                                                                                    {level.charAt(0).toUpperCase() + level.slice(1)}
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
+                                                                            >
+                                                                                {level}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleSkillSelection(skillData.skill)}
+                                                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                                                        title="Remove skill"
+                                                                    >
+                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                        </svg>
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                        );
-                                                    })}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                                <InputError message={errors.skills_with_experience} className="mt-2" />
-                                                <p className={`text-xs mt-1 font-medium ${
-                                                    data.skills_with_experience.length < 3 
-                                                        ? 'text-red-600' 
-                                                        : 'text-green-600'
-                                                }`}>
-                                                    Selected: {data.skills_with_experience.length} skill(s) (minimum 3 required)
-                                                    {data.skills_with_experience.length < 3 && (
-                                                        <span className="block mt-1">⚠️ You need {3 - data.skills_with_experience.length} more skill(s) to proceed</span>
-                                                    )}
-                                                </p>
-                                            </div>
-                                        )}
+                                            )}
+                                            <InputError message={errors.skills_with_experience} className="mt-2" />
+                                            <p className={`text-xs mt-1 font-medium ${data.skills_with_experience.length < 3 ? 'text-red-500' : 'text-green-600'}`}>
+                                                {data.skills_with_experience.length} skills selected (min 3)
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
 
@@ -766,163 +719,65 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                     <div className="space-y-6">
                                         <div className="text-center mb-6">
                                             <p className="text-gray-600 mb-2">
-                                                Showcase your work to stand out (optional)
+                                                Showcase your work to stand out (Optional)
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                Choose one option below or skip to continue
+                                                You can provide both a link to your website and upload a resume.
                                             </p>
                                         </div>
 
-                                        {/* Portfolio Type Selection */}
-                                        <div className="space-y-4">
-                                            <InputLabel value="How would you like to showcase your work?" />
-                                            
-                                            <div className="space-y-3">
-                                                {/* Portfolio Link Option */}
-                                                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                                                    style={{ borderColor: portfolioType === 'link' ? '#4F46E5' : '#D1D5DB' }}>
-                                                    <input
-                                                        type="radio"
-                                                        name="portfolio_type"
-                                                        value="link"
-                                                        checked={portfolioType === 'link'}
-                                                        onChange={(e) => {
-                                                            setPortfolioType(e.target.value);
-                                                            handleFileChange('resume_file', null);
-                                                        }}
-                                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                                                    />
-                                                    <div className="ml-3 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                                            </svg>
-                                                            <span className="font-medium text-gray-900">Portfolio Website Link</span>
-                                                        </div>
-                                                        <p className="text-sm text-gray-500 mt-1">
-                                                            Share a link to your online portfolio, Behance, Dribbble, GitHub, etc.
-                                                        </p>
-                                                    </div>
-                                                </label>
-
-                                                {/* Resume Upload Option */}
-                                                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                                                    style={{ borderColor: portfolioType === 'resume' ? '#4F46E5' : '#D1D5DB' }}>
-                                                    <input
-                                                        type="radio"
-                                                        name="portfolio_type"
-                                                        value="resume"
-                                                        checked={portfolioType === 'resume'}
-                                                        onChange={(e) => {
-                                                            setPortfolioType(e.target.value);
-                                                            setData('portfolio_link', '');
-                                                        }}
-                                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                                                    />
-                                                    <div className="ml-3 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                            </svg>
-                                                            <span className="font-medium text-gray-900">Upload Resume</span>
-                                                        </div>
-                                                        <p className="text-sm text-gray-500 mt-1">
-                                                            Upload your resume or CV (PDF, DOC, or DOCX - Max 5MB)
-                                                        </p>
-                                                    </div>
-                                                </label>
-
-                                                {/* Skip Option */}
-                                                <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                                                    style={{ borderColor: portfolioType === 'none' ? '#4F46E5' : '#D1D5DB' }}>
-                                                    <input
-                                                        type="radio"
-                                                        name="portfolio_type"
-                                                        value="none"
-                                                        checked={portfolioType === 'none'}
-                                                        onChange={(e) => {
-                                                            setPortfolioType(e.target.value);
-                                                            setData('portfolio_link', '');
-                                                            handleFileChange('resume_file', null);
-                                                        }}
-                                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                                                    />
-                                                    <div className="ml-3 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                                            </svg>
-                                                            <span className="font-medium text-gray-900">Skip for Now</span>
-                                                        </div>
-                                                        <p className="text-sm text-gray-500 mt-1">
-                                                            You can add your portfolio later from your profile
-                                                        </p>
-                                                    </div>
-                                                </label>
+                                        {/* Portfolio Link Section */}
+                                        <div className="bg-white p-4 border-2 rounded-lg border-gray-200 shadow-sm">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="bg-indigo-100 p-2 rounded-md">
+                                                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-gray-900">Portfolio Website</h4>
+                                                    <p className="text-xs text-gray-500">Share your Behance, Dribbble, GitHub, or personal site</p>
+                                                </div>
                                             </div>
+                                            <TextInput
+                                                id="portfolio_link"
+                                                type="url"
+                                                value={data.portfolio_link}
+                                                onChange={(e) => setData('portfolio_link', e.target.value)}
+                                                className="w-full"
+                                                placeholder="https://yourportfolio.com"
+                                            />
+                                            <InputError message={errors.portfolio_link} className="mt-2" />
                                         </div>
 
-                                        {/* Portfolio Link Input */}
-                                        {portfolioType === 'link' && (
-                                            <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-                                                <InputLabel htmlFor="portfolio_link" value="Portfolio Website URL *" />
-                                                <TextInput
-                                                    id="portfolio_link"
-                                                    type="url"
-                                                    value={data.portfolio_link}
-                                                    className="mt-2 block w-full"
-                                                    placeholder="https://yourportfolio.com"
-                                                    onChange={(e) => {
-                                                        const value = e.target.value;
-                                                        setData('portfolio_link', value);
-                                                        
-                                                        // Frontend URL validation
-                                                        const urlPattern = /^https?:\/\/.+\..+/;
-                                                        if (value && !urlPattern.test(value)) {
-                                                            e.target.setCustomValidity('Please enter a valid URL starting with http:// or https://');
-                                                        } else {
-                                                            e.target.setCustomValidity('');
-                                                        }
-                                                    }}
-                                                    required={portfolioType === 'link'}
-                                                />
-                                                <InputError message={errors.portfolio_link} className="mt-2" />
-                                                <p className="text-xs text-indigo-700 mt-2">
-                                                    Examples: GitHub profile, Behance portfolio, personal website, LinkedIn, etc.
-                                                </p>
+                                        {/* Resume Upload Section */}
+                                        <div className="bg-white p-4 border-2 rounded-lg border-gray-200 shadow-sm">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="bg-indigo-100 p-2 rounded-md">
+                                                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-gray-900">Resume / CV</h4>
+                                                    <p className="text-xs text-gray-500">Upload PDF, DOC, or DOCX (Max 5MB)</p>
+                                                </div>
                                             </div>
-                                        )}
-
-                                        {/* Resume File Upload */}
-                                        {portfolioType === 'resume' && (
-                                            <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-                                                <FileUploadInput
-                                                    name="resume_file"
-                                                    label="Upload Your Resume"
-                                                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                                    maxSize={5}
-                                                    required={portfolioType === 'resume'}
-                                                    preview="document"
-                                                    value={files.resume_file || null}
-                                                    previewUrl={filePreviews.resume_file || null}
-                                                    error={errors.resume_file}
-                                                    onChange={(file) => handleFileChange('resume_file', file)}
-                                                    helpText="Accepted formats: PDF, DOC, DOCX • Maximum size: 5MB"
-                                                    loading={processing && files.resume_file}
-                                                    uploadProgress={safeGetUploadProgress('resume_file')}
-                                                    uploadStatus={safeGetUploadStatus('resume_file')}
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* Skip Message */}
-                                        {portfolioType === 'none' && (
-                                            <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
-                                                <p className="text-gray-600">
-                                                    No problem! You can add your portfolio or resume later from your profile settings.
-                                                </p>
-                                            </div>
-                                        )}
+                                            <FileUploadInput
+                                                name="resume_file"
+                                                accept=".pdf,.doc,.docx"
+                                                maxSize={5}
+                                                required={false}
+                                                preview="icon"
+                                                value={files.resume_file || null}
+                                                error={errors.resume_file}
+                                                onChange={(file) => handleFileChange('resume_file', file)}
+                                                helpText="Professional resumes increase hiring chances by 60%."
+                                                loading={processing && files.resume_file}
+                                                uploadProgress={safeGetUploadProgress('resume_file')}
+                                                uploadStatus={safeGetUploadStatus('resume_file')}
+                                            />
+                                        </div>
                                     </div>
                                 )}
 
@@ -938,61 +793,68 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                             </p>
                                         </div>
 
-                                        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+                                        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 shadow-sm">
                                             <div>
-                                                <h5 className="font-semibold text-gray-900 mb-2">Basic Information</h5>
-                                                <div className="text-sm space-y-1 text-gray-700">
+                                                <h5 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                                                    <span className="w-1 h-4 bg-indigo-600 rounded-full"></span>
+                                                    Professional Info
+                                                </h5>
+                                                <div className="text-sm space-y-2 text-gray-700 bg-gray-50 p-3 rounded-md">
                                                     <p><strong>Title:</strong> {data.professional_title || 'Not set'}</p>
-                                                    <p><strong>Hourly Rate:</strong> ₱{data.hourly_rate || '0'}/hour</p>
-                                                    <p><strong>Bio:</strong> {data.bio ? `${data.bio.substring(0, 100)}...` : 'Not set'}</p>
+                                                    <p><strong>Expected Rate:</strong> {data.hourly_rate ? `₱${data.hourly_rate}/hour` : 'Negotiable'}</p>
                                                 </div>
                                             </div>
 
                                             <div className="border-t pt-4">
-                                                <h5 className="font-semibold text-gray-900 mb-2">Skills & Services</h5>
-                                                <div className="text-sm space-y-1 text-gray-700">
-                                                    <p><strong>Category:</strong> {data.broad_category || 'Not selected'}</p>
-                                                    <p><strong>Services:</strong> {data.specific_services.length} selected</p>
-                                                    <p><strong>Skills:</strong> {data.skills_with_experience.length} skills with experience levels</p>
-                                                    <div className="flex flex-wrap gap-1 mt-2">
-                                                        {data.skills_with_experience.slice(0, 10).map((skill, i) => (
-                                                            <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                                                {skill.skill} ({skill.experience_level})
-                                                            </span>
+                                                <h5 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                                                    <span className="w-1 h-4 bg-indigo-600 rounded-full"></span>
+                                                    Your Expertise
+                                                </h5>
+                                                <div className="text-sm">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {data.skills_with_experience.map((skill, i) => (
+                                                            <div key={i} className="flex items-center bg-blue-50 border border-blue-200 rounded-full pl-3 pr-1 py-1">
+                                                                <span className="text-blue-900 font-medium mr-2">{skill.skill}</span>
+                                                                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[10px] uppercase font-bold tracking-tighter">
+                                                                    {skill.experience_level}
+                                                                </span>
+                                                            </div>
                                                         ))}
-                                                        {data.skills_with_experience.length > 10 && (
-                                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                                                +{data.skills_with_experience.length - 10} more
-                                                            </span>
+                                                        {data.skills_with_experience.length === 0 && (
+                                                            <span className="text-gray-500 italic">No skills added</span>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="border-t pt-4">
-                                                <h5 className="font-semibold text-gray-900 mb-2">Portfolio</h5>
-                                                <div className="text-sm text-gray-700 space-y-1">
-                                                    {data.portfolio_link && (
-                                                        <p>
-                                                            <strong>Portfolio Link:</strong>{' '}
-                                                            <a href={data.portfolio_link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                                                <h5 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                                                    <span className="w-1 h-4 bg-indigo-600 rounded-full"></span>
+                                                    Portfolio & Resume
+                                                </h5>
+                                                <div className="text-sm text-gray-700 space-y-2 bg-gray-50 p-3 rounded-md">
+                                                    <p className="flex items-center gap-2">
+                                                        <strong>Link:</strong>
+                                                        {data.portfolio_link ? (
+                                                            <a href={data.portfolio_link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline truncate">
                                                                 {data.portfolio_link}
                                                             </a>
-                                                        </p>
-                                                    )}
-                                                    {data.resume_file && (
-                                                        <p>
-                                                            <strong>Resume:</strong> {data.resume_file.name}
-                                                        </p>
-                                                    )}
-                                                    {!data.portfolio_link && !data.resume_file && (
-                                                        <p className="text-gray-500">No portfolio added</p>
-                                                    )}
+                                                        ) : (
+                                                            <span className="text-gray-400">Not provided</span>
+                                                        )}
+                                                    </p>
+                                                    <p className="flex items-center gap-2">
+                                                        <strong>Resume:</strong>
+                                                        {files.resume_file ? (
+                                                            <span className="text-green-600 font-medium">{files.resume_file.name}</span>
+                                                        ) : (
+                                                            <span className="text-gray-400">Not uploaded</span>
+                                                        )}
+                                                    </p>
                                                 </div>
                                             </div>
-
-
                                         </div>
+
 
                                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                             <p className="text-sm text-yellow-800">
@@ -1026,14 +888,14 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                                                 Next →
                                             </button>
                                         ) : (
-                                            <PrimaryButton 
+                                            <PrimaryButton
                                                 disabled={processing}
                                                 className="w-full sm:w-auto min-h-[44px] text-base sm:text-sm"
                                             >
                                                 {processing ? 'Submitting...' : 'Submit Profile'}
                                             </PrimaryButton>
                                         )}
-                                        
+
                                         {currentStep === 0 && (
                                             <button
                                                 type="button"
@@ -1050,8 +912,8 @@ export default function GigWorkerOnboarding({ user, skillsTaxonomy }) {
                         </div>
                     </div>
                 </div>
-            </div>
-        </AuthenticatedLayout>
+            </div >
+        </AuthenticatedLayout >
     );
 }
 

@@ -36,7 +36,7 @@ const UserAvatar = ({ user, size = "w-10 h-10" }) => {
             />
         );
     }
-    
+
     // Fallback to legacy profile photo
     if (user.profile_photo) {
         return (
@@ -331,7 +331,7 @@ export default function MessagesIndex({ conversations = [], auth }) {
                     console.error('Error polling for new messages:', error);
                 }
             }
-        }, 5000);
+        }, 15000);
 
         return () => clearInterval(interval);
     }, [selectedConversation]);
@@ -406,9 +406,8 @@ export default function MessagesIndex({ conversations = [], auth }) {
                                                 <div
                                                     key={conversation.user.id}
                                                     onClick={() => loadConversation(conversation)}
-                                                    className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
-                                                        selectedConversation?.user.id === conversation.user.id ? 'bg-blue-50' : ''
-                                                    }`}
+                                                    className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${selectedConversation?.user.id === conversation.user.id ? 'bg-blue-50' : ''
+                                                        }`}
                                                 >
                                                     <div className="flex items-center space-x-3">
                                                         <div className="relative">
@@ -513,11 +512,10 @@ export default function MessagesIndex({ conversations = [], auth }) {
                                                                     <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
                                                                         {!isOwnMessage && <UserAvatar user={selectedConversation.user} size="w-8 h-8" />}
                                                                         <div className="flex flex-col">
-                                                                            <div className={`px-4 py-2 rounded-lg ${
-                                                                                isOwnMessage
+                                                                            <div className={`px-4 py-2 rounded-lg ${isOwnMessage
                                                                                     ? 'bg-blue-600 text-white rounded-br-none'
                                                                                     : 'bg-white text-gray-900 border border-gray-200 rounded-bl-none'
-                                                                            }`}>
+                                                                                }`}>
                                                                                 <p className="text-sm">{message.message}</p>
                                                                             </div>
                                                                             <p className={`text-xs text-gray-500 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}>

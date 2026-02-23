@@ -59,14 +59,14 @@ class FileUploadService
     ];
 
     /**
-     * Upload a file to R2 storage with validation and error handling
+     * Upload a file to Supabase storage with validation and error handling
      *
      * @param UploadedFile $file The file to upload
      * @param string $directory The directory path within the bucket
      * @param array $options Additional options (visibility, metadata, etc.)
      * @return array Result array with success status, URL, path, and error information
      */
-    public function uploadToR2(UploadedFile $file, string $directory, array $options = []): array
+    public function uploadToSupabase(UploadedFile $file, string $directory, array $options = []): array
     {
         $startTime = microtime(true);
         $userId = $options['user_id'] ?? null;
@@ -78,13 +78,11 @@ class FileUploadService
                 'event' => 'file_upload_started',
                 'user_id' => $userId,
                 'user_type' => $userType,
-                'storage_provider' => 'cloudinary',
+                'storage_provider' => 'supabase',
                 'file_metadata' => [
                     'original_name' => $file->getClientOriginalName(),
-                    'size_bytes' => $file->getSize(),
                     'size_mb' => round($file->getSize() / 1048576, 2),
                     'mime_type' => $file->getMimeType(),
-                    'extension' => $file->getClientOriginalExtension(),
                 ],
                 'storage' => [
                     'directory' => $directory,
@@ -92,46 +90,32 @@ class FileUploadService
                 'timestamp' => now()->toIso8601String(),
             ]);
 
-            // Upload to Cloudinary based on directory type
-            // Ensure userId is an integer (default to 0 if null)
-            $safeUserId = $userId ?? 0;
-            $result = null;
+            // Build intuitive path e.g profiles/123
+            $storagePath = trim($directory, '/');
             
-            if ($directory === 'profiles') {
-                $result = $this->cloudinaryService->uploadProfilePicture($file, $safeUserId);
-            } elseif ($directory === 'id_verification') {
+            if ($userId !== null) {
+                $storagePath .= '/' . $userId;
+            }
+            
+            // If it's ID verification, append side
+            if ($directory === 'id_verification') {
                 $side = $options['side'] ?? 'front';
-                $result = $this->cloudinaryService->uploadIdVerification($file, $safeUserId, $side);
-            } elseif (str_starts_with($directory, 'portfolios')) {
-                // Check if it's a document (resume) or portfolio item
-                $extension = strtolower($file->getClientOriginalExtension());
-                if (in_array($extension, ['pdf', 'doc', 'docx'])) {
-                    $result = $this->cloudinaryService->uploadResume($file, $safeUserId);
-                } else {
-                    $index = $options['index'] ?? time();
-                    $result = $this->cloudinaryService->uploadPortfolioItem($file, $safeUserId, $index);
-                }
-            } else {
-                // Generic upload for other types
-                $result = $this->cloudinaryService->uploadProfilePicture($file, $safeUserId);
+                $storagePath .= '/' . $side;
             }
 
-            $uploadDuration = round((microtime(true) - $startTime) * 1000, 2); // milliseconds
+            // Put file in the Supabase S3 bucket
+            $path = Storage::disk('supabase')->putFile($storagePath, $file);
+            $uploadDuration = round((microtime(true) - $startTime) * 1000, 2);
 
-            if (!$result) {
+            if (!$path) {
                 Log::error('FILE_UPLOAD_FAILED', [
                     'event' => 'file_upload_failed',
                     'user_id' => $userId,
                     'user_type' => $userType,
                     'error_code' => 'UPLOAD_FAILED',
-                    'error_message' => 'Cloudinary upload returned null',
-                    'file_metadata' => [
-                        'name' => $file->getClientOriginalName(),
-                        'size_mb' => round($file->getSize() / 1048576, 2),
-                        'mime_type' => $file->getMimeType(),
-                    ],
+                    'error_message' => 'Supabase storage putFile returned false/null',
                     'storage' => [
-                        'directory' => $directory,
+                        'directory' => $storagePath,
                     ],
                     'performance' => [
                         'duration_ms' => $uploadDuration,
@@ -148,28 +132,21 @@ class FileUploadService
                 ];
             }
 
-            $url = $result['secure_url'];
-            $path = $result['public_id'];
+            // Use relative proxy URL so img src works regardless of APP_URL/host
+            $url = '/storage/supabase/' . ltrim($path, '/');
 
-            // Log successful upload with performance metrics
             Log::info('FILE_UPLOAD_SUCCESS', [
                 'event' => 'file_upload_success',
                 'user_id' => $userId,
                 'user_type' => $userType,
-                'storage_provider' => 'cloudinary',
-                'file_metadata' => [
-                    'original_name' => $file->getClientOriginalName(),
-                    'size_mb' => round($file->getSize() / 1048576, 2),
-                    'mime_type' => $file->getMimeType(),
-                ],
+                'storage_provider' => 'supabase',
                 'storage' => [
                     'path' => $path,
                     'url' => $url,
-                    'directory' => $directory,
+                    'directory' => $storagePath,
                 ],
                 'performance' => [
                     'duration_ms' => $uploadDuration,
-                    'upload_speed_mbps' => round(($file->getSize() / 1048576) / ($uploadDuration / 1000), 2),
                 ],
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -185,7 +162,6 @@ class FileUploadService
         } catch (\Exception $e) {
             $uploadDuration = round((microtime(true) - $startTime) * 1000, 2);
             
-            // Structured error logging with full context
             Log::error('FILE_UPLOAD_EXCEPTION', [
                 'event' => 'file_upload_exception',
                 'user_id' => $userId,
@@ -193,11 +169,6 @@ class FileUploadService
                 'error_code' => 'STORAGE_ERROR',
                 'error_message' => $e->getMessage(),
                 'error_type' => get_class($e),
-                'file_metadata' => [
-                    'name' => $file->getClientOriginalName(),
-                    'size_mb' => round($file->getSize() / 1048576, 2),
-                    'mime_type' => $file->getMimeType(),
-                ],
                 'storage' => [
                     'directory' => $directory,
                 ],
@@ -264,7 +235,7 @@ class FileUploadService
                 usleep($retryDelay);
             }
 
-            $result = $this->uploadToR2($file, $directory, $options);
+            $result = $this->uploadToSupabase($file, $directory, $options);
 
             if ($result['success']) {
                 if ($attempt > 0) {
@@ -546,17 +517,17 @@ class FileUploadService
     }
 
     /**
-     * Delete a file from R2 storage
+     * Delete a file from Supabase storage
      *
      * @param string $path File path in storage
      * @return bool Success status
      */
-    public function deleteFromR2(string $path): bool
+    public function deleteFromSupabase(string $path): bool
     {
         try {
-            Log::info('Deleting file from R2', ['path' => $path]);
+            Log::info('Deleting file from Supabase', ['path' => $path]);
             
-            $result = Storage::disk('r2')->delete($path);
+            $result = Storage::disk('supabase')->delete($path);
             
             if ($result) {
                 Log::info('File deleted successfully', ['path' => $path]);
@@ -566,7 +537,7 @@ class FileUploadService
             
             return $result;
         } catch (\Exception $e) {
-            Log::error('Failed to delete file from R2', [
+            Log::error('Failed to delete file from Supabase', [
                 'path' => $path,
                 'error' => $e->getMessage(),
             ]);

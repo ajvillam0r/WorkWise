@@ -116,7 +116,7 @@ const ProfessionalTab = memo(function ProfessionalTab({
                             <div className="border-t border-gray-200 pt-6 mt-6">
                                 <h4 className="text-lg font-semibold text-gray-900 mb-4">Skills & Services</h4>
                                 <p className="text-sm text-gray-600 mb-6">These details are used for AI-powered job matching</p>
-                                
+
                                 <EditableField
                                     label="Category"
                                     id="broad_category"
@@ -144,7 +144,7 @@ const ProfessionalTab = memo(function ProfessionalTab({
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Skills with Experience Level
                                     </label>
-                                    
+
                                     {isEditing && (
                                         <div className="mb-4">
                                             <p className="text-xs text-gray-600 mb-2">
@@ -169,9 +169,9 @@ const ProfessionalTab = memo(function ProfessionalTab({
                                         itemType="object"
                                         objectFields={[
                                             { key: 'skill', label: 'Skill', placeholder: 'Skill name' },
-                                            { 
-                                                key: 'experience_level', 
-                                                label: 'Level', 
+                                            {
+                                                key: 'experience_level',
+                                                label: 'Level',
                                                 type: 'select',
                                                 options: [
                                                     { value: 'beginner', label: 'Beginner' },
@@ -200,16 +200,101 @@ const ProfessionalTab = memo(function ProfessionalTab({
                     ) : (
                         <>
                             {/* Employer fields will go here */}
-                            <EditableField
-                                label="Company Name"
-                                id="company_name"
-                                type="text"
-                                value={data.company_name}
-                                onChange={(e) => setData('company_name', e.target.value)}
-                                disabled={!isEditing}
-                                error={errors.company_name}
-                            />
-                            {/* Add more employer fields as needed */}
+                            {/* Employer fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <EditableField
+                                    label="Company Name"
+                                    id="company_name"
+                                    type="text"
+                                    value={data.company_name}
+                                    onChange={(e) => setData('company_name', e.target.value)}
+                                    disabled={!isEditing}
+                                    error={errors.company_name}
+                                    placeholder="Enter your company name"
+                                />
+
+                                <EditableField
+                                    label="Company Website"
+                                    id="company_website"
+                                    type="url"
+                                    value={data.company_website}
+                                    onChange={(e) => setData('company_website', e.target.value)}
+                                    disabled={!isEditing}
+                                    error={errors.company_website}
+                                    placeholder="https://example.com"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                <EditableField
+                                    label="Industry"
+                                    id="industry"
+                                    type="text"
+                                    value={data.industry}
+                                    onChange={(e) => setData('industry', e.target.value)}
+                                    disabled={!isEditing}
+                                    error={errors.industry}
+                                    placeholder="e.g., Technology, Healthcare"
+                                />
+
+                                <EditableField
+                                    label="Company Size"
+                                    id="company_size"
+                                    type="select"
+                                    value={data.company_size}
+                                    onChange={(e) => setData('company_size', e.target.value)}
+                                    disabled={!isEditing}
+                                    error={errors.company_size}
+                                    options={[
+                                        { value: 'individual', label: 'Individual / Freelancer' },
+                                        { value: '2-10', label: '2-10 Employees' },
+                                        { value: '11-50', label: '11-50 Employees' },
+                                        { value: '51-200', label: '51-200 Employees' },
+                                        { value: '200+', label: '200+ Employees' },
+                                    ]}
+                                />
+                            </div>
+
+                            <div className="mt-6">
+                                <EditableField
+                                    label="Company Description"
+                                    id="company_description"
+                                    type="textarea"
+                                    value={data.company_description}
+                                    onChange={(e) => setData('company_description', e.target.value)}
+                                    disabled={!isEditing}
+                                    error={errors.company_description}
+                                    placeholder="Tell us about your company..."
+                                    rows={4}
+                                />
+                            </div>
+
+                            <div className="mt-6 border-t border-gray-200 pt-6">
+                                <h4 className="text-lg font-semibold text-gray-900 mb-4">Project Requirements</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <EditableField
+                                        label="Work Type Needed"
+                                        id="work_type_needed"
+                                        type="text"
+                                        value={data.work_type_needed}
+                                        onChange={(e) => setData('work_type_needed', e.target.value)}
+                                        disabled={!isEditing}
+                                        error={errors.work_type_needed}
+                                        placeholder="e.g., Web Development, Content Writing"
+                                    />
+
+                                    <EditableField
+                                        label="Project Intent"
+                                        id="project_intent"
+                                        type="text"
+                                        value={data.project_intent}
+                                        onChange={(e) => setData('project_intent', e.target.value)}
+                                        disabled={!isEditing}
+                                        error={errors.project_intent}
+                                        placeholder="Briefly describe your main project goals"
+                                    />
+                                </div>
+                            </div>
                         </>
                     )}
                 </div>

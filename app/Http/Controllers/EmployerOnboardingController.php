@@ -114,7 +114,7 @@ class EmployerOnboardingController extends Controller
             'hiring_frequency.in' => 'Please select a valid hiring frequency option.',
         ]);
 
-        // Handle profile picture upload to R2 using FileUploadService
+        // Handle profile picture upload to Supabase using FileUploadService
         if ($request->hasFile('profile_picture')) {
             // Increase execution time for file upload
             set_time_limit(120);

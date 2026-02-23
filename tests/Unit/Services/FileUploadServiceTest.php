@@ -15,9 +15,12 @@ class FileUploadServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new FileUploadService();
         
-        // Fake the R2 storage disk
+        // Create the service (no Cloudinary needed anymore)
+        $this->service = $this->app->make(FileUploadService::class);
+        
+        // Fake the Supabase storage disk
+        Storage::fake('supabase');
         Storage::fake('r2');
         
         // Prevent actual logging during tests
@@ -37,7 +40,7 @@ class FileUploadServiceTest extends TestCase
         ];
 
         // Act
-        $result = $this->service->uploadToR2($file, $directory, $options);
+        $result = $this->service->uploadToSupabase($file, $directory, $options);
 
         // Assert
         $this->assertTrue($result['success']);
@@ -48,7 +51,7 @@ class FileUploadServiceTest extends TestCase
         
         // Verify file was stored
         $this->assertStringContainsString('profiles/123/', $result['path']);
-        Storage::disk('r2')->assertExists($result['path']);
+        Storage::disk('supabase')->assertExists($result['path']);
     }
 
     /** @test */
@@ -62,7 +65,7 @@ class FileUploadServiceTest extends TestCase
         $directory = 'profiles';
 
         // Act
-        $result = $this->service->uploadToR2($file, $directory);
+        $result = $this->service->uploadToSupabase($file, $directory);
 
         // Assert
         $this->assertFalse($result['success']);

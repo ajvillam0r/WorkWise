@@ -82,7 +82,7 @@ const BasicInfoTab = memo(function BasicInfoTab({
                             disabled={!isEditing}
                             required
                             error={errors.email}
-                            helpText={mustVerifyEmail && user.email_verified_at === null 
+                            helpText={mustVerifyEmail && user.email_verified_at === null
                                 ? "Your email address is unverified. Please check your inbox."
                                 : null
                             }
@@ -99,19 +99,7 @@ const BasicInfoTab = memo(function BasicInfoTab({
                         />
                     </div>
 
-                    {/* Location (Auto-Detected) */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Location (Auto-detected via IP)
-                        </label>
-                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <p className="text-gray-900 font-medium">{user.country || 'Not detected'}</p>
-                            {user.city && <p className="text-sm text-gray-600 mt-1">City: {user.city}</p>}
-                            <p className="text-xs text-gray-500 mt-2">
-                                📍 Location automatically verified during registration
-                            </p>
-                        </div>
-                    </div>
+
 
                     {/* Complete Address from KYC */}
                     <div className="border-t border-gray-200 pt-6 mt-6">
@@ -119,50 +107,50 @@ const BasicInfoTab = memo(function BasicInfoTab({
                             Verified Address (from ID Verification)
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <EditableField
-                                                            label="Street Address"
-                                                            id="street_address"
-                                                            type="text"
-                                                            value={data.street_address}
-                                                            onChange={(e) => setData('street_address', e.target.value)}
-                                                            disabled={!isEditing || !!user.address_verified_at}
-                                                            placeholder="123 Main Street"
-                                                            error={errors.street_address}
-                                                            debounceMs={300}
-                                                        />
-                                                        <EditableField
-                                                            label="City"
-                                                            id="city"
-                                                            type="text"
-                                                            value={data.city}
-                                                            onChange={(e) => setData('city', e.target.value)}
-                                                            disabled={!isEditing || !!user.address_verified_at}
-                                                            placeholder="Enter your city"
-                                                            error={errors.city}
-                                                            debounceMs={300}
-                                                        />
-                                                        <EditableField
-                                                            label="Postal Code"
-                                                            id="postal_code"
-                                                            type="text"
-                                                            value={data.postal_code}
-                                                            onChange={(e) => setData('postal_code', e.target.value)}
-                                                            disabled={!isEditing || !!user.address_verified_at}
-                                                            placeholder="6015"
-                                                            error={errors.postal_code}
-                                                            debounceMs={300}
-                                                        />
-                                                        <EditableField
-                                                            label="Country"
-                                                            id="country"
-                                                            type="text"
-                                                            value={data.country}
-                                                            onChange={(e) => setData('country', e.target.value)}
-                                                            disabled={!isEditing || !!user.address_verified_at}
-                                                            placeholder="Philippines"
-                                                            error={errors.country}
-                                                            debounceMs={300}
-                                                        />
+                            <EditableField
+                                label="Street Address"
+                                id="street_address"
+                                type="text"
+                                value={data.street_address}
+                                onChange={(e) => setData('street_address', e.target.value)}
+                                disabled={!isEditing || !!user.address_verified_at}
+                                placeholder="123 Main Street"
+                                error={errors.street_address}
+                                debounceMs={300}
+                            />
+                            <EditableField
+                                label="City"
+                                id="city"
+                                type="text"
+                                value={data.city}
+                                onChange={(e) => setData('city', e.target.value)}
+                                disabled={!isEditing || !!user.address_verified_at}
+                                placeholder="Enter your city"
+                                error={errors.city}
+                                debounceMs={300}
+                            />
+                            <EditableField
+                                label="Postal Code"
+                                id="postal_code"
+                                type="text"
+                                value={data.postal_code}
+                                onChange={(e) => setData('postal_code', e.target.value)}
+                                disabled={!isEditing || !!user.address_verified_at}
+                                placeholder="6015"
+                                error={errors.postal_code}
+                                debounceMs={300}
+                            />
+                            <EditableField
+                                label="Country"
+                                id="country"
+                                type="text"
+                                value={data.country}
+                                onChange={(e) => setData('country', e.target.value)}
+                                disabled={!isEditing || !!user.address_verified_at}
+                                placeholder="Philippines"
+                                error={errors.country}
+                                debounceMs={300}
+                            />
                         </div>
                         {user.address_verified_at && (
                             <p className="mt-2 text-xs text-green-600">
@@ -192,7 +180,7 @@ const BasicInfoTab = memo(function BasicInfoTab({
                     {/* Verification Status Section */}
                     <div className="border-t border-gray-200 pt-6 mt-6">
                         <h4 className="text-lg font-semibold text-gray-900 mb-4">Verification Status</h4>
-                        
+
                         {/* Success Message */}
                         {verificationSent && (
                             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -278,9 +266,9 @@ const BasicInfoTab = memo(function BasicInfoTab({
                                     <div>
                                         <p className="font-medium text-gray-900">Address Verification</p>
                                         <p className="text-sm text-gray-600">
-                                            {user.address_verified_at 
+                                            {user.address_verified_at
                                                 ? `Verified via ID submission on ${new Date(user.address_verified_at).toLocaleDateString()}`
-                                                : (user.country ? `Location auto-detected (${user.country}). Submit ID to verify address.` : 'Location not detected')}
+                                                : "Submit ID to verify address"}
                                         </p>
                                     </div>
                                 </div>
@@ -289,13 +277,9 @@ const BasicInfoTab = memo(function BasicInfoTab({
                                         <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
                                             ✓ Verified
                                         </span>
-                                    ) : user.country ? (
-                                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                            📍 Auto-detected
-                                        </span>
                                     ) : (
                                         <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-sm">
-                                            Not detected
+                                            Not verified
                                         </span>
                                     )}
                                 </div>

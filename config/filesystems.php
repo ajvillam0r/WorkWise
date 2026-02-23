@@ -47,6 +47,21 @@ return [
             'report' => false,
         ],
 
+        // Primary storage: Supabase S3-compatible storage
+        // NOTE: region must always be 'us-east-1' for Supabase S3 HMAC signing to work
+        'supabase' => [
+            'driver' => 's3',
+            'key' => env('SUPABASE_ACCESS_KEY_ID'),
+            'secret' => env('SUPABASE_SECRET_ACCESS_KEY'),
+            'region' => 'us-east-1',
+            'bucket' => env('SUPABASE_BUCKET', 'WorkWise'),
+            'endpoint' => env('SUPABASE_ENDPOINT'),
+            // Use local proxy to securely serve files from the private bucket
+            'url' => env('APP_URL', 'http://localhost:8000') . '/storage/supabase',
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -60,6 +75,7 @@ return [
             'report' => false,
         ],
 
+        // Legacy R2 disk (kept for reference, not actively used)
         'r2' => [
             'driver' => 's3',
             'key' => env('R2_ACCESS_KEY_ID'),
@@ -69,7 +85,7 @@ return [
             'url' => env('R2_PUBLIC_BASE_URL'),
             'endpoint' => env('R2_ENDPOINT'),
             'use_path_style_endpoint' => true,
-            'throw' => true,
+            'throw' => false,
         ],
 
     ],

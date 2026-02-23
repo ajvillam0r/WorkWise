@@ -9,6 +9,10 @@ export default function EnhancedUsersIndex({ users, filters }) {
     const [selectedUsers, setSelectedUsers] = useState([]);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
 
+    // Slide-over state
+    const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
+    const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
+
     const handleSearch = (e) => {
         e.preventDefault();
         router.get('/admin/users', {
@@ -21,7 +25,7 @@ export default function EnhancedUsersIndex({ users, filters }) {
     const handleFilterChange = (filterType, value) => {
         if (filterType === 'user_type') setUserTypeFilter(value);
         if (filterType === 'profile_status') setStatusFilter(value);
-        
+
         router.get('/admin/users', {
             search: searchTerm,
             user_type: filterType === 'user_type' ? value : userTypeFilter,
@@ -61,7 +65,7 @@ export default function EnhancedUsersIndex({ users, filters }) {
 
     const handleQuickAction = (userId, action) => {
         if (confirm(`Are you sure you want to ${action} this user?`)) {
-            const endpoint = action === 'activate' 
+            const endpoint = action === 'activate'
                 ? `/admin/users/${userId}/activate`
                 : `/admin/users/${userId}/suspend`;
             router.patch(endpoint);
@@ -106,6 +110,11 @@ export default function EnhancedUsersIndex({ users, filters }) {
         verified: users.data.filter(u => u.profile_status === 'approved').length,
         pending: users.data.filter(u => u.profile_status === 'pending').length,
         suspended: users.data.filter(u => u.profile_status === 'rejected').length
+    };
+
+    const openUserDetails = (user) => {
+        setSelectedUserForDetails(user);
+        setIsSlideOverOpen(true);
     };
 
     return (
@@ -397,20 +406,19 @@ export default function EnhancedUsersIndex({ users, filters }) {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <Link
-                                                    href={`/admin/users/${user.id}`}
+                                                <button
+                                                    onClick={() => openUserDetails(user)}
                                                     className="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded transition-colors"
                                                     title="View Details"
                                                 >
                                                     <span className="material-symbols-outlined text-lg">visibility</span>
-                                                </Link>
+                                                </button>
                                                 <button
                                                     onClick={() => handleQuickAction(user.id, user.profile_status === 'rejected' ? 'activate' : 'suspend')}
-                                                    className={`p-1 rounded transition-colors ${
-                                                        user.profile_status === 'rejected'
+                                                    className={`p-1 rounded transition-colors ${user.profile_status === 'rejected'
                                                             ? 'text-green-600 hover:text-green-900 hover:bg-green-50'
                                                             : 'text-red-600 hover:text-red-900 hover:bg-red-50'
-                                                    }`}
+                                                        }`}
                                                     title={user.profile_status === 'rejected' ? 'Activate' : 'Suspend'}
                                                 >
                                                     <span className="material-symbols-outlined text-lg">
@@ -463,6 +471,122 @@ export default function EnhancedUsersIndex({ users, filters }) {
                     </div>
                 )}
             </div>
+
+            {/* Slide-over for User Details */}
+            {isSlideOverOpen && selectedUserForDetails && (
+                <div className="fixed inset-0 overflow-hidden z-50">
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsSlideOverOpen(false)}></div>
+                        <section className="absolute inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
+                            <div className="w-screen max-w-2xl transform transition ease-in-out duration-500 max-h-screen overflow-y-auto">
+                                <div className="h-full flex flex-col pt-6 pb-20 bg-white shadow-xl overflow-y-scroll">
+                                    <div className="px-4 sm:px-6">
+                                        <div className="flex items-start justify-between">
+                                            <h2 className="text-xl font-medium text-gray-900" id="slide-over-title">
+                                                User Details
+                                            </h2>
+                                            <div className="ml-3 h-7 flex items-center">
+                                                <button
+                                                    onClick={() => setIsSlideOverOpen(false)}
+                                                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                                    <span className="sr-only">Close panel</span>
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 relative flex-1 px-4 sm:px-6">
+                                        {/* User Header */}
+                                        <div className="flex items-center pb-6 border-b border-gray-200">
+                                            <img
+                                                className="h-20 w-20 rounded-full"
+                                                src={selectedUserForDetails.profile_picture || selectedUserForDetails.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUserForDetails.first_name + ' ' + selectedUserForDetails.last_name)}&background=6366f1&color=fff`}
+                                                alt=""
+                                            />
+                                            <div className="ml-6 flex-1">
+                                                <h3 className="text-2xl font-bold text-gray-900">{selectedUserForDetails.first_name} {selectedUserForDetails.last_name}</h3>
+                                                <p className="text-sm text-gray-500">{selectedUserForDetails.email}</p>
+                                                <div className="mt-2 flex items-center gap-3">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUserTypeBadge(selectedUserForDetails.user_type)}`}>
+                                                        {getUserTypeLabel(selectedUserForDetails.user_type)}
+                                                    </span>
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(selectedUserForDetails.profile_status)}`}>
+                                                        {selectedUserForDetails.profile_status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <Link href={`/admin/users/${selectedUserForDetails.id}`} className="ml-4 px-4 py-2 border border-indigo-600 text-indigo-600 rounded flex items-center justify-center hover:bg-indigo-50 transition">
+                                                Full Profile <span className="material-symbols-outlined ml-1 text-sm">open_in_new</span>
+                                            </Link>
+                                        </div>
+
+                                        {/* Specific Attributes based on User Type */}
+                                        <div className="mt-8">
+                                            <h4 className="text-sm tracking-widest text-gray-400 uppercase font-semibold mb-4">Professional Information</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
+                                                {selectedUserForDetails.user_type === 'gig_worker' ? (
+                                                    <>
+                                                        <div className="sm:col-span-1">
+                                                            <dt className="text-sm font-medium text-gray-500">Professional Title</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.professional_title || 'N/A'}</dd>
+                                                        </div>
+                                                        <div className="sm:col-span-1">
+                                                            <dt className="text-sm font-medium text-gray-500">Hourly Rate</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.hourly_rate ? `₱${selectedUserForDetails.hourly_rate}/hr` : 'N/A'}</dd>
+                                                        </div>
+                                                        <div className="sm:col-span-2">
+                                                            <dt className="text-sm font-medium text-gray-500">Skills</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900 flex flex-wrap gap-2">
+                                                                {selectedUserForDetails.skills_with_experience && Array.isArray(selectedUserForDetails.skills_with_experience) && selectedUserForDetails.skills_with_experience.length > 0 ? (
+                                                                    selectedUserForDetails.skills_with_experience.map((skillObj, idx) => (
+                                                                        <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                                            {typeof skillObj === 'object' ? skillObj.skill : skillObj}
+                                                                        </span>
+                                                                    ))
+                                                                ) : 'No skills listed'}
+                                                            </dd>
+                                                        </div>
+                                                        <div className="sm:col-span-2">
+                                                            <dt className="text-sm font-medium text-gray-500">Bio</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.bio || 'No bio provided'}</dd>
+                                                        </div>
+                                                    </>
+                                                ) : selectedUserForDetails.user_type === 'employer' ? (
+                                                    <>
+                                                        <div className="sm:col-span-1">
+                                                            <dt className="text-sm font-medium text-gray-500">Company Name</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.company_name || 'N/A'}</dd>
+                                                        </div>
+                                                        <div className="sm:col-span-1">
+                                                            <dt className="text-sm font-medium text-gray-500">Industry</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.industry || 'N/A'}</dd>
+                                                        </div>
+                                                        <div className="sm:col-span-1">
+                                                            <dt className="text-sm font-medium text-gray-500">Company Size</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.company_size || 'N/A'}</dd>
+                                                        </div>
+                                                        <div className="sm:col-span-1">
+                                                            <dt className="text-sm font-medium text-gray-500">Work Type Needed</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.work_type_needed || 'N/A'}</dd>
+                                                        </div>
+                                                        <div className="sm:col-span-2">
+                                                            <dt className="text-sm font-medium text-gray-500">Company Description</dt>
+                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.company_description || 'No description provided'}</dd>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="sm:col-span-2 text-sm text-gray-500">No specific professional info for Admin type.</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

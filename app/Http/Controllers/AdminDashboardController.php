@@ -44,6 +44,8 @@ class AdminDashboardController extends Controller
                 'verified' => User::where('id_verification_status', 'verified')->count(),
                 'rejected' => User::where('id_verification_status', 'rejected')->count(),
                 'total_submissions' => User::whereNotNull('id_front_image')->count(),
+                'pending_gig_workers' => User::where('user_type', 'gig_worker')->where('id_verification_status', 'pending')->whereNotNull('id_front_image')->count(),
+                'pending_employers' => User::where('user_type', 'employer')->where('profile_status', 'pending')->count(),
             ],
             
             // Job Statistics

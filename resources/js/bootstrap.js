@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { refreshCsrfToken } from '@/utils/csrfRefresh';
+
 window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
@@ -11,6 +13,23 @@ if (token) {
 } else {
     console.error('CSRF token not found: https://laravel.com/docs/csrf#csrf-x-csrf-token');
 }
+
+// On 419 (Page Expired), refresh CSRF token and retry the request once
+window.axios.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 419 && !originalRequest._csrfRetried) {
+            originalRequest._csrfRetried = true;
+            const newToken = await refreshCsrfToken();
+            if (newToken) {
+                window.axios.defaults.headers.common['X-CSRF-TOKEN'] = newToken;
+                return window.axios(originalRequest);
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 // Enhanced route helper with current() functionality
 window.route = function(name, params = {}) {

@@ -173,23 +173,23 @@ class MessageController extends Controller
                 $file = $request->file('attachment');
                 $attachmentName = $file->getClientOriginalName();
                 
-                // Try R2 first, fallback to public storage
+                // Try Supabase first, fallback to public storage
                 try {
-                    $path = Storage::disk('r2')->putFile('messages/' . auth()->id(), $file);
+                    $path = Storage::disk('supabase')->putFile('messages/' . auth()->id(), $file);
                     
                     if ($path) {
-                        $attachmentPath = Storage::disk('r2')->url($path);
-                        Log::info('Message attachment uploaded to R2 successfully', [
+                        $attachmentPath = Storage::disk('supabase')->url($path);
+                        Log::info('Message attachment uploaded to Supabase successfully', [
                             'user_id' => auth()->id(),
                             'filename' => $attachmentName,
                             'path' => $path
                         ]);
                     } else {
-                        throw new \Exception('R2 storage returned false');
+                        throw new \Exception('Supabase storage returned false');
                     }
-                } catch (\Exception $r2Error) {
-                    // Fallback to public storage if R2 fails
-                    Log::warning('R2 upload failed, using public storage: ' . $r2Error->getMessage());
+                } catch (\Exception $supabaseError) {
+                    // Fallback to public storage if Supabase fails
+                    Log::warning('Supabase upload failed, using public storage: ' . $supabaseError->getMessage());
                     
                     $path = $file->store('messages/' . auth()->id(), 'public');
                     
@@ -201,7 +201,7 @@ class MessageController extends Controller
                             'path' => $path
                         ]);
                     } else {
-                        throw new \Exception('Both R2 and public storage failed');
+                        throw new \Exception('Both Supabase and public storage failed');
                     }
                 }
             } catch (\Exception $e) {
@@ -298,7 +298,7 @@ class MessageController extends Controller
      * - Verifies user authorization (sender or receiver only)
      * - Checks if attachment exists in message record
      * - Validates attachment file path
-     * - Verifies file exists in R2 storage
+     * - Verifies file exists in Supabase storage
      * - Provides user-friendly error messages for all failure scenarios
      */
     public function downloadAttachment(Message $message)
@@ -329,7 +329,7 @@ class MessageController extends Controller
         try {
             $path = $message->attachment_path;
             
-            // Check if it's a full URL (R2 or external)
+            // Check if it's a full URL (Supabase or external)
             if (str_contains($path, 'http')) {
                 Log::info('Redirecting to external attachment URL', [
                     'message_id' => $message->id,
@@ -337,7 +337,7 @@ class MessageController extends Controller
                     'filename' => $message->attachment_name
                 ]);
                 
-                // Redirect to the URL (R2 or other external storage)
+                // Redirect to the URL (Supabase or other external storage)
                 return redirect()->away($path);
             }
             

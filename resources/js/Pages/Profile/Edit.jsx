@@ -11,36 +11,42 @@ import { validateSection, validateField } from '@/utils/validation';
 import BasicInfoTab from './Tabs/BasicInfoTab';
 import ProfessionalTab from './Tabs/ProfessionalTab';
 import AvailabilityTab from './Tabs/AvailabilityTab';
+import PortfolioTab from './Tabs/PortfolioTab';
+import MatchingPreferencesTab from './Tabs/MatchingPreferencesTab';
 
-export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
+export default function Edit({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
     const user = auth.user;
     const [activeTab, setActiveTab] = useState('basic');
     const [skillInput, setSkillInput] = useState('');
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    
+
     // Toast notifications
     const toast = useToast();
-    
+
     // Section-level editing states
     const [editingSections, setEditingSections] = useState({
         basic: false,
         professional: false,
         availability: false,
+        portfolio: false,
+        matching: false,
         security: false,
     });
-    
+
     // Section-level loading states
     const [savingSections, setSavingSections] = useState({
         basic: false,
         professional: false,
         availability: false,
+        portfolio: false,
+        matching: false,
         security: false,
     });
-    
+
     // Client-side validation errors
     const [clientErrors, setClientErrors] = useState({});
-    
+
     // Real-time field validation on blur
     const validateFieldOnBlur = useCallback((fieldName, value) => {
         const error = validateField(fieldName, value);
@@ -54,20 +60,14 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
             }
         });
     }, []);
-    
+
     // Track original values for comparison
     const [originalData, setOriginalData] = useState(null);
 
     const isGigWorker = user.user_type === 'gig_worker';
     const isEmployer = user.user_type === 'employer';
 
-    // Helper function to get color based on completion percentage
-    const getCompletionColor = (percentage) => {
-        if (percentage === 100) return 'from-green-500 to-green-600';
-        if (percentage >= 75) return 'from-blue-500 to-blue-600';
-        if (percentage >= 50) return 'from-yellow-500 to-yellow-600';
-        return 'from-orange-500 to-orange-600';
-    };
+
 
     // Initialize form data
     const initialFormData = useMemo(() => ({
@@ -103,12 +103,16 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         preferred_communication: user.preferred_communication || [],
         availability_notes: user.availability_notes || '',
 
+        // Portfolio fields
+        portfolio_link: user.portfolio_link || '',
+        resume_file: null, // File input starts empty
+
         // Client/Employer fields
         company_name: user.company_name || '',
         work_type_needed: user.work_type_needed || '',
         budget_range: user.budget_range || '',
         project_intent: user.project_intent || '',
-        
+
         // Employer onboarding fields
         company_size: user.company_size || '',
         industry: user.industry || '',
@@ -120,6 +124,9 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         preferred_experience_level: user.preferred_experience_level || '',
         hiring_frequency: user.hiring_frequency || '',
         tax_id: user.tax_id || '',
+
+        // Profile Picture
+        profile_picture: null,
     }), [user]);
 
     const { data, setData, patch, post, processing, errors, recentlySuccessful, reset } = useForm(initialFormData);
@@ -135,26 +142,26 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         if (obj1 === obj2) return true;
         if (obj1 == null || obj2 == null) return false;
         if (typeof obj1 !== typeof obj2) return false;
-        
+
         if (Array.isArray(obj1) && Array.isArray(obj2)) {
             if (obj1.length !== obj2.length) return false;
             return obj1.every((val, idx) => deepEqual(val, obj2[idx]));
         }
-        
+
         if (typeof obj1 === 'object') {
             const keys1 = Object.keys(obj1);
             const keys2 = Object.keys(obj2);
             if (keys1.length !== keys2.length) return false;
             return keys1.every(key => deepEqual(obj1[key], obj2[key]));
         }
-        
+
         return obj1 === obj2;
     }, []);
 
     // Get only changed fields (dirty fields)
     const getChangedFields = useCallback(() => {
         if (!originalData) return {};
-        
+
         const changed = {};
         Object.keys(data).forEach(key => {
             if (!deepEqual(data[key], originalData[key])) {
@@ -175,6 +182,8 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         if (activeTab === 'basic') return editingSections.basic;
         if (activeTab === 'professional') return editingSections.professional;
         if (activeTab === 'availability') return editingSections.availability;
+        if (activeTab === 'portfolio') return editingSections.portfolio;
+        if (activeTab === 'matching') return editingSections.matching;
         if (activeTab === 'security') return editingSections.security;
         return false;
     }, [activeTab, editingSections]);
@@ -183,10 +192,14 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
     const getSectionFields = useCallback((section) => {
         const fieldMap = {
             basic: ['first_name', 'last_name', 'email', 'phone', 'bio', 'country', 'province', 'municipality', 'street_address', 'city', 'postal_code'],
-            professional: isGigWorker 
+            professional: isGigWorker
                 ? ['professional_title', 'hourly_rate', 'broad_category', 'specific_services', 'skills_with_experience']
-                : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description', 'primary_hiring_needs', 'typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'tax_id'],
-            availability: ['working_hours', 'timezone', 'preferred_communication', 'availability_notes'],
+                : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description'],
+            availability: ['working_hours', 'availability_notes'],
+            portfolio: ['portfolio_link', 'resume_file'],
+            matching: isGigWorker
+                ? ['timezone', 'availability_notes']
+                : ['typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'primary_hiring_needs'],
             security: [], // Password change handled separately
         };
         return fieldMap[section] || [];
@@ -224,7 +237,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
     // Save a specific section
     const saveSection = useCallback((section) => {
         const sectionChanges = getSectionChanges(section);
-        
+
         if (Object.keys(sectionChanges).length === 0) {
             setEditingSections(prev => ({ ...prev, [section]: false }));
             return;
@@ -233,7 +246,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         // Client-side validation
         const validationErrors = validateSection(data, section);
         setClientErrors(validationErrors);
-        
+
         if (Object.keys(validationErrors).length > 0) {
             toast.error('Please fix the errors before saving');
             return;
@@ -249,9 +262,33 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         // Set loading state
         setSavingSections(prev => ({ ...prev, [section]: true }));
 
-        patch(route('profile.update'), sectionChanges, {
+        // Create FormData for file uploads
+        const formData = new FormData();
+        formData.append('_method', 'PATCH');
+
+        Object.keys(sectionChanges).forEach(key => {
+            // Handle array fields specifically
+            if (Array.isArray(sectionChanges[key])) {
+                sectionChanges[key].forEach((item, index) => {
+                    if (typeof item === 'object' && item !== null) {
+                        // For array of objects (like skills_with_experience)
+                        Object.keys(item).forEach(subKey => {
+                            formData.append(`${key}[${index}][${subKey}]`, item[subKey]);
+                        });
+                    } else {
+                        // For simple arrays (like specific_services)
+                        formData.append(`${key}[]`, item);
+                    }
+                });
+            } else {
+                formData.append(key, sectionChanges[key]);
+            }
+        });
+
+        post(route('profile.update'), {
             preserveScroll: true,
             preserveState: true,
+            forceFormData: true,
             only: Object.keys(sectionChanges),
             onError: (serverErrors) => {
                 console.error('Profile update errors:', serverErrors);
@@ -273,11 +310,13 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                 });
                 setEditingSections(prev => ({ ...prev, [section]: false }));
                 setSavingSections(prev => ({ ...prev, [section]: false }));
-                
+
                 const sectionNames = {
                     basic: 'Basic Information',
                     professional: 'Professional Details',
                     availability: 'Availability',
+                    portfolio: 'Portfolio & Resume',
+                    matching: 'Matching Preferences',
                     security: 'Security Settings',
                 };
                 toast.success(`${sectionNames[section]} saved successfully!`);
@@ -290,7 +329,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         e?.preventDefault();
 
         const changedFields = getChangedFields();
-        
+
         if (Object.keys(changedFields).length === 0) {
             toast.info('No changes to save');
             return;
@@ -302,12 +341,12 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
             // Determine which section this field belongs to
             const sectionMap = {
                 basic: ['first_name', 'last_name', 'email', 'phone', 'bio', 'country', 'province', 'municipality', 'street_address', 'city', 'postal_code'],
-                professional: isGigWorker 
+                professional: isGigWorker
                     ? ['professional_title', 'hourly_rate', 'broad_category', 'specific_services', 'skills_with_experience']
                     : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description', 'primary_hiring_needs', 'typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'tax_id'],
                 availability: ['working_hours', 'timezone', 'preferred_communication', 'availability_notes'],
             };
-            
+
             let section = null;
             for (const [sec, fields] of Object.entries(sectionMap)) {
                 if (fields.includes(key)) {
@@ -315,7 +354,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                     break;
                 }
             }
-            
+
             if (section) {
                 const sectionErrors = validateSection(data, section);
                 Object.assign(allErrors, sectionErrors);
@@ -323,7 +362,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         });
 
         setClientErrors(allErrors);
-        
+
         if (Object.keys(allErrors).length > 0) {
             toast.error('Please fix the errors before saving');
             return;
@@ -355,6 +394,29 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
         });
     }, [getChangedFields, data, isGigWorker, patch, toast]);
 
+    // Handle profile picture upload
+    const handleProfilePictureChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('_method', 'PATCH');
+        formData.append('profile_picture', file);
+
+        post(route('profile.update'), {
+            data: formData,
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Profile picture updated successfully!');
+                // Update original data to reflect new image (though it's handled by page props reload)
+            },
+            onError: () => {
+                toast.error('Failed to update profile picture.');
+            }
+        });
+    };
+
     const getUserAvatar = () => {
         // Check for Cloudinary profile picture first
         if (user.profile_picture) {
@@ -366,7 +428,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                 />
             );
         }
-        
+
         // Fallback to profile photo (Cloudinary URL)
         if (user.profile_photo) {
             return (
@@ -399,6 +461,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
             { id: 'availability', name: 'Availability', icon: '📅' },
             { id: 'portfolio', name: 'Portfolio', icon: '🎨' },
         ] : []),
+        { id: 'matching', name: 'Job Matching', icon: '🎯' },
         { id: 'security', name: 'Security', icon: '🔒' },
     ];
 
@@ -449,7 +512,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
             <div className="relative py-12 bg-white overflow-hidden">
                 {/* Animated Background Shapes */}
                 <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -460,59 +523,42 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                     {/* Profile Photo - Display Only */}
                                     <div className="text-center mb-6">
                                         <div className="flex justify-center mb-4">
-                                            {user.profile_picture || user.profile_photo ? (
-                                                <img 
-                                                    src={user.profile_picture || user.profile_photo}
-                                                    alt={`${user.first_name} ${user.last_name}`}
-                                                    className="h-24 w-24 rounded-full object-cover ring-2 ring-gray-200"
-                                                />
-                                            ) : (
-                                                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold ring-2 ring-gray-200">
-                                                    <span className="text-lg">
-                                                        {user.first_name?.[0] || ''}{user.last_name?.[0] || ''}
-                                                    </span>
-                                                </div>
-                                            )}
+                                            <div className="relative h-24 w-24">
+                                                {user.profile_picture || user.profile_photo ? (
+                                                    <img
+                                                        src={user.profile_picture || user.profile_photo}
+                                                        alt={`${data.first_name} ${data.last_name}`}
+                                                        className="h-24 w-24 rounded-full object-cover ring-2 ring-gray-200"
+                                                    />
+                                                ) : (
+                                                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold ring-2 ring-gray-200">
+                                                        <span className="text-lg">
+                                                            {data.first_name?.[0] || ''}{data.last_name?.[0] || ''}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+
+                                            </div>
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-900 mb-2">
-                                            {user.first_name} {user.last_name}
+                                            {data.first_name} {data.last_name}
                                         </h3>
                                         <VerificationBadges user={user} size="sm" className="justify-center mt-2 mb-3" />
                                         <p className="text-sm text-gray-600 mb-3">
                                             {isGigWorker ? user.professional_title || 'Gig Worker' : user.company_name || 'Employer'}
                                         </p>
                                         <div className="mt-4">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-xl text-sm font-semibold shadow-md ${
-                                                user.user_type === 'employer'
-                                                    ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800'
-                                                    : 'bg-gradient-to-r from-green-100 to-green-200 text-green-800'
-                                            }`}>
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-xl text-sm font-semibold shadow-md ${user.user_type === 'employer'
+                                                ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800'
+                                                : 'bg-gradient-to-r from-green-100 to-green-200 text-green-800'
+                                                }`}>
                                                 {user.user_type === 'employer' ? '🏢 Employer' : '💼 Gig Worker'}
                                             </span>
                                         </div>
                                     </div>
 
-                                    {/* Profile Completion */}
-                                    {isGigWorker && profileCompletion && (
-                                        <div className="mb-8 bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                            <div className="flex justify-between text-sm font-medium text-blue-700 mb-3">
-                                                <span>Profile Completion</span>
-                                                <span>{profileCompletion.percentage}%</span>
-                                            </div>
-                                            <div className="w-full bg-blue-200 rounded-full h-3 shadow-inner">
-                                                <div 
-                                                    className={`h-3 rounded-full shadow-lg transition-all duration-500 bg-gradient-to-r ${getCompletionColor(profileCompletion.percentage)}`}
-                                                    style={{ width: `${profileCompletion.percentage}%` }}
-                                                ></div>
-                                            </div>
-                                            <p className="text-xs text-blue-600 mt-3 font-medium">
-                                                {profileCompletion.is_complete 
-                                                    ? '🎉 Your profile is complete!' 
-                                                    : `Complete ${profileCompletion.missing_count} more ${profileCompletion.missing_count === 1 ? 'field' : 'fields'} to attract more employers`
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
+
 
                                     {/* ID Verification Quick Access */}
                                     {/* Show button only when status is null or rejected */}
@@ -578,11 +624,10 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                             <button
                                                 key={tab.id}
                                                 onClick={() => setActiveTab(tab.id)}
-                                                className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 ${
-                                                    activeTab === tab.id
-                                                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
-                                                        : 'text-gray-600 hover:text-gray-900 hover:bg-blue-50 hover:shadow-md'
-                                                }`}
+                                                className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === tab.id
+                                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+                                                    : 'text-gray-600 hover:text-gray-900 hover:bg-blue-50 hover:shadow-md'
+                                                    }`}
                                             >
                                                 <span className="mr-3 text-lg">{tab.icon}</span>
                                                 {tab.name}
@@ -613,7 +658,71 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                         onSave={() => saveSection('basic')}
                                     />
                                 )}
-                                
+
+                                {/* Professional Information Tab */}
+                                {activeTab === 'professional' && (
+                                    <ProfessionalTab
+                                        data={data}
+                                        setData={setData}
+                                        errors={{ ...errors, ...clientErrors }}
+                                        isGigWorker={isGigWorker}
+                                        isEditing={editingSections.professional}
+                                        processing={savingSections.professional}
+                                        hasChanges={Object.keys(getSectionChanges('professional')).length > 0}
+                                        onEdit={() => startEditingSection('professional')}
+                                        onCancel={() => cancelEditingSection('professional')}
+                                        onSave={() => saveSection('professional')}
+                                        user={user}
+                                    />
+                                )}
+
+                                {/* Availability Tab (Gig Worker Only) */}
+                                {activeTab === 'availability' && isGigWorker && (
+                                    <AvailabilityTab
+                                        data={data}
+                                        setData={setData}
+                                        errors={{ ...errors, ...clientErrors }}
+                                        isEditing={editingSections.availability}
+                                        processing={savingSections.availability}
+                                        hasChanges={Object.keys(getSectionChanges('availability')).length > 0}
+                                        onEdit={() => startEditingSection('availability')}
+                                        onCancel={() => cancelEditingSection('availability')}
+                                        onSave={() => saveSection('availability')}
+                                    />
+                                )}
+
+                                {/* Portfolio Tab (Gig Worker Only) */}
+                                {activeTab === 'portfolio' && isGigWorker && (
+                                    <PortfolioTab
+                                        data={data}
+                                        setData={setData}
+                                        errors={{ ...errors, ...clientErrors }}
+                                        isEditing={editingSections.portfolio}
+                                        processing={savingSections.portfolio}
+                                        hasChanges={Object.keys(getSectionChanges('portfolio')).length > 0}
+                                        onEdit={() => startEditingSection('portfolio')}
+                                        onCancel={() => cancelEditingSection('portfolio')}
+                                        onSave={() => saveSection('portfolio')}
+                                        user={user}
+                                    />
+                                )}
+
+                                {/* Matching Preferences Tab */}
+                                {activeTab === 'matching' && (
+                                    <MatchingPreferencesTab
+                                        data={data}
+                                        setData={setData}
+                                        errors={{ ...errors, ...clientErrors }}
+                                        isGigWorker={isGigWorker}
+                                        isEditing={editingSections.matching}
+                                        processing={savingSections.matching}
+                                        hasChanges={Object.keys(getSectionChanges('matching')).length > 0}
+                                        onEdit={() => startEditingSection('matching')}
+                                        onCancel={() => cancelEditingSection('matching')}
+                                        onSave={() => saveSection('matching')}
+                                    />
+                                )}
+
                                 {/* Legacy Basic Tab Code - Remove after migration */}
                                 {false && activeTab === 'basic' && (
                                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
@@ -921,7 +1030,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 <div>
                                                                     <p className="font-medium text-gray-900">Address Verification</p>
                                                                     <p className="text-sm text-gray-600">
-                                                                        {user.address_verified_at 
+                                                                        {user.address_verified_at
                                                                             ? `Verified via ID submission on ${new Date(user.address_verified_at).toLocaleDateString()}`
                                                                             : (user.country ? `Location auto-detected (${user.country}). Submit ID to verify address.` : 'Location not detected')}
                                                                     </p>
@@ -957,23 +1066,6 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                     </div>
                                 )}
 
-                                {/* Professional/Business Tab */}
-                                {activeTab === 'professional' && (
-                                    <ProfessionalTab
-                                        data={data}
-                                        setData={setData}
-                                        errors={{ ...errors, ...clientErrors }}
-                                        isGigWorker={isGigWorker}
-                                        isEditing={editingSections.professional}
-                                        processing={savingSections.professional}
-                                        hasChanges={Object.keys(getSectionChanges('professional')).length > 0}
-                                        onEdit={() => startEditingSection('professional')}
-                                        onCancel={() => cancelEditingSection('professional')}
-                                        onSave={() => saveSection('professional')}
-                                        user={user}
-                                    />
-                                )}
-                                
                                 {/* Legacy Professional Tab - Remove after full migration */}
                                 {false && activeTab === 'professional' && (
                                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -1047,7 +1139,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                         <div className="border-t border-gray-200 pt-6 mt-6">
                                                             <h4 className="text-lg font-semibold text-gray-900 mb-4">Skills & Services</h4>
                                                             <p className="text-sm text-gray-600 mb-6">These details are used for AI-powered job matching</p>
-                                                            
+
                                                             {/* Broad Category */}
                                                             <div className="mb-6">
                                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1087,7 +1179,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() => {
-                                                                                        setData('specific_services', 
+                                                                                        setData('specific_services',
                                                                                             data.specific_services.filter((_, i) => i !== index)
                                                                                         );
                                                                                     }}
@@ -1148,7 +1240,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() => {
-                                                                                        setData('skills_with_experience', 
+                                                                                        setData('skills_with_experience',
                                                                                             data.skills_with_experience.filter((_, i) => i !== index)
                                                                                         );
                                                                                     }}
@@ -1163,7 +1255,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => setData('skills_with_experience', [
-                                                                                ...data.skills_with_experience, 
+                                                                                ...data.skills_with_experience,
                                                                                 { skill: '', experience_level: 'intermediate' }
                                                                             ])}
                                                                             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
@@ -1263,7 +1355,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                         {/* === EMPLOYER ONBOARDING FIELDS === */}
                                                         <div className="border-t border-gray-200 pt-6 mt-6">
                                                             <h4 className="text-lg font-semibold text-gray-900 mb-4">Company Details</h4>
-                                                            
+
                                                             {/* Company Size */}
                                                             <div className="mb-6">
                                                                 <label htmlFor="company_size" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1341,7 +1433,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                         {/* === HIRING PREFERENCES === */}
                                                         <div className="border-t border-gray-200 pt-6 mt-6">
                                                             <h4 className="text-lg font-semibold text-gray-900 mb-4">Hiring Preferences</h4>
-                                                            
+
                                                             {/* Typical Project Budget */}
                                                             <div className="mb-6">
                                                                 <label htmlFor="typical_project_budget" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1466,7 +1558,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                         onSave={() => saveSection('availability')}
                                     />
                                 )}
-                                
+
                                 {/* Legacy Availability Tab - Remove after full migration */}
                                 {false && activeTab === 'availability' && isGigWorker && (
                                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
@@ -1561,7 +1653,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                     if (e.target.checked) {
                                                                         setData('preferred_communication', [...data.preferred_communication, method]);
                                                                     } else {
-                                                                        setData('preferred_communication', 
+                                                                        setData('preferred_communication',
                                                                             data.preferred_communication.filter(m => m !== method)
                                                                         );
                                                                     }
@@ -1596,7 +1688,7 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                     <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
                                         <h3 className="text-2xl font-bold text-gray-900 mb-6">Portfolio</h3>
                                         <p className="text-sm text-gray-600 mb-4">
-                                            Your portfolio items are managed separately during onboarding. 
+                                            Your portfolio items are managed separately during onboarding.
                                         </p>
                                         {user.portfolio_items && user.portfolio_items.length > 0 ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1611,13 +1703,13 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                             )}
                                                         </div>
                                                         <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-                                                        
+
                                                         {/* Show document download for resume type */}
                                                         {item.project_type === 'resume' && item.document_file && (
-                                                            <a 
-                                                                href={item.document_file} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
+                                                            <a
+                                                                href={item.document_file}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
                                                                 download
                                                                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                                                             >
@@ -1627,21 +1719,21 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 Download Resume
                                                             </a>
                                                         )}
-                                                        
+
                                                         {/* Show project URL for other types */}
                                                         {item.project_type !== 'resume' && item.project_url && (
                                                             <a href={item.project_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
                                                                 View Project →
                                                             </a>
                                                         )}
-                                                        
+
                                                         {/* Show images for visual projects */}
                                                         {item.project_type !== 'resume' && item.images && item.images.length > 0 && (
                                                             <div className="mt-3 flex flex-wrap gap-2">
                                                                 {item.images.slice(0, 3).map((img, imgIdx) => (
-                                                                    <img 
-                                                                        key={imgIdx} 
-                                                                        src={img} 
+                                                                    <img
+                                                                        key={imgIdx}
+                                                                        src={img}
                                                                         alt={`${item.title} - Image ${imgIdx + 1}`}
                                                                         className="h-16 w-16 object-cover rounded border"
                                                                     />
@@ -1762,13 +1854,12 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                             </p>
                                                         </div>
                                                         <div>
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                user.profile_status === 'approved'
-                                                                    ? 'bg-green-100 text-green-800'
-                                                                    : user.profile_status === 'pending'
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.profile_status === 'approved'
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : user.profile_status === 'pending'
                                                                     ? 'bg-yellow-100 text-yellow-800'
                                                                     : 'bg-red-100 text-red-800'
-                                                            }`}>
+                                                                }`}>
                                                                 {user.profile_status === 'approved' ? '✓' : user.profile_status === 'pending' ? '⏳' : '❌'} {user.profile_status.charAt(0).toUpperCase() + user.profile_status.slice(1)}
                                                             </span>
                                                         </div>
@@ -1783,13 +1874,12 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                                 </p>
                                                             </div>
                                                             <div>
-                                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                    user.id_verification_status === 'verified'
-                                                                        ? 'bg-green-100 text-green-800'
-                                                                        : user.id_verification_status === 'pending'
+                                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.id_verification_status === 'verified'
+                                                                    ? 'bg-green-100 text-green-800'
+                                                                    : user.id_verification_status === 'pending'
                                                                         ? 'bg-yellow-100 text-yellow-800'
                                                                         : 'bg-red-100 text-red-800'
-                                                                }`}>
+                                                                    }`}>
                                                                     {user.id_verification_status === 'verified' ? '✓' : user.id_verification_status === 'pending' ? '⏳' : '❌'} {user.id_verification_status.charAt(0).toUpperCase() + user.id_verification_status.slice(1)}
                                                                 </span>
                                                             </div>
@@ -1804,11 +1894,10 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
                                                             </p>
                                                         </div>
                                                         <div>
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                user.user_type === 'employer'
-                                                                    ? 'bg-blue-100 text-blue-800'
-                                                                    : 'bg-green-100 text-green-800'
-                                                            }`}>
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.user_type === 'employer'
+                                                                ? 'bg-blue-100 text-blue-800'
+                                                                : 'bg-green-100 text-green-800'
+                                                                }`}>
                                                                 {user.user_type === 'employer' ? '🏢 Employer' : '💼 Gig Worker'}
                                                             </span>
                                                         </div>
@@ -1935,8 +2024,8 @@ export default function Edit({ mustVerifyEmail, status, profileCompletion }) {
             `}</style>
 
             {/* Success Modal (kept for backward compatibility) */}
-            <SuccessModal 
-                isOpen={showSuccessModal} 
+            <SuccessModal
+                isOpen={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
                 message="Profile picture updated successfully!"
             />

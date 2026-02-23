@@ -5,6 +5,9 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
+// Debug: Log component initialization
+console.log('[AuthenticatedLayout] Component loading - checking for TDZ issues with messagesUnreadCount');
+
 // Simplified notification icons
 const NotificationIcon = ({ type }) => {
     const iconMap = {
@@ -21,13 +24,13 @@ const NotificationIcon = ({ type }) => {
     };
 
     const iconClass = iconMap[type] || iconMap['default'];
-    
+
     // Use green color for approved, red for rejected
-    const colorClass = type === 'id_verification_approved' 
-        ? 'text-green-600' 
-        : type === 'id_verification_rejected' 
-        ? 'text-red-600' 
-        : 'text-blue-600';
+    const colorClass = type === 'id_verification_approved'
+        ? 'text-green-600'
+        : type === 'id_verification_rejected'
+            ? 'text-red-600'
+            : 'text-blue-600';
 
     return (
         <i className={`fas fa-${iconClass} ${colorClass} text-sm`}></i>
@@ -44,7 +47,7 @@ export default function AuthenticatedLayout({ header, children }) {
         : (isEmployer
             ? '/employer/dashboard'
             : (user.user_type === 'admin' ? '/admin' : '/dashboard'));
-    const isDashboardActive = ['/dashboard','/gig-worker/dashboard','/employer/dashboard','/admin']
+    const isDashboardActive = ['/dashboard', '/gig-worker/dashboard', '/employer/dashboard', '/admin']
         .some(prefix => window.location.pathname.startsWith(prefix));
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
@@ -58,19 +61,41 @@ export default function AuthenticatedLayout({ header, children }) {
     const [loading, setLoading] = useState(false);
     const [optimisticUpdates, setOptimisticUpdates] = useState(new Set()); // Track optimistic updates
 
+    // Debug: Check state initialization order
+    try {
+        console.log('[AuthenticatedLayout] Before messagesUnreadCount init');
+    } catch (e) {
+        console.error('[AuthenticatedLayout] Error before state init:', e);
+    }
+
+    // Messages modal removed; use MiniChatModal for all messaging (declare before refs/useEffects that use it)
+    const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+
+    // Debug: Verify state was initialized
+    console.log('[AuthenticatedLayout] messagesUnreadCount initialized:', messagesUnreadCount);
+    const [conversations, setConversations] = useState([]);
+    const [messagesLoading, setMessagesLoading] = useState(false);
 
     // Real-time updates
     const [lastNotificationCheck, setLastNotificationCheck] = useState(Date.now());
     const [lastMessageCheck, setLastMessageCheck] = useState(Date.now());
 
-    // Messages modal removed; use MiniChatModal for all messaging
-    const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
-    const [conversations, setConversations] = useState([]);
-    const [messagesLoading, setMessagesLoading] = useState(false);
+    // Refs for state values used in setIntervals to avoid stale closures and infinite re-renders
+    const unreadCountRef = useRef(0);
+    const messagesUnreadCountRef = useRef(0);
+
+    // Sync state to refs
+    useEffect(() => {
+        unreadCountRef.current = unreadCount;
+    }, [unreadCount]);
+
+    useEffect(() => {
+        messagesUnreadCountRef.current = messagesUnreadCount;
+    }, [messagesUnreadCount]);
 
     // Mini chat ref for controlling it from notifications
     const miniChatRef = useRef(null);
-    
+
     // MiniChatModal state
     const [showMiniChat, setShowMiniChat] = useState(false);
     const [miniChatTargetUserId, setMiniChatTargetUserId] = useState(null);
@@ -173,7 +198,7 @@ export default function AuthenticatedLayout({ header, children }) {
         if (!notification.is_read) {
             markAsRead(notification.id);
         }
-        
+
         // Handle ID verification notifications
         if (notification.type === 'id_verification_approved') {
             // Redirect to profile page for approved verifications
@@ -216,7 +241,7 @@ export default function AuthenticatedLayout({ header, children }) {
             console.log('Using action URL:', notification.action_url);
             router.visit(notification.action_url);
         }
-        
+
         setShowingNotificationsDropdown(false);
     };
 
@@ -247,7 +272,7 @@ export default function AuthenticatedLayout({ header, children }) {
             // Open the MiniChatModal with the target user
             setMiniChatTargetUserId(targetUserId);
             setShowMiniChat(true);
-            
+
             // Use the ref to open conversation directly
             if (miniChatRef.current) {
                 miniChatRef.current.openConversation(targetUserId);
@@ -402,7 +427,7 @@ export default function AuthenticatedLayout({ header, children }) {
             const response = await axios.get('/notifications/api');
             const newUnreadCount = response.data.unread_count || 0;
 
-            if (newUnreadCount > unreadCount) {
+            if (newUnreadCount > unreadCountRef.current) {
                 // New notifications arrived, refresh the list
                 setNotifications(response.data.notifications || []);
                 setUnreadCount(newUnreadCount);
@@ -433,13 +458,13 @@ export default function AuthenticatedLayout({ header, children }) {
             const response = await axios.get('/messages/unread/count');
             const newMessageCount = response.data.count || 0;
 
-            if (newMessageCount !== messagesUnreadCount) {
+            if (newMessageCount !== messagesUnreadCountRef.current) {
                 // Update message count
                 setMessagesUnreadCount(newMessageCount);
                 setLastMessageCheck(Date.now());
 
                 // Show browser notification if supported and count increased
-                if (newMessageCount > messagesUnreadCount && 'Notification' in window && Notification.permission === 'granted') {
+                if (newMessageCount > messagesUnreadCountRef.current && 'Notification' in window && Notification.permission === 'granted') {
                     new Notification('New Message', {
                         body: `You have ${newMessageCount} unread messages`,
                         icon: '/favicon.ico'
@@ -456,14 +481,14 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // Set up polling intervals
     useEffect(() => {
-        const notificationInterval = setInterval(checkForNewNotifications, 10000); // Check every 10 seconds
-        const messageInterval = setInterval(checkForNewMessages, 5000); // Check every 5 seconds
+        const notificationInterval = setInterval(checkForNewNotifications, 15000); // Check every 15 seconds
+        const messageInterval = setInterval(checkForNewMessages, 15000); // Check every 15 seconds
 
         return () => {
             clearInterval(notificationInterval);
             clearInterval(messageInterval);
         };
-    }, [unreadCount, messagesUnreadCount]);
+    }, []);
 
     // Request notification permission on mount
     useEffect(() => {
@@ -490,11 +515,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {/* Dashboard */}
                                 <Link
                                     href={dashboardHref}
-                                    className={`text-sm font-medium transition-colors ${
-                                        isDashboardActive
-                                            ? 'text-blue-600'
-                                            : 'text-gray-600 hover:text-gray-900'
-                                    }`}
+                                    className={`text-sm font-medium transition-colors ${isDashboardActive
+                                        ? 'text-blue-600'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                        }`}
                                 >
                                     Dashboard
                                 </Link>
@@ -502,11 +526,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {/* Jobs/Work - Role-specific labels */}
                                 <Link
                                     href="/jobs"
-                                    className={`text-sm font-medium transition-colors ${
-                                        window.route.current('jobs.*')
-                                            ? 'text-blue-600'
-                                            : 'text-gray-600 hover:text-gray-900'
-                                    }`}
+                                    className={`text-sm font-medium transition-colors ${window.route.current('jobs.*')
+                                        ? 'text-blue-600'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                        }`}
                                 >
                                     {isGigWorker ? 'Browse Jobs' : 'My Jobs'}
                                 </Link>
@@ -516,21 +539,19 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <>
                                         <Link
                                             href="/bids"
-                                            className={`text-sm font-medium transition-colors ${
-                                                window.route.current('bids.*')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('bids.*')
+                                                ? 'text-blue-600'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                                }`}
                                         >
                                             My Proposals
                                         </Link>
                                         <Link
                                             href="/ai/recommendations"
-                                            className={`text-sm font-medium transition-colors ${
-                                                window.route.current('ai.*')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.*')
+                                                ? 'text-blue-600'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                                }`}
                                         >
                                             AI Recommendations
                                         </Link>
@@ -542,11 +563,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <>
                                         <Link
                                             href="/jobs/create"
-                                            className={`text-sm font-medium rounded-md transition-colors ${
-                                                window.route.current('jobs.create')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
+                                            className={`text-sm font-medium rounded-md transition-colors ${window.route.current('jobs.create')
+                                                ? 'text-blue-600'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                                }`}
                                         >
                                             Post a Job
                                         </Link>
@@ -576,11 +596,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                 {/* Common navigation */}
                                 <Link
                                     href="/projects"
-                                    className={`text-sm font-medium transition-colors ${
-                                        window.route.current('projects.*')
-                                            ? 'text-blue-600'
-                                            : 'text-gray-600 hover:text-gray-900'
-                                    }`}
+                                    className={`text-sm font-medium transition-colors ${window.route.current('projects.*')
+                                        ? 'text-blue-600'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                        }`}
                                 >
                                     Projects
                                 </Link>
@@ -661,9 +680,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                                             <div
                                                                 key={notification.id}
                                                                 onClick={() => handleNotificationClick(notification)}
-                                                                className={`p-3 cursor-pointer hover:bg-gray-50 ${
-                                                                    isUnread ? 'bg-blue-50' : ''
-                                                                }`}
+                                                                className={`p-3 cursor-pointer hover:bg-gray-50 ${isUnread ? 'bg-blue-50' : ''
+                                                                    }`}
                                                             >
                                                                 <div className="flex items-start gap-3">
                                                                     {/* Icon */}
@@ -811,9 +829,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                                         <div
                                                             key={conversation.user.id}
                                                             onClick={() => handleConversationClick(conversation)}
-                                                            className={`notification-item group relative p-4 cursor-pointer transition-all duration-300 hover:bg-gray-50 ${
-                                                                conversation.unread_count > 0 ? 'bg-blue-50/50 border-l-4 border-blue-500' : 'hover:bg-gray-25'
-                                                            }`}
+                                                            className={`notification-item group relative p-4 cursor-pointer transition-all duration-300 hover:bg-gray-50 ${conversation.unread_count > 0 ? 'bg-blue-50/50 border-l-4 border-blue-500' : 'hover:bg-gray-25'
+                                                                }`}
                                                         >
                                                             <div className="flex items-start space-x-4">
                                                                 {/* User Avatar */}
@@ -907,14 +924,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <Dropdown.Trigger>
                                         <button className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
                                             {user.profile_photo ? (
-                                                <img 
-                                                    src={user.profile_photo} 
+                                                <img
+                                                    src={user.profile_photo}
                                                     alt={user.first_name || user.name}
                                                     className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
                                                 />
                                             ) : user.profile_picture ? (
-                                                <img 
-                                                    src={user.profile_picture} 
+                                                <img
+                                                    src={user.profile_picture}
                                                     alt={user.first_name || user.name}
                                                     className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
                                                 />
@@ -942,13 +959,13 @@ export default function AuthenticatedLayout({ header, children }) {
                                             Messages
                                         </Dropdown.Link>
                                         <Dropdown.Link href={isEmployer ? '/employer/wallet' : '/gig-worker/wallet'}>
-                                              {isEmployer ? 'Wallet' : 'Earnings'}
+                                            {isEmployer ? 'Wallet' : 'Earnings'}
                                         </Dropdown.Link>
                                         <Dropdown.Link href="/analytics">
-                                             Analytics
+                                            Analytics
                                         </Dropdown.Link>
                                         <Dropdown.Link href="/reports">
-                                             My Reports
+                                            My Reports
                                         </Dropdown.Link>
                                         <Dropdown.Link href="#">
                                             Help & Support
@@ -1016,22 +1033,20 @@ export default function AuthenticatedLayout({ header, children }) {
                         {/* Dashboard (role-aware) */}
                         <Link
                             href={dashboardHref}
-                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                isDashboardActive
-                                    ? 'text-blue-600 bg-blue-50'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                            }`}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${isDashboardActive
+                                ? 'text-blue-600 bg-blue-50'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
                         >
                             Dashboard
                         </Link>
                         {/* Jobs/Work - Role-specific */}
                         <Link
                             href="/jobs"
-                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                window.route.current('jobs.*')
-                                    ? 'text-blue-600 bg-blue-50'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                            }`}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${window.route.current('jobs.*')
+                                ? 'text-blue-600 bg-blue-50'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
                         >
                             {isGigWorker ? 'Find Work' : 'My Jobs'}
                         </Link
@@ -1041,11 +1056,10 @@ export default function AuthenticatedLayout({ header, children }) {
                         {isGigWorker && (
                             <Link
                                 href="/bids"
-                                className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                    window.route.current('bids.*')
-                                        ? 'text-blue-600 bg-blue-50'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                }`}
+                                className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${window.route.current('bids.*')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
                             >
                                 My Proposals
                             </Link>
@@ -1055,11 +1069,10 @@ export default function AuthenticatedLayout({ header, children }) {
                         {isEmployer && (
                             <Link
                                 href="/jobs/create"
-                                className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                    window.route.current('jobs.create')
-                                        ? 'text-blue-600 bg-blue-50'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                }`}
+                                className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${window.route.current('jobs.create')
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
                             >
                                 Post a Job
                             </Link>
@@ -1068,11 +1081,10 @@ export default function AuthenticatedLayout({ header, children }) {
                         {/* Common mobile navigation */}
                         <Link
                             href="/projects"
-                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                                window.route.current('projects.*')
-                                    ? 'text-blue-600 bg-blue-50'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                            }`}
+                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${window.route.current('projects.*')
+                                ? 'text-blue-600 bg-blue-50'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
                         >
                             Projects
                         </Link>
@@ -1081,14 +1093,14 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="border-t border-gray-200 px-4 py-3">
                         <div className="flex items-center space-x-3">
                             {user.profile_photo ? (
-                                <img 
-                                    src={user.profile_photo} 
+                                <img
+                                    src={user.profile_photo}
                                     alt={user.first_name || user.name}
                                     className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                                 />
                             ) : user.profile_picture ? (
-                                <img 
-                                    src={user.profile_picture} 
+                                <img
+                                    src={user.profile_picture}
                                     alt={user.first_name || user.name}
                                     className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                                 />

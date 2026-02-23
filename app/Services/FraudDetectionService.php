@@ -549,9 +549,32 @@ class FraudDetectionService
      */
     private function evaluateRule(FraudDetectionRule $rule, User $user, string $action, Request $request): bool
     {
-        // This would contain the actual rule evaluation logic
-        // For now, return false as a placeholder
-        return false;
+        $params = is_string($rule->parameters) ? json_decode($rule->parameters, true) : ($rule->parameters ?? []);
+
+        switch ($rule->rule_type) {
+            case 'payment_velocity':
+                if ($action !== 'payment') {
+                    return false;
+                }
+                $maxPayments = $params['max_payments_per_hour'] ?? 5;
+                $cacheKey = "fraud_action_{$user->id}_payment";
+                $count = \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
+                \Illuminate\Support\Facades\Cache::put($cacheKey, $count + 1, now()->addHour());
+                return ($count + 1) >= $maxPayments;
+
+            case 'rapid_profile_changes':
+                if ($action !== 'profile_update') {
+                    return false;
+                }
+                $maxChanges = $params['max_changes_per_hour'] ?? 3;
+                $cacheKey = "fraud_action_{$user->id}_profile_update";
+                $count = \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
+                \Illuminate\Support\Facades\Cache::put($cacheKey, $count + 1, now()->addHour());
+                return ($count + 1) >= $maxChanges;
+
+            default:
+                return false;
+        }
     }
 
     /**

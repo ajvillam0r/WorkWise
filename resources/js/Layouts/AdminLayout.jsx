@@ -2,37 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 
 export default function AdminLayout({ children, header }) {
-    const { auth, url } = usePage().props;
+    const { url } = usePage();
+    const { auth } = usePage().props;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     // Function to check if current path matches navigation item
     const isCurrentPage = (href) => {
         if (!url) return false;
+
+        // Handle exact match for admin dashboard
         if (href === '/admin') {
-            return url === '/' || url === '/admin' || url.startsWith('/admin/dashboard');
+            return url === '/admin' || url === '/admin/' || url.startsWith('/admin/dashboard');
         }
+
+        // Handle nested routes for other items
         return url.startsWith(href);
     };
 
     const navigation = [
         { id: 'dashboard', name: 'Dashboard', href: '/admin', icon: 'dashboard', current: isCurrentPage('/admin') },
-        { id: 'users', name: 'Users', href: '/admin/users', icon: 'group', current: isCurrentPage('/admin/users') },
-        { id: 'analytics', name: 'Analytics', href: '/admin/analytics', icon: 'analytics', current: isCurrentPage('/admin/analytics') },
-        { id: 'projects', name: 'Projects', href: '/admin/projects', icon: 'cases', current: isCurrentPage('/admin/projects') },
-        { id: 'payments', name: 'Payments', href: '/admin/payments', icon: 'payments', current: isCurrentPage('/admin/payments') },
-        { id: 'reports', name: 'Reports', href: '/admin/reports', icon: 'flag', current: isCurrentPage('/admin/reports') },
-        { id: 'fraud', name: 'Fraud Detection', href: '/admin/fraud', icon: 'security', current: isCurrentPage('/admin/fraud') },
+        { id: 'fraud-detection', name: 'Fraud Detection', href: '/admin/fraud', icon: 'shield', current: isCurrentPage('/admin/fraud') },
+        { id: 'id-verifications', name: 'ID Verifications', href: '/admin/id-verifications', icon: 'badge', current: isCurrentPage('/admin/id-verifications') },
+        { id: 'employer-verifications', name: 'Business Verifications', href: '/admin/employers/verifications', icon: 'domain_verification', current: isCurrentPage('/admin/employers/verifications') },
+        { id: 'users', name: 'User Directory', href: '/admin/users', icon: 'group', current: isCurrentPage('/admin/users') },
+        { id: 'reports', name: 'Escrow / Reports', href: '/admin/reports', icon: 'flag', current: isCurrentPage('/admin/reports') },
     ];
 
     // Fallback navigation when url is not available
     const fallbackNavigation = [
         { id: 'dashboard-fallback', name: 'Dashboard', href: '/admin', icon: 'dashboard', current: true },
-        { id: 'users-fallback', name: 'Users', href: '/admin/users', icon: 'group', current: false },
-        { id: 'analytics-fallback', name: 'Analytics', href: '/admin/analytics', icon: 'analytics', current: false },
-        { id: 'projects-fallback', name: 'Projects', href: '/admin/projects', icon: 'cases', current: false },
-        { id: 'payments-fallback', name: 'Payments', href: '/admin/payments', icon: 'payments', current: false },
-        { id: 'reports-fallback', name: 'Reports', href: '/admin/reports', icon: 'flag', current: false },
-        { id: 'fraud-fallback', name: 'Fraud Detection', href: '/admin/fraud', icon: 'security', current: false },
+        { id: 'id-verifications-fallback', name: 'ID Verifications', href: '/admin/id-verifications', icon: 'badge', current: false },
+        { id: 'employer-verifications-fallback', name: 'Business Verifications', href: '/admin/employers/verifications', icon: 'domain_verification', current: false },
+        { id: 'users-fallback', name: 'User Directory', href: '/admin/users', icon: 'group', current: false },
+        { id: 'reports-fallback', name: 'Escrow / Reports', href: '/admin/reports', icon: 'flag', current: false },
     ];
 
     const bottomNavigation = [
@@ -47,13 +49,11 @@ export default function AdminLayout({ children, header }) {
         <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
             <div className="flex h-full grow flex-row">
                 {/* Collapsible Sidebar */}
-                <aside className={`flex h-full flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/80 p-4 transition-all duration-300 ease-in-out ${
-                    isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'
-                }`} id="sidebar">
+                <aside className={`flex h-full flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/80 p-4 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'
+                    }`} id="sidebar">
                     <div className="flex items-center justify-between">
-                        <h1 className={`text-xl font-bold text-indigo-600 dark:text-slate-100 transition-all duration-300 ${
-                            isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
-                        }`} id="sidebar-title">WorkWise</h1>
+                        <h1 className={`text-xl font-bold text-indigo-600 dark:text-slate-100 transition-all duration-300 ${isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
+                            }`} id="sidebar-title">WorkWise</h1>
                         <button
                             className="p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                             id="sidebar-toggle"
@@ -70,16 +70,13 @@ export default function AdminLayout({ children, header }) {
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-indigo-100 hover:text-indigo-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-indigo-900/20 ${
-                                    item.current ? 'bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-900/20' : ''
-                                }`}
+                                className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-indigo-100 hover:text-indigo-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-indigo-900/20 ${item.current ? 'bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-900/20' : ''
+                                    }`}
                             >
-                                <span className={`material-symbols-outlined transition-all duration-300 group-hover:scale-110 ${
-                                    item.current ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600'
-                                }`}>{item.icon}</span>
-                                <p className={`text-sm font-medium transition-all duration-300 ${
-                                    isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
-                                }`}>{item.name}</p>
+                                <span className={`material-symbols-outlined transition-all duration-300 group-hover:scale-110 ${item.current ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600'
+                                    }`}>{item.icon}</span>
+                                <p className={`text-sm font-medium transition-all duration-300 ${isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
+                                    }`}>{item.name}</p>
                                 {item.current && (
                                     <div className="ml-auto h-2 w-2 rounded-full bg-indigo-600"></div>
                                 )}
@@ -92,16 +89,13 @@ export default function AdminLayout({ children, header }) {
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-indigo-100 hover:text-indigo-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-indigo-900/20 ${
-                                    item.current ? 'bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-900/20' : ''
-                                }`}
+                                className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-all duration-300 hover:bg-indigo-100 hover:text-indigo-600 hover:shadow-sm dark:text-slate-400 dark:hover:bg-indigo-900/20 ${item.current ? 'bg-indigo-100 text-indigo-600 shadow-sm dark:bg-indigo-900/20' : ''
+                                    }`}
                             >
-                                <span className={`material-symbols-outlined transition-all duration-300 group-hover:scale-110 ${
-                                    item.current ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600'
-                                }`}>{item.icon}</span>
-                                <p className={`text-sm font-medium transition-all duration-300 ${
-                                    isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
-                                }`}>{item.name}</p>
+                                <span className={`material-symbols-outlined transition-all duration-300 group-hover:scale-110 ${item.current ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600'
+                                    }`}>{item.icon}</span>
+                                <p className={`text-sm font-medium transition-all duration-300 ${isSidebarCollapsed ? 'nav-text-collapsed' : 'nav-text-expanded'
+                                    }`}>{item.name}</p>
                                 {item.current && (
                                     <div className="ml-auto h-2 w-2 rounded-full bg-indigo-600"></div>
                                 )}
@@ -128,7 +122,7 @@ export default function AdminLayout({ children, header }) {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-3">
                                     {/* Quick Actions */}
                                     <div className="hidden md:flex items-center gap-2">
@@ -187,7 +181,7 @@ export default function AdminLayout({ children, header }) {
                                     <span className="text-slate-400 dark:text-slate-600">/</span>
                                     <span className="text-slate-900 font-medium dark:text-slate-100">Dashboard</span>
                                 </nav>
-                                
+
                                 <div className="flex items-center gap-2">
                                     <button className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg border border-slate-200 transition-colors dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 dark:border-slate-700">
                                         <span className="material-symbols-outlined text-base">refresh</span>

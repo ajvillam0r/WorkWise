@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\User;
-use App\Services\ProfileCompletionService;
+
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,12 +18,9 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
-    protected $profileCompletionService;
-
-    public function __construct(
-        ProfileCompletionService $profileCompletionService
-    ) {
-        $this->profileCompletionService = $profileCompletionService;
+    public function __construct()
+    {
+        // Controller initialized
     }
 
     /**
@@ -45,19 +42,9 @@ class ProfileController extends Controller
             ]);
         }
         
-        // Get profile completion data with caching (cache for 5 minutes)
-        $profileCompletion = null;
-        if ($user->isGigWorker()) {
-            $cacheKey = "profile_completion_{$user->id}";
-            $profileCompletion = Cache::remember($cacheKey, 300, function () use ($user) {
-                return $this->profileCompletionService->getCompletionData($user);
-            });
-        }
-
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
-            'profileCompletion' => $profileCompletion,
         ]);
     }
 
@@ -77,19 +64,19 @@ class ProfileController extends Controller
         
         $validated = $request->validated();
 
-        // Handle profile picture upload to R2
+        // Handle profile picture upload to Supabase
         if ($request->hasFile('profile_picture')) {
             try {
-                Log::info('Uploading profile picture to R2', ['user_id' => $user->id]);
+                Log::info('Uploading profile picture to Supabase', ['user_id' => $user->id]);
                 
-                // Delete old profile picture from R2 if it exists
+                // Delete old profile picture from Supabase if it exists
                 if ($user->profile_picture) {
                     try {
-                        // Extract path from URL (remove '/r2/' prefix if present)
-                        $oldPath = str_replace('/r2/', '', $user->profile_picture);
-                        if (Storage::disk('r2')->exists($oldPath)) {
-                            Storage::disk('r2')->delete($oldPath);
-                            Log::info('Old profile picture deleted from R2', [
+                        // Extract path from URL (remove '/supabase/' prefix if present)
+                        $oldPath = str_replace('/supabase/', '', $user->profile_picture);
+                        if (Storage::disk('supabase')->exists($oldPath)) {
+                            Storage::disk('supabase')->delete($oldPath);
+                            Log::info('Old profile picture deleted from Supabase', [
                                 'user_id' => $user->id,
                                 'old_path' => $oldPath
                             ]);
@@ -102,14 +89,14 @@ class ProfileController extends Controller
                     }
                 }
                 
-                // Upload new profile picture to R2
-                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
+                // Upload new profile picture to Supabase
+                $path = Storage::disk('supabase')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
                 
                 if ($path) {
-                    // Use app proxy URL as fallback while R2 DNS propagates
-                    $validated['profile_picture'] = '/r2/' . $path;
+                    // Use app proxy URL as fallback while Supabase DNS propagates
+                    $validated['profile_picture'] = '/supabase/' . $path;
                     // Also sync to profile_photo for backward compatibility
-                    $validated['profile_photo'] = '/r2/' . $path;
+                    $validated['profile_photo'] = '/supabase/' . $path;
                     
                     Log::info('Profile picture uploaded successfully', [
                         'user_id' => $user->id,
@@ -134,15 +121,15 @@ class ProfileController extends Controller
             // Don't unset profile_photo if it already exists (preserve existing)
         }
 
-        // Handle legacy profile photo upload (migrate to R2)
+        // Handle legacy profile photo upload (migrate to Supabase)
         if ($request->hasFile('profile_photo')) {
             try {
-                // Upload new profile photo to R2
-                $path = Storage::disk('r2')->putFile('profiles/' . $user->id, $request->file('profile_photo'));
+                // Upload new profile photo to Supabase
+                $path = Storage::disk('supabase')->putFile('profiles/' . $user->id, $request->file('profile_photo'));
                 
                 if ($path) {
-                    // Use app proxy URL as fallback while R2 DNS propagates
-                    $validated['profile_photo'] = '/r2/' . $path;
+                    // Use app proxy URL as fallback while Supabase DNS propagates
+                    $validated['profile_photo'] = '/supabase/' . $path;
                 } else {
                     return Redirect::route('profile.edit')->with('error', 'Failed to upload profile photo. Please try again.');
                 }
@@ -153,6 +140,60 @@ class ProfileController extends Controller
         } else {
             // Remove profile_photo from validated data if no file uploaded
             unset($validated['profile_photo']);
+        }
+
+        // Handle resume file upload to Supabase
+        if ($request->hasFile('resume_file')) {
+            try {
+                Log::info('Uploading resume file to Supabase', ['user_id' => $user->id]);
+                
+                // Delete old resume file from Supabase if it exists
+                if ($user->resume_file) {
+                    try {
+                        // Extract path from URL (remove '/supabase/' prefix if present)
+                        $oldPath = str_replace('/supabase/', '', $user->resume_file);
+                        if (Storage::disk('supabase')->exists($oldPath)) {
+                            Storage::disk('supabase')->delete($oldPath);
+                            Log::info('Old resume file deleted from Supabase', [
+                                'user_id' => $user->id,
+                                'old_path' => $oldPath
+                            ]);
+                        }
+                    } catch (\Exception $deleteException) {
+                        Log::warning('Failed to delete old resume file: ' . $deleteException->getMessage(), [
+                            'user_id' => $user->id
+                        ]);
+                    }
+                }
+                
+                // Upload new resume file to Supabase
+                // Use the same path structure as onboarding: portfolios/{user_id}/documents
+                $path = Storage::disk('supabase')->putFile('portfolios/' . $user->id . '/documents', $request->file('resume_file'));
+                
+                if ($path) {
+                    // Use app proxy URL as fallback while Supabase DNS propagates
+                    $validated['resume_file'] = '/supabase/' . $path;
+                    
+                    Log::info('Resume file uploaded successfully', [
+                        'user_id' => $user->id,
+                        'path' => $path,
+                        'url' => $validated['resume_file']
+                    ]);
+                } else {
+                    Log::error('Resume file upload returned null path', ['user_id' => $user->id]);
+                    return Redirect::route('profile.edit')->with('error', 'Failed to upload resume file. Please try again.');
+                }
+            } catch (\Exception $e) {
+                Log::error('Resume file upload failed: ' . $e->getMessage(), [
+                    'user_id' => $user->id,
+                    'exception' => get_class($e),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return Redirect::route('profile.edit')->with('error', 'Failed to upload resume file. Please try again.');
+            }
+        } else {
+            // Remove resume_file from validated data if no file uploaded
+            unset($validated['resume_file']);
         }
 
         // Handle skills array properly
@@ -213,19 +254,14 @@ class ProfileController extends Controller
             // Update profile completion status only if relevant fields changed
             // Use ProfileCompletionService for consistency and accuracy
             $completionRelevantFields = [
-                'first_name', 'last_name', 'bio', 'barangay', 'professional_title', 
                 'hourly_rate', 'skills', 'skills_with_experience', 'specific_services',
                 'broad_category', 'company_name', 'work_type_needed', 'profile_picture',
                 'working_hours', 'timezone', 'preferred_communication', 'street_address',
-                'city', 'country', 'email_verified_at'
+                'city', 'country', 'email_verified_at', 'resume_file', 'portfolio_link'
             ];
             
             if (count(array_intersect($updatedFields, $completionRelevantFields)) > 0) {
-                // Use ProfileCompletionService for accurate calculation
-                $completionData = $this->profileCompletionService->calculateCompletion($user);
-                $user->profile_completed = $completionData['is_complete'];
-                
-                // Clear cached profile completion data
+                // Clear cached profile completion data if any (legacy support)
                 Cache::forget("profile_completion_{$user->id}");
             }
 
@@ -271,9 +307,7 @@ class ProfileController extends Controller
      */
     private function calculateProfileCompletion($user): bool
     {
-        // Delegate to ProfileCompletionService for consistency
-        $completionData = $this->profileCompletionService->calculateCompletion($user);
-        return $completionData['is_complete'];
+        return false;
     }
 
     /**
@@ -464,13 +498,13 @@ class ProfileController extends Controller
     }
 
     /**
-     * Proxy R2 files through the application
-     * This serves as a fallback while R2 public URL DNS propagates
+     * Proxy Supabase files through the application
+     * This serves as a fallback while Supabase DNS propagates
      */
-    public function proxyR2File($path)
+    public function proxySupabaseFile($path)
     {
         try {
-            $disk = Storage::disk('r2');
+            $disk = Storage::disk('supabase');
             
             if (!$disk->exists($path)) {
                 abort(404);
@@ -485,7 +519,7 @@ class ProfileController extends Controller
                 ->header('Access-Control-Allow-Origin', '*');
                 
         } catch (\Exception $e) {
-            Log::error('R2 proxy failed: ' . $e->getMessage(), ['path' => $path]);
+            Log::error('Supabase proxy failed: ' . $e->getMessage(), ['path' => $path]);
             abort(404);
         }
     }

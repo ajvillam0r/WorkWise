@@ -18,54 +18,8 @@ class GigWorkerOnboardingTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
-        
-        // Mock CloudinaryService to avoid actual uploads and validation issues
-        $this->mockCloudinaryService();
-    }
-
-    /**
-     * Mock the CloudinaryService to return successful upload results
-     */
-    protected function mockCloudinaryService()
-    {
-        $mock = $this->createMock(CloudinaryService::class);
-        
-        // Mock uploadProfilePicture - returns successful upload result
-        $mock->method('uploadProfilePicture')
-            ->willReturn([
-                'public_id' => 'workwise/profile_pictures/test_user_123',
-                'secure_url' => 'https://res.cloudinary.com/test/image/upload/profile.jpg',
-                'url' => 'http://res.cloudinary.com/test/image/upload/profile.jpg',
-                'width' => 800,
-                'height' => 800,
-                'format' => 'jpg',
-                'bytes' => 102400
-            ]);
-        
-        // Mock uploadIdVerification - returns successful upload result
-        $mock->method('uploadIdVerification')
-            ->willReturn([
-                'public_id' => 'workwise/id_verification/test_user_id',
-                'secure_url' => 'https://res.cloudinary.com/test/image/upload/id_verification.jpg',
-                'url' => 'http://res.cloudinary.com/test/image/upload/id_verification.jpg',
-                'format' => 'jpg',
-                'bytes' => 204800,
-                'resource_type' => 'image'
-            ]);
-        
-        // Mock uploadPortfolioItem - returns successful upload result
-        $mock->method('uploadPortfolioItem')
-            ->willReturn([
-                'public_id' => 'workwise/portfolios/test_portfolio',
-                'secure_url' => 'https://res.cloudinary.com/test/image/upload/portfolio.jpg',
-                'url' => 'http://res.cloudinary.com/test/image/upload/portfolio.jpg',
-                'format' => 'jpg',
-                'bytes' => 153600,
-                'resource_type' => 'image'
-            ]);
-        
-        // Bind the mock to the service container
-        $this->app->instance(CloudinaryService::class, $mock);
+        Storage::fake('supabase');
+        Storage::fake('r2');
     }
 
     /**
@@ -134,13 +88,6 @@ class GigWorkerOnboardingTest extends TestCase
             'broad_category',
             'specific_services',
             'skills_with_experience',
-            'street_address',
-            'city',
-            'postal_code',
-            'kyc_country',
-            'working_hours',
-            'timezone',
-            'preferred_communication',
         ]);
     }
 
@@ -163,18 +110,6 @@ class GigWorkerOnboardingTest extends TestCase
                 ['skill' => 'JavaScript', 'experience_level' => 'intermediate'],
                 // Only 2 skills - should fail
             ],
-            'id_type' => 'national_id',
-            'id_front_image' => $this->fakeImage('id_front.jpg'),
-            'id_back_image' => $this->fakeImage('id_back.jpg'),
-            'street_address' => '123 Test Street',
-            'city' => 'Test City',
-            'postal_code' => '12345',
-            'kyc_country' => 'Philippines',
-            'working_hours' => [
-                'monday' => ['enabled' => true, 'start' => '09:00', 'end' => '17:00'],
-            ],
-            'timezone' => 'Asia/Manila',
-            'preferred_communication' => ['email'],
         ]);
 
         $response->assertSessionHasErrors(['skills_with_experience']);
@@ -230,12 +165,9 @@ class GigWorkerOnboardingTest extends TestCase
         $user->refresh();
         $this->assertTrue($user->profile_completed);
         $this->assertEquals('pending', $user->profile_status);
-        $this->assertEquals(6, $user->onboarding_step);
+        $this->assertEquals(4, $user->onboarding_step);
         $this->assertEquals('Full Stack Developer', $user->professional_title);
         $this->assertEquals(75, $user->hourly_rate);
-        $this->assertEquals('456 Developer Avenue', $user->street_address);
-        $this->assertEquals('Cebu City', $user->city);
-        $this->assertNotNull($user->address_verified_at);
     }
 
     /** @test */
@@ -257,18 +189,6 @@ class GigWorkerOnboardingTest extends TestCase
                 ['skill' => 'JavaScript', 'experience_level' => 'intermediate'],
                 ['skill' => 'React', 'experience_level' => 'beginner'],
             ],
-            'id_type' => 'national_id',
-            'id_front_image' => $this->fakeImage('id_front.jpg'),
-            'id_back_image' => $this->fakeImage('id_back.jpg'),
-            'street_address' => '123 Test Street',
-            'city' => 'Test City',
-            'postal_code' => '12345',
-            'kyc_country' => 'Philippines',
-            'working_hours' => [
-                'monday' => ['enabled' => true, 'start' => '09:00', 'end' => '17:00'],
-            ],
-            'timezone' => 'Asia/Manila',
-            'preferred_communication' => ['email'],
         ]);
 
         $response->assertSessionHasErrors(['bio']);
@@ -377,13 +297,6 @@ class GigWorkerOnboardingTest extends TestCase
         ]);
 
         $response->assertRedirect(route('gig-worker.dashboard'));
-        
-        $user->refresh();
-        $this->assertEquals('Philippines', $user->country); // Should be updated with KYC country
-        $this->assertEquals('789 Remote Worker Street', $user->street_address);
-        $this->assertEquals('Manila', $user->city);
-        $this->assertEquals('1000', $user->postal_code);
-        $this->assertNotNull($user->address_verified_at);
     }
 
     /** @test */
@@ -488,8 +401,8 @@ class GigWorkerOnboardingTest extends TestCase
         $this->assertNotNull($user->resume_file);
         $this->assertStringContainsString('portfolios/' . $user->id . '/documents', $user->resume_file);
         
-        // Verify file was uploaded to R2
-        Storage::disk('r2')->assertExists('portfolios/' . $user->id . '/documents/' . $resumeFile->hashName());
+        // Verify file was uploaded to supabase
+        Storage::disk('supabase')->assertExists('portfolios/' . $user->id . '/documents/' . $resumeFile->hashName());
     }
 
     /** @test */
@@ -546,8 +459,8 @@ class GigWorkerOnboardingTest extends TestCase
         $this->assertNotNull($user->resume_file);
         $this->assertStringContainsString('portfolios/' . $user->id . '/documents', $user->resume_file);
         
-        // Verify file was uploaded to R2
-        Storage::disk('r2')->assertExists('portfolios/' . $user->id . '/documents/' . $resumeFile->hashName());
+        // Verify file was uploaded to supabase
+        Storage::disk('supabase')->assertExists('portfolios/' . $user->id . '/documents/' . $resumeFile->hashName());
     }
 
     /** @test */
@@ -745,25 +658,13 @@ class GigWorkerOnboardingTest extends TestCase
                 ['skill' => 'JavaScript', 'experience_level' => 'intermediate'],
                 ['skill' => 'React', 'experience_level' => 'beginner'],
             ],
-            'id_type' => 'national_id',
-            'id_front_image' => UploadedFile::fake()->image('id_front.jpg'),
-            'id_back_image' => UploadedFile::fake()->image('id_back.jpg'),
-            'street_address' => '123 Test Street',
-            'city' => 'Test City',
-            'postal_code' => '12345',
-            'kyc_country' => 'Philippines',
-            'working_hours' => [
-                'monday' => ['enabled' => true, 'start' => '09:00', 'end' => '17:00'],
-            ],
-            'timezone' => 'Asia/Manila',
-            'preferred_communication' => ['email'],
         ]);
 
-        $response->assertRedirect('/jobs');
+        $response->assertRedirect(route('gig-worker.dashboard'));
         
         $user->refresh();
         $this->assertNotNull($user->profile_picture);
-        $this->assertStringContainsString('/r2/profiles/' . $user->id, $user->profile_picture);
+        $this->assertStringContainsString('profiles/' . $user->id, $user->profile_picture);
     }
 
     /** @test */

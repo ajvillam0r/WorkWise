@@ -1,0 +1,185 @@
+﻿
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_uploads_file_to_r2_successfully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_handles_upload_failure_gracefully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_retries_failed_uploads(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_returns_error_after_exhausting_retries(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_validates_file_size_successfully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_rejects_oversized_files(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_validates_file_type_successfully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_rejects_invalid_file_types(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_generates_unique_file_paths(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_generates_path_without_user_id(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_sanitizes_filenames_in_path_generation(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_returns_correct_error_response_format(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_validates_multiple_image_types(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\FileUploadServiceTest::it_validates_document_types(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::successful_profile_picture_upload_in_gig_worker_onboarding(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::profile_picture_upload_failure_handling(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::id_image_uploads_front_and_back(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::resume_file_upload(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::employer_profile_picture_upload(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::business_registration_document_upload(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::file_size_validation(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::file_type_validation(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::onboarding_completion_with_all_files(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\FileUploadIntegrationTest::onboarding_completion_without_optional_files(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::gig_worker_can_access_onboarding_page(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::gig_worker_cannot_access_onboarding_if_profile_completed(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::non_gig_worker_cannot_access_gig_worker_onboarding(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::onboarding_requires_all_mandatory_fields(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::onboarding_requires_minimum_three_skills(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::gig_worker_can_complete_onboarding_with_valid_data(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::bio_must_be_at_least_50_characters(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::hourly_rate_must_be_between_5_and_10000(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::portfolio_items_are_optional(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::address_fields_are_saved_correctly(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::gig_worker_can_complete_onboarding_with_portfolio_link_only(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::gig_worker_can_complete_onboarding_with_resume_only(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::gig_worker_can_complete_onboarding_with_both_portfolio_and_resume(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::gig_worker_can_complete_onboarding_skipping_portfolio(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::portfolio_link_must_be_valid_url(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::resume_file_must_be_valid_document_type(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::resume_file_must_not_exceed_size_limit(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::profile_picture_upload_succeeds_with_valid_image(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::profile_picture_upload_fails_with_file_too_large(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::profile_picture_upload_fails_with_invalid_file_type(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\GigWorkerOnboardingTest::profile_picture_is_optional_for_onboarding(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::profile_picture_uploads_to_r2_successfully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::profile_picture_is_stored_in_correct_r2_path(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::id_verification_images_upload_to_r2_successfully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::id_verification_images_are_stored_in_correct_r2_path(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::resume_file_uploads_to_r2_successfully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::resume_file_is_stored_in_correct_r2_path(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::resume_file_accepts_different_formats(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::r2_upload_failure_returns_user_friendly_error(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::form_data_is_preserved_on_upload_failure(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::error_is_logged_when_r2_upload_fails(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::invalid_file_type_returns_validation_error(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\R2StorageTest::file_size_exceeding_limit_returns_validation_error(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\TransactionTest::test_complete_transaction_flow(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\TransactionTest::test_payment_failure_handling(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\TransactionTest::test_refund_flow(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   FAIL  Tests\Feature\GigWorkerOnboardingTest
+  Γ£ô gig worker can aΓÇª 3.04s  
+  Γ£ô gig worker cannoΓÇª 0.14s  
+  Γ£ô non gig worker cΓÇª 0.14s  
+  Γ£ô onboarding requiΓÇª 0.16s  
+  Γ£ô onboarding requiΓÇª 0.14s  
+  Γ£ô gig worker can cΓÇª 1.02s  
+  Γ£ô bio must be at lΓÇª 0.21s  
+  Γ£ô hourly rate mustΓÇª 0.24s  
+  Γ£ô portfolio itemsΓÇª  0.24s  
+  Γ£ô address fields aΓÇª 0.37s  
+  Γ£ô gig worker can cΓÇª 0.36s  
+  Γ¿» gig worker can cΓÇª 0.61s  
+  Γ¿» gig worker can cΓÇª 0.86s  
+  Γ£ô gig worker can cΓÇª 0.30s  
+  Γ£ô portfolio link mΓÇª 0.22s  
+  Γ£ô resume file mustΓÇª 0.20s  
+  Γ£ô resume file mustΓÇª 0.47s  
+  Γ£ô profile pictureΓÇª  0.54s  
+  Γ£ô profile pictureΓÇª  0.34s  
+  Γ£ô profile pictureΓÇª  0.19s  
+  Γ£ô profile pictureΓÇª  0.27s  
+  ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ  
+   FAILED  Tests\FeatureΓÇª   
+  Unable to find a file or directory at path [portfolios/1/documents/nbl2ojqXOdx5PjeeozpwZg9QMoEBpUUlHJejDaMs.pdf].
+Failed asserting that false is true.
+
+  at vendor\laravel\framework\src\Illuminate\Filesystem\FilesystemAdapter.php:129
+    125Γûò 
+    126Γûò         $paths = Arr::wrap($path);
+    127Γûò 
+    128Γûò         foreach ($paths as $path) {
+  Γ₧£ 129Γûò             PHPUnit::assertTrue(
+    130Γûò                 $this->exists($path), "Unable to find a file or directory at path [{$path}]."
+    131Γûò             );
+    132Γûò 
+    133Γûò             if (! is_null($content)) {
+
+  1   vendor\laravel\framework\src\Illuminate\Filesystem\FilesystemAdapter.php:129
+  2   tests\Feature\GigWorkerOnboardingTest.php:405
+
+  ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ  
+   FAILED  Tests\FeatureΓÇª   
+  Unable to find a file or directory at path [portfolios/1/documents/aqTCO5ujzhrabaxzig5ifMzOmHdEzeoNODRjaiwd.pdf].
+Failed asserting that false is true.
+
+  at vendor\laravel\framework\src\Illuminate\Filesystem\FilesystemAdapter.php:129
+    125Γûò 
+    126Γûò         $paths = Arr::wrap($path);
+    127Γûò 
+    128Γûò         foreach ($paths as $path) {
+  Γ₧£ 129Γûò             PHPUnit::assertTrue(
+    130Γûò                 $this->exists($path), "Unable to find a file or directory at path [{$path}]."
+    131Γûò             );
+    132Γûò 
+    133Γûò             if (! is_null($content)) {
+
+  1   vendor\laravel\framework\src\Illuminate\Filesystem\FilesystemAdapter.php:129
+  2   tests\Feature\GigWorkerOnboardingTest.php:463
+
+
+  Tests:    2 failed, 19 passed (90 assertions)
+  Duration: 11.03s
+

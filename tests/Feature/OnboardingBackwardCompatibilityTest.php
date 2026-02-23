@@ -88,7 +88,6 @@ class OnboardingBackwardCompatibilityTest extends TestCase
             'city' => 'Cebu City',
             'postal_code' => '6000',
             'country' => 'Philippines',
-            'address_verified_at' => now()->subDays(30),
         ]);
 
         $response = $this->actingAs($gigWorker)->get(route('profile.edit'));
@@ -105,7 +104,6 @@ class OnboardingBackwardCompatibilityTest extends TestCase
         $this->assertEquals('Cebu City', $gigWorker->city);
         $this->assertEquals('6000', $gigWorker->postal_code);
         $this->assertEquals('Philippines', $gigWorker->country);
-        $this->assertNotNull($gigWorker->address_verified_at);
     }
 
     public function test_profile_editing_works_with_legacy_data(): void
@@ -169,7 +167,6 @@ class OnboardingBackwardCompatibilityTest extends TestCase
             'street_address' => '456 Test St',
             'city' => 'Manila',
             'postal_code' => '1000',
-            'address_verified_at' => now(),
         ]);
 
         $response = $this->actingAs($employer)->get(route('profile.edit'));
@@ -232,7 +229,6 @@ class OnboardingBackwardCompatibilityTest extends TestCase
             'city' => 'Quezon City',
             'postal_code' => '1100',
             'country' => 'Philippines',
-            'address_verified_at' => now()->subDays(60),
             'working_hours' => [
                 'monday' => ['enabled' => true, 'start' => '09:00', 'end' => '17:00'],
                 'tuesday' => ['enabled' => true, 'start' => '09:00', 'end' => '17:00'],
@@ -267,6 +263,5 @@ class OnboardingBackwardCompatibilityTest extends TestCase
         $this->assertEquals('321 Writer Lane', $gigWorker->street_address);
         $this->assertEquals('Quezon City', $gigWorker->city);
         $this->assertEquals('1100', $gigWorker->postal_code);
-        $this->assertNotNull($gigWorker->address_verified_at);
     }
 }

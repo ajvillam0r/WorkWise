@@ -27,6 +27,7 @@ class IdVerificationController extends Controller
      */
     public function uploadFront(Request $request)
     {
+        set_time_limit(120); // Allow time for large image uploads to Supabase
         $user = Auth::user();
 
         // Prevent upload if status is pending
@@ -153,6 +154,7 @@ class IdVerificationController extends Controller
      */
     public function uploadBack(Request $request)
     {
+        set_time_limit(120); // Allow time for large image uploads to Supabase
         $user = Auth::user();
 
         // Prevent upload if status is pending
@@ -297,6 +299,7 @@ class IdVerificationController extends Controller
      */
     public function resubmit(Request $request)
     {
+        set_time_limit(120); // Allow time for both image uploads to Supabase
         $user = Auth::user();
 
         // Validate both images for resubmission

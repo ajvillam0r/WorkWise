@@ -42,6 +42,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -92,7 +93,10 @@
 }
 
 /* Allow text selection for input fields, textareas, and editable content */
-input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"] {
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable="plaintext-only"] {
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
@@ -100,21 +104,34 @@ input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"] {
 }
 
 /* Ensure proper cursor behavior */
-button, .cursor-pointer, [role="button"] {
+button,
+.cursor-pointer,
+[role="button"] {
     cursor: pointer !important;
 }
 
-a, .cursor-pointer {
+a,
+.cursor-pointer {
     cursor: pointer !important;
 }
 
 /* Prevent text cursor on non-interactive elements */
-div, span, p, h1, h2, h3, h4, h5, h6, label {
+div,
+span,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+label {
     cursor: default;
 }
 
 /* Allow text cursor for editable content */
-[contenteditable="true"], [contenteditable="plaintext-only"] {
+[contenteditable="true"],
+[contenteditable="plaintext-only"] {
     cursor: text !important;
 }
 
@@ -182,10 +199,13 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
 
 /* Pulse animation for new notifications */
 @keyframes notification-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
         transform: scale(1);
     }
+
     50% {
         opacity: 0.8;
         transform: scale(1.05);
@@ -201,6 +221,7 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
     from {
         transform: rotate(360deg);
     }
+
     to {
         transform: rotate(0deg);
     }
@@ -215,6 +236,7 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
     0% {
         background-position: -200px 0;
     }
+
     100% {
         background-position: calc(200px + 100%) 0;
     }
@@ -226,6 +248,7 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
         opacity: 0;
         transform: translateY(20px) scale(0.95);
     }
+
     100% {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -237,6 +260,7 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
         opacity: 0;
         transform: translateX(-10px);
     }
+
     100% {
         opacity: 1;
         transform: translateX(0);
@@ -244,9 +268,13 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
 }
 
 @keyframes typing-indicator {
-    0%, 60%, 100% {
+
+    0%,
+    60%,
+    100% {
         transform: translateY(0);
     }
+
     30% {
         transform: translateY(-10px);
     }
@@ -257,10 +285,12 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
         opacity: 0.6;
         transform: scale(0.98);
     }
+
     50% {
         opacity: 0.8;
         transform: scale(1.01);
     }
+
     100% {
         opacity: 1;
         transform: scale(1);
@@ -319,9 +349,12 @@ div, span, p, h1, h2, h3, h4, h5, h6, label {
 
 /* Message status indicators */
 @keyframes status-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }

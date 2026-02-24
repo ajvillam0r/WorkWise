@@ -14,21 +14,13 @@ createInertiaApp({
         resolvePageComponent(
             `./Pages/${name}.jsx`,
             import.meta.glob('./Pages/**/*.jsx'),
-        ).then((module) => {
-            const PageComponent = module.default;
-            return function WrappedWithCsrfSync(props) {
-                return (
-                    <>
-                        <CsrfSync />
-                        <PageComponent {...props} />
-                    </>
-                );
-            };
-        }),
+        ),
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<App {...props} />);
+        root.render(
+            <App {...props} />
+        );
     },
     progress: {
         color: '#4B5563',

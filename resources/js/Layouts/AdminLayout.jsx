@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import CsrfSync from '@/Components/CsrfSync';
+
 
 export default function AdminLayout({ children, header }) {
     const { url } = usePage();
@@ -47,7 +49,9 @@ export default function AdminLayout({ children, header }) {
 
     return (
         <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+            <CsrfSync />
             <div className="flex h-full grow flex-row">
+
                 {/* Collapsible Sidebar */}
                 <aside className={`flex h-full flex-col border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/80 p-4 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'
                     }`} id="sidebar">

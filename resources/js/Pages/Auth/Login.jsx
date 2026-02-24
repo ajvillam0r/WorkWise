@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 
 export default function Login({ status, canResetPassword }) {
-    const { data, setData, processing, errors, setError, clearErrors } = useForm({
+    const { data, setData, post, processing, errors, setError, clearErrors } = useForm({
         email: '',
         password: '',
         remember: false,
@@ -26,8 +26,17 @@ export default function Login({ status, canResetPassword }) {
         });
 
         if (error) {
-            setError('email', error.message);
-            setIsSupabaseProcessing(false);
+            // Fallback: Try traditional backend login for seeded/local users
+            post(route('login'), {
+                onFinish: () => setIsSupabaseProcessing(false),
+                onError: (backendErrors) => {
+                    // If backend also fails, use those errors. 
+                    // If no backend error for email but Supabase failed, show Supabase error.
+                    if (!backendErrors.email) {
+                        setError('email', error.message);
+                    }
+                }
+            });
             return;
         }
 

@@ -4,6 +4,8 @@ import MiniChatModal from '@/Components/MiniChatModal';
 import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import CsrfSync from '@/Components/CsrfSync';
+
 
 // Debug: Log component initialization
 console.log('[AuthenticatedLayout] Component loading - checking for TDZ issues with messagesUnreadCount');
@@ -499,7 +501,9 @@ export default function AuthenticatedLayout({ header, children }) {
 
     return (
         <div className="min-h-screen bg-white">
+            <CsrfSync />
             <nav className="border-b border-gray-200 bg-white">
+
                 <div className="mx-auto" style={{ paddingLeft: '0.45in', paddingRight: '0.45in' }}>
                     <div className="flex h-16 justify-between items-center">
                         {/* Logo - Left */}

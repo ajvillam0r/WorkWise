@@ -32,8 +32,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone',
         'profile_photo',
         'profile_picture',
-        'professional_title',
-        'hourly_rate',
         'company_name',
         'work_type_needed',
         'budget_range',
@@ -58,21 +56,13 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_admin',
         'google_id',
         'avatar',
-        // Enhanced gig worker fields
-        'broad_category',
-        'specific_services',
-        'skills_with_experience',
-        'working_hours',
-        'timezone',
-        'preferred_communication',
-        'availability_notes',
-        'id_type',
-        'id_front_image',
-        'id_back_image',
-        'id_verification_status',
-        'id_verification_notes',
-        'id_verified_at',
         'tutorial_completed',
+        // Gig worker onboarding fields
+        'professional_title',
+        'hourly_rate',
+        'skills_with_experience',
+        'portfolio_link',
+        'resume_file',
         'onboarding_step',
         // Location hierarchy fields
         'country',
@@ -80,9 +70,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'street_address',
         'postal_code',
         'address_verified_at',
-        // Portfolio fields
-        'portfolio_link',
-        'resume_file',
     ];
 
     /**
@@ -138,21 +125,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'hourly_rate' => 'decimal:2',
             'profile_completed' => 'boolean',
             'stripe_account_details' => 'array',
             'stripe_onboarded_at' => 'datetime',
             'escrow_balance' => 'decimal:2',
             'is_admin' => 'boolean',
-            'specific_services' => 'array',
-            'skills_with_experience' => 'array',
-            'working_hours' => 'array',
-            'preferred_communication' => 'array',
             'primary_hiring_needs' => 'array',
-            'id_verified_at' => 'datetime',
             'tutorial_completed' => 'boolean',
-            'onboarding_step' => 'integer',
             'address_verified_at' => 'datetime',
+            // Gig worker casts
+            'skills_with_experience' => 'array',
+            'hourly_rate' => 'decimal:2',
+            'onboarding_step' => 'integer',
         ];
     }
 
@@ -172,21 +156,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->getFullNameAttribute();
     }
 
-    /**
-     * Get just the skill names from skills_with_experience
-     * Returns array of skill names for matching purposes
-     */
-    public function getSkillsAttribute(): array
-    {
-        if (empty($this->skills_with_experience)) {
-            return [];
-        }
-
-        // Extract skill names from skills_with_experience array
-        return array_map(function($skillData) {
-            return is_array($skillData) ? ($skillData['skill'] ?? $skillData['name'] ?? '') : $skillData;
-        }, $this->skills_with_experience);
-    }
 
     /**
      * Check if user is an employer
@@ -236,13 +205,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(GigJob::class, 'employer_id');
     }
 
-    /**
-     * Bids made by this gig worker
-     */
-    public function bids(): HasMany
-    {
-        return $this->hasMany(Bid::class, 'gig_worker_id');
-    }
 
     // Project relationships
     
@@ -255,30 +217,6 @@ class User extends Authenticatable implements MustVerifyEmail
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
      */
     public function employerProjects(): HasMany
-    {
-        return $this->hasMany(Project::class, 'employer_id');
-    }
-
-    /**
-     * Get all projects where this user is the gig worker
-     * 
-     * This is the primary relationship for accessing projects assigned to this gig worker.
-     * Use this instead of the deprecated freelancerProjects() method.
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
-     */
-    public function gigWorkerProjects(): HasMany
-    {
-        return $this->hasMany(Project::class, 'gig_worker_id');
-    }
-
-    /**
-     * Get client projects (deprecated - use employerProjects)
-     * 
-     * @deprecated Use employerProjects() instead. This method is maintained for backward compatibility.
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
-     */
-    public function clientProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'employer_id');
     }
@@ -346,31 +284,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->receivedReviews()->avg('rating') ?? 0.0;
     }
 
-    /**
-     * Get total earnings for gig worker
-     */
-    public function getTotalEarningsAttribute(): float
-    {
-        return $this->paymentsReceived()
-            ->where('type', 'release')
-            ->where('status', 'completed')
-            ->sum('net_amount');
-    }
-
-    /**
-     * Get completion rate for gig worker
-     */
-    public function getCompletionRateAttribute(): float
-    {
-        $totalProjects = $this->gigWorkerProjects()->count();
-        if ($totalProjects === 0) return 0.0;
-
-        $completedProjects = $this->gigWorkerProjects()
-            ->where('status', 'completed')
-            ->count();
-
-        return ($completedProjects / $totalProjects) * 100;
-    }
 
     /**
      * Get all deposits made by this user (employer)
@@ -385,13 +298,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Deposit::class);
     }
 
-    /**
-     * Get the user's portfolio items
-     */
-    public function portfolioItems(): HasMany
-    {
-        return $this->hasMany(PortfolioItem::class)->orderBy('display_order');
-    }
 
     /**
      * Get job templates created by this employer
@@ -410,32 +316,10 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user has completed ID verification
-     * Returns true only if both ID images are uploaded AND status is verified
-     * 
-     * Note: PHP function names are case-insensitive, so this replaces the old isIdVerified() method
+     * Check if user's ID is verified (id_verification_status === 'verified')
      */
     public function isIDVerified(): bool
     {
-        return !empty($this->id_front_image) && 
-               !empty($this->id_back_image) && 
-               $this->id_verification_status === 'verified';
-    }
-
-    /**
-     * Check if user has uploaded ID documents (pending verification)
-     * Returns true if both front and back images are uploaded, regardless of verification status
-     */
-    public function hasIDDocuments(): bool
-    {
-        return !empty($this->id_front_image) && !empty($this->id_back_image);
-    }
-
-    /**
-     * Check if user has portfolio link or resume
-     */
-    public function hasPortfolio(): bool
-    {
-        return !empty($this->portfolio_link) || !empty($this->resume_file);
+        return ($this->id_verification_status ?? '') === 'verified';
     }
 }

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WorkWise - Gig Worker Onboarding Step 2</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#2563EB",
+              "primary-dark": "#1D4ED8",
+              "background-light": "#F9FAFB",
+              "background-dark": "#111827",
+              "surface-light": "#FFFFFF",
+              "surface-dark": "#1F2937",
+              "text-light": "#1F2937",
+              "text-dark": "#F3F4F6",
+              "border-light": "#E5E7EB",
+              "border-dark": "#374151",
+              "success": "#10B981",
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.5rem",
+              'xl': "0.75rem",
+              '2xl': "1rem",
+            },
+            boxShadow: {
+                'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+            }
+          },
+        },
+      };
+    </script>
+<style>
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #CBD5E1;
+            border-radius: 20px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background-color: #4B5563;
+        }
+        body {
+            min-height: 100vh;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark font-sans antialiased min-h-screen flex flex-col transition-colors duration-200">
+<header class="sticky top-0 z-50 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark px-6 py-4 flex items-center justify-between shadow-sm">
+<div class="flex items-center space-x-2">
+<span class="text-primary font-bold text-2xl tracking-tight">WorkWise</span>
+</div>
+<div class="flex items-center space-x-6">
+<button class="text-gray-500 dark:text-gray-400 hover:text-primary transition">
+<span class="material-icons-round text-2xl">notifications_none</span>
+</button>
+<div class="flex items-center gap-3 border-l border-gray-200 dark:border-gray-700 pl-6">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-semibold text-text-light dark:text-text-dark">Alex Johnson</p>
+<p class="text-xs text-gray-500">Freelancer</p>
+</div>
+<div class="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm ring-2 ring-white dark:ring-gray-800 shadow-md">
+                    AJ
+                </div>
+</div>
+</div>
+</header>
+<main class="flex-grow container mx-auto px-4 py-10 max-w-5xl">
+<div class="mb-10 max-w-3xl mx-auto">
+<div class="flex justify-between items-end mb-3">
+<h1 class="text-2xl font-bold text-text-light dark:text-text-dark">Professional Info</h1>
+<div class="text-right">
+<span class="text-sm font-medium text-gray-500 dark:text-gray-400 block">Step 2 of 5</span>
+<span class="text-xs font-semibold text-primary">40%</span>
+</div>
+</div>
+<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+<div class="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out shadow-lg shadow-blue-500/30" style="width: 40%"></div>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-2xl shadow-xl border border-border-light dark:border-border-dark overflow-hidden">
+<div class="p-8 md:p-10">
+<h2 class="text-2xl font-bold mb-2 text-text-light dark:text-text-dark">Tell us about yourself</h2>
+<p class="text-gray-500 dark:text-gray-400 mb-8">Fill in your professional details to help clients find you.</p>
+<form action="#" class="flex flex-col lg:flex-row gap-10">
+<div class="flex-1 space-y-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300" for="title">
+                                    Professional Title <span class="text-red-500">*</span>
+</label>
+<div class="relative">
+<input class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-text-light dark:text-text-dark focus:border-primary focus:ring-primary sm:text-sm p-3 shadow-sm transition-shadow" id="title" name="title" placeholder="e.g. Senior Graphic Designer" type="text" value="Senior Graphic Designer"/>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+<span class="material-icons-round text-success text-lg">check_circle</span>
+</div>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400">Describe your primary role.</p>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300" for="rate">
+                                    Hourly Rate (PHP)
+                                </label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="text-gray-500 sm:text-sm">₱</span>
+</div>
+<input class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-text-light dark:text-text-dark focus:border-primary focus:ring-primary sm:text-sm pl-8 pr-10 p-3 shadow-sm transition-shadow" id="rate" name="rate" placeholder="0.00" type="number" value="1000"/>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400">Suggested range: ₱500 - ₱2,500 based on experience.</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between">
+<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300" for="bio">
+                                    Professional Bio <span class="text-red-500">*</span>
+</label>
+<span class="text-xs text-gray-500">Markdown supported</span>
+</div>
+<div class="relative">
+<textarea class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-text-light dark:text-text-dark focus:border-primary focus:ring-primary sm:text-sm p-4 shadow-sm transition-shadow min-h-[220px]" id="bio" name="bio" placeholder="Tell clients about your experience..." rows="8">Hello! I'm Pam. With over 10+ years of experience, I transform brand visions into stunning, high-conversion visual assets. I specialize in crafting cohesive brand identities, modern websites, and engaging marketing materials for startups and established businesses alike. I am known for being creative, professional, and reliable, delivering high-quality designs that help you stand out. Let's build your brand—reach out to discuss your project!</textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none text-gray-400 bg-white dark:bg-gray-800 p-1 rounded">
+<span class="material-icons-round text-sm">open_in_full</span>
+</div>
+</div>
+<div class="flex justify-between items-center text-xs mt-1 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg">
+<div class="flex items-center text-success font-medium">
+<span class="material-icons-round text-sm mr-1">check_circle</span>
+<span>Great length! (445 chars)</span>
+</div>
+<span class="text-gray-400">Max: 1000</span>
+</div>
+</div>
+</div>
+<div class="w-full lg:w-72 flex-shrink-0 flex flex-col items-center justify-start pt-2 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 lg:pl-10 mt-8 lg:mt-0">
+<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-6 self-start lg:self-center">Profile Photo</h3>
+<div class="relative group cursor-pointer">
+<div class="w-48 h-48 rounded-full border-4 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700 transition-all overflow-hidden relative">
+<div class="text-center p-4">
+<span class="material-icons-round text-5xl text-gray-300 dark:text-gray-500 mb-2 group-hover:text-primary transition-colors">account_circle</span>
+<p class="text-xs text-gray-400 dark:text-gray-500 font-medium">No photo uploaded</p>
+</div>
+<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<button class="bg-white text-gray-800 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide shadow-lg hover:bg-gray-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300" type="button">
+                                        Upload
+                                     </button>
+</div>
+<input accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" type="file"/>
+</div>
+<div class="absolute bottom-2 right-2 bg-primary text-white p-2 rounded-full shadow-lg pointer-events-none group-hover:scale-110 transition-transform">
+<span class="material-icons-round text-lg leading-none">edit</span>
+</div>
+</div>
+<div class="mt-6 text-center">
+<button class="text-primary hover:text-primary-dark text-sm font-medium flex items-center justify-center gap-1 mb-2" type="button">
+<span class="material-icons-round text-base">file_upload</span>
+                                Choose File
+                            </button>
+<p class="text-xs text-gray-500 dark:text-gray-400 max-w-[200px] mx-auto leading-relaxed">
+                                JPG, PNG or GIF. Max size of 2MB.<br/>
+<span class="text-success dark:text-success mt-1 block">Profiles with photos get 40% more views.</span>
+</p>
+</div>
+</div>
+</form>
+</div>
+</div>
+</main>
+<div class="fixed bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark border-t border-border-light dark:border-border-dark py-4 px-6 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div class="container mx-auto max-w-5xl flex items-center justify-between">
+<button class="inline-flex items-center px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition shadow-sm" type="button">
+<span class="material-icons-round text-sm mr-2">arrow_back</span>
+                Back
+            </button>
+<div class="flex gap-4">
+<button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium px-4 py-2 transition" type="button">
+                    Save as Draft
+                </button>
+<button class="inline-flex items-center px-8 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition transform active:scale-95" type="button">
+                    Next Step
+                    <span class="material-icons-round text-sm ml-2">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<div class="h-20"></div>
+
+</body></html>

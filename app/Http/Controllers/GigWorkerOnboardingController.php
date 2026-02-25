@@ -2,371 +2,307 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PortfolioItem;
-use App\Mail\ProfileSubmitted;
-use App\Services\FileUploadService;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class GigWorkerOnboardingController extends Controller
 {
     /**
-     * File upload service instance
+     * Show the gig worker onboarding page.
      */
-    protected FileUploadService $fileUploadService;
-
-    /**
-     * Constructor
-     */
-    public function __construct(FileUploadService $fileUploadService)
+    public function show(Request $request): Response|RedirectResponse
     {
-        $this->fileUploadService = $fileUploadService;
-    }
+        $user = $request->user();
 
-    /**
-     * Show the gig worker onboarding page
-     */
-    public function show(): Response|RedirectResponse
-    {
-        $user = auth()->user();
-
-        // Redirect if not a gig worker
-        if ($user->user_type !== 'gig_worker') {
-            return redirect()->route('jobs.index');
+        // If not a gig worker, redirect
+        if (!$user->isGigWorker()) {
+            return redirect()->route('dashboard');
         }
 
-        // If profile is already completed, redirect to jobs
+        // If onboarding already completed, redirect to jobs
         if ($user->profile_completed) {
-            return redirect()->route('jobs.index');
+            return redirect()->route('jobs.index')
+                ->with('message', 'Your profile is already complete!');
         }
-
-        // Load skills taxonomy
-        $skillsTaxonomy = $this->getSkillsTaxonomy();
 
         return Inertia::render('Onboarding/GigWorkerOnboarding', [
             'user' => $user,
-            'skillsTaxonomy' => $skillsTaxonomy,
+            'currentStep' => $user->onboarding_step ?: 1,
         ]);
     }
 
     /**
-     * Handle the gig worker onboarding form submission
+     * Save a specific onboarding step (supports partial/draft saving).
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        $user = auth()->user();
+        $user = $request->user();
+        $step = $request->input('step', 1);
+        $isDraft = $request->boolean('is_draft', false);
 
-        Log::info('ONBOARDING_STARTED', [
-            'event' => 'onboarding_started',
-            'user_id' => $user->id,
-            'user_type' => 'gig_worker',
-            'user_email' => $user->email,
-            'files_submitted' => [
-                'profile_picture' => $request->hasFile('profile_picture'),
-                'resume_file' => $request->hasFile('resume_file'),
-            ],
-            'file_sizes' => [
-                'profile_picture_mb' => $request->hasFile('profile_picture') ? round($request->file('profile_picture')->getSize() / 1048576, 2) : 0,
-                'resume_mb' => $request->hasFile('resume_file') ? round($request->file('resume_file')->getSize() / 1048576, 2) : 0,
-            ],
-            'data_submitted' => [
-                'has_portfolio_link' => !empty($request->input('portfolio_link')),
-                'broad_category' => $request->input('broad_category'),
-                'specific_services_count' => count($request->input('specific_services', [])),
-                'skills_count' => count($request->input('skills_with_experience', [])),
-            ],
-            'timestamp' => now()->toIso8601String(),
-        ]);
+        // #region agent log
+        $__dbg = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'B','location'=>'GigWorkerOnboardingController.php:store-entry','message'=>'store called','data'=>['step'=>$step,'isDraft'=>$isDraft,'user_id'=>$user->id,'profile_completed'=>$user->profile_completed,'onboarding_step'=>$user->onboarding_step],'timestamp'=>round(microtime(true)*1000)])."\n";
+        file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg, FILE_APPEND);
+        Log::info('[DEBUG-b0ba4d] store-entry', ['step'=>$step,'isDraft'=>$isDraft,'user_id'=>$user->id,'profile_completed'=>$user->profile_completed]);
+        // #endregion
 
-        // Validate the onboarding data with custom error messages
+        try {
+            match ((int) $step) {
+                2 => $this->saveStep2($request, $user),
+                3 => $this->saveStep3($request, $user),
+                4 => $this->saveStep4($request, $user),
+                5 => $this->saveStep5($request, $user),
+                default => null,
+            };
+
+            // #region agent log
+            $__dbg2 = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'B','location'=>'GigWorkerOnboardingController.php:after-save','message'=>'step save succeeded','data'=>['step'=>$step,'professional_title'=>$user->professional_title,'bio_len'=>strlen($user->bio??''),'skills_count'=>count($user->skills_with_experience??[])],'timestamp'=>round(microtime(true)*1000)])."\n";
+            file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg2, FILE_APPEND);
+            Log::info('[DEBUG-b0ba4d] after-save', ['step'=>$step,'title'=>$user->professional_title,'skills'=>count($user->skills_with_experience??[])]);
+            // #endregion
+
+            // Update onboarding step progress
+            if (!$isDraft && $user->onboarding_step < $step) {
+                $user->onboarding_step = $step;
+                $user->save();
+            }
+
+            if ($isDraft) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Progress saved as draft.',
+                ]);
+            }
+
+            // If step 5 is submitted, mark profile as complete
+            if ((int) $step === 5) {
+                $user->profile_completed = true;
+                $user->onboarding_step = 5;
+                $user->save();
+
+                // #region agent log
+                $__dbg3 = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'C','location'=>'GigWorkerOnboardingController.php:step5-redirect','message'=>'redirecting to jobs.index','data'=>['user_id'=>$user->id,'profile_completed'=>$user->profile_completed],'timestamp'=>round(microtime(true)*1000)])."\n";
+                file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg3, FILE_APPEND);
+                Log::info('[DEBUG-b0ba4d] step5-redirect', ['user_id'=>$user->id,'profile_completed'=>$user->profile_completed]);
+                // #endregion
+
+                return redirect()->route('jobs.index')
+                    ->with('success', 'Welcome to WorkWise! Your profile has been submitted for review.');
+            }
+
+            return back()->with('success', "Step {$step} saved successfully.");
+
+        } catch (\Throwable $e) {
+            // #region agent log
+            $__dbg4 = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'B','location'=>'GigWorkerOnboardingController.php:catch','message'=>'exception caught','data'=>['step'=>$step,'class'=>get_class($e),'msg'=>$e->getMessage(),'is_validation'=>($e instanceof ValidationException)],'timestamp'=>round(microtime(true)*1000)])."\n";
+            file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg4, FILE_APPEND);
+            Log::error('[DEBUG-b0ba4d] catch', ['step'=>$step,'class'=>get_class($e),'msg'=>$e->getMessage()]);
+            // #endregion
+
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            Log::error('Onboarding save error', [
+                'user_id' => $user->id,
+                'step' => $step,
+                'error' => $e->getMessage(),
+            ]);
+
+            if ($isDraft) {
+                return response()->json(['success' => false, 'message' => 'Failed to save draft.'], 500);
+            }
+
+            return back()->withErrors(['error' => 'Failed to save. Please try again.']);
+        }
+    }
+
+    /**
+     * Skip onboarding and go to jobs page.
+     */
+    public function skip(Request $request): RedirectResponse
+    {
+        return redirect()->route('jobs.index')
+            ->with('message', 'You can complete your profile anytime from the Profile page.');
+    }
+
+    // ─── Step Handlers ───────────────────────────────────────────────────────
+
+    private function saveStep2(Request $request, User $user): void
+    {
         $validated = $request->validate([
-            // Step 1: Basic Info
-            'professional_title' => 'required|string|max:255',
-            'hourly_rate' => 'nullable|numeric|min:5|max:10000',
-            'bio' => 'required|string|min:50|max:2000',
-            'profile_picture' => 'nullable|image|max:2048',
-
-            // Step 2: Unified Skills
-            'broad_category' => 'nullable|string|max:255', // Kept for backward compatibility if needed, or can be removed if not submitted
-            'specific_services' => 'nullable|array',
-            'specific_services.*' => 'string|max:255',
-            'skills_with_experience' => 'required|array|min:1', // Reduced minimum to 1 since we're allowing free text and focusing on quality
-            'skills_with_experience.*.skill' => 'required|string|max:100',
-            'skills_with_experience.*.experience_level' => 'required|in:beginner,intermediate,expert',
-
-            // Step 3: Portfolio & Resume (both optional, both can be provided)
-            'portfolio_link' => 'nullable|url|max:500',
-            'resume_file' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
-        ], [
-            // Custom validation messages
-            'professional_title.required' => 'Professional title is required.',
-            'hourly_rate.min' => 'Expected hourly rate must be at least ₱5.',
-            'hourly_rate.max' => 'Expected hourly rate cannot exceed ₱10,000.',
-            'bio.required' => 'Professional bio is required.',
-            'bio.min' => 'Bio must be at least 50 characters long.',
-            'profile_picture.image' => 'Profile picture must be an image file.',
-            'profile_picture.max' => 'Profile picture must not exceed 2MB.',
-            
-            'skills_with_experience.required' => 'Please add at least 1 skill with an experience level.',
-            'skills_with_experience.min' => 'Please add at least 1 skill with an experience level.',
-            'skills_with_experience.*.skill.required' => 'Skill name is required.',
-            'skills_with_experience.*.experience_level.required' => 'Experience level is required for each skill.',
-            
-            'resume_file.file' => 'Resume must be a valid file.',
-            'resume_file.mimes' => 'Resume must be a PDF, DOC, or DOCX file.',
-            'resume_file.max' => 'Resume file must not exceed 5MB. Please compress your document.',
+            'professional_title' => 'required|string|max:150',
+            'hourly_rate'        => 'nullable|numeric|min:0|max:99999',
+            'bio'                => 'required|string|max:1000',
+            'profile_picture'    => 'nullable|image|max:5120',
         ]);
 
-        // Handle profile picture upload to R2 using FileUploadService
         if ($request->hasFile('profile_picture')) {
-            $profilePicture = $request->file('profile_picture');
-            
-            Log::info('Profile picture upload started', [
-                'user_id' => $user->id,
-                'file_name' => $profilePicture->getClientOriginalName(),
-                'file_size' => $profilePicture->getSize(),
-                'mime_type' => $profilePicture->getMimeType(),
-            ]);
+            try {
+                Log::info('Onboarding: uploading profile picture to Supabase', ['user_id' => $user->id]);
 
-            // Validate file before upload
-            $validation = $this->fileUploadService->validateFile($profilePicture, [
-                'type' => 'image',
-                'max_size' => 2097152, // 2MB
-                'user_id' => $user->id,
-                'user_type' => 'gig_worker',
-            ]);
-
-            if (!$validation['success']) {
-                Log::warning('Profile picture validation failed', [
-                    'user_id' => $user->id,
-                    'error' => $validation['error'],
-                    'error_code' => $validation['error_code'],
-                ]);
-
-                return back()
-                    ->withErrors([
-                        'profile_picture' => $validation['error']
-                    ])
-                    ->with('error_codes', [
-                        'profile_picture' => $validation['error_code']
-                    ])
-                    ->withInput();
-            }
-
-            // Upload with retry logic
-            $uploadResult = $this->fileUploadService->uploadWithRetry(
-                $profilePicture,
-                'profiles',
-                2, // max retries
-                [
-                    'user_id' => $user->id,
-                    'user_type' => 'gig_worker',
-                    'use_proxy' => true, // Use app proxy URL for profile pictures
-                ]
-            );
-
-            if (!$uploadResult['success']) {
-                Log::error('Profile picture upload failed after retries', [
-                    'user_id' => $user->id,
-                    'error' => $uploadResult['error'],
-                    'error_code' => $uploadResult['error_code'],
-                ]);
-
-                return back()
-                    ->withErrors([
-                        'profile_picture' => 'Failed to upload profile picture. ' . $uploadResult['error']
-                    ])
-                    ->with('error_codes', [
-                        'profile_picture' => $uploadResult['error_code']
-                    ])
-                    ->withInput();
-            }
-
-            $validated['profile_picture'] = $uploadResult['url'];
-            
-            Log::info('Profile picture uploaded successfully', [
-                'user_id' => $user->id,
-                'url' => $uploadResult['url'],
-                'path' => $uploadResult['path'],
-            ]);
-        }
-
-        // Handle resume file upload to R2 using FileUploadService
-        if ($request->hasFile('resume_file')) {
-            $resumeFile = $request->file('resume_file');
-            
-            Log::info('Resume file upload started', [
-                'user_id' => $user->id,
-                'file_name' => $resumeFile->getClientOriginalName(),
-                'file_size' => $resumeFile->getSize(),
-                'mime_type' => $resumeFile->getMimeType(),
-            ]);
-
-            // Validate file before upload
-            $validation = $this->fileUploadService->validateFile($resumeFile, [
-                'type' => 'document',
-                'max_size' => 5242880, // 5MB
-                'user_id' => $user->id,
-                'user_type' => 'gig_worker',
-            ]);
-
-            if (!$validation['success']) {
-                Log::warning('Resume file validation failed', [
-                    'user_id' => $user->id,
-                    'error' => $validation['error'],
-                    'error_code' => $validation['error_code'],
-                ]);
-
-                // Resume is optional, so we log the error but don't block onboarding
-                Log::info('Resume upload skipped due to validation error, continuing onboarding', [
-                    'user_id' => $user->id,
-                ]);
-            } else {
-                // Upload with retry logic
-                // Pass full directory path: portfolios/{user_id}/documents
-                $uploadResult = $this->fileUploadService->uploadWithRetry(
-                    $resumeFile,
-                    'portfolios/' . $user->id . '/documents',
-                    2, // max retries
-                    [
-                        'user_id' => null, // Don't append user_id again since it's in the path
-                        'user_type' => 'gig_worker',
-                    ]
-                );
-
-                if (!$uploadResult['success']) {
-                    Log::error('Resume file upload failed after retries', [
-                        'user_id' => $user->id,
-                        'error' => $uploadResult['error'],
-                        'error_code' => $uploadResult['error_code'],
-                    ]);
-
-                    // Resume is optional, so we log the error but don't block onboarding
-                    Log::info('Resume upload failed, continuing onboarding without resume', [
-                        'user_id' => $user->id,
-                    ]);
-                } else {
-                    $validated['resume_file'] = $uploadResult['url'];
-                    
-                    Log::info('Resume file uploaded successfully', [
-                        'user_id' => $user->id,
-                        'url' => $uploadResult['url'],
-                        'path' => $uploadResult['path'],
-                    ]);
-
-                    // Rate limiting: small delay after upload (150ms)
-                    usleep(150000);
+                if ($user->profile_picture) {
+                    try {
+                        $oldPath = ltrim(str_replace('/supabase/', '', $user->profile_picture), '/');
+                        if (Storage::disk('supabase')->exists($oldPath)) {
+                            Storage::disk('supabase')->delete($oldPath);
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('Onboarding: could not delete old profile picture: ' . $e->getMessage());
+                    }
                 }
+
+                $path = Storage::disk('supabase')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
+                if ($path) {
+                    $url = '/supabase/' . $path;
+                    $user->profile_picture = $url;
+                    $user->profile_photo   = $url;
+                    Log::info('Onboarding: profile picture uploaded', ['user_id' => $user->id, 'path' => $path]);
+                } else {
+                    Log::error('Onboarding: Supabase upload returned null path', ['user_id' => $user->id]);
+                    throw ValidationException::withMessages([
+                        'profile_picture' => 'Profile picture upload failed. Please try again or continue without.',
+                    ]);
+                }
+            } catch (ValidationException $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                Log::error('Onboarding: profile picture upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
+                throw ValidationException::withMessages([
+                    'profile_picture' => 'Profile picture upload failed. Please try again or continue without.',
+                ]);
             }
         }
 
-        // Update user profile
-        try {
-            $user->update(array_merge($validated, [
-                'profile_completed' => true,
-                'profile_status' => 'pending', // Requires admin approval
-                'tutorial_completed' => true,
-                'onboarding_step' => 4, // Completed all steps
-            ]));
-            
-            Log::info('ONBOARDING_PROFILE_UPDATED', [
-                'event' => 'onboarding_profile_updated',
-                'user_id' => $user->id,
-                'user_type' => 'gig_worker',
-                'profile_status' => 'pending',
-                'timestamp' => now()->toIso8601String(),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('ONBOARDING_PROFILE_UPDATE_FAILED', [
-                'event' => 'onboarding_profile_update_failed',
-                'user_id' => $user->id,
-                'user_type' => 'gig_worker',
-                'error_message' => $e->getMessage(),
-                'error_type' => get_class($e),
-                'stack_trace' => $e->getTraceAsString(),
-                'timestamp' => now()->toIso8601String(),
-            ]);
-            return back()->withErrors(['error' => 'Failed to save profile. Please try again.'])->withInput();
+        $user->professional_title = $validated['professional_title'];
+        $user->hourly_rate        = $validated['hourly_rate'] ?? null;
+        $user->bio                = $validated['bio'];
+        $user->save();
+    }
+
+    private function saveStep3(Request $request, User $user): void
+    {
+        // Skills come as a JSON string (from FormData) or array
+        $skillsRaw = $request->input('skills_with_experience');
+        if (is_string($skillsRaw)) {
+            $skills = json_decode($skillsRaw, true);
+            if (is_array($skills) && count($skills) > 0) {
+                $user->skills_with_experience = $skills;
+                $user->save();
+            }
+        } elseif (is_array($skillsRaw) && count($skillsRaw) > 0) {
+            $user->skills_with_experience = $skillsRaw;
+            $user->save();
+        }
+    }
+
+    private function saveStep4(Request $request, User $user): void
+    {
+        $validated = $request->validate([
+            'portfolio_link' => 'nullable|string|max:500',
+            'resume_file'    => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+        ]);
+
+        // Persist all accumulated text fields (buildFormData always sends everything)
+        if ($request->filled('professional_title')) {
+            $user->professional_title = $request->input('professional_title');
+        }
+        if ($request->filled('bio')) {
+            $user->bio = $request->input('bio');
+        }
+        if ($request->has('hourly_rate')) {
+            $user->hourly_rate = $request->input('hourly_rate') ?: null;
         }
 
-
-
-        // Send profile submitted confirmation email
-        try {
-            Mail::to($user->email)->send(new ProfileSubmitted($user));
-            
-            Log::info('ONBOARDING_EMAIL_SENT', [
-                'event' => 'onboarding_email_sent',
-                'user_id' => $user->id,
-                'user_type' => 'gig_worker',
-                'email' => $user->email,
-                'timestamp' => now()->toIso8601String(),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('ONBOARDING_EMAIL_FAILED', [
-                'event' => 'onboarding_email_failed',
-                'user_id' => $user->id,
-                'user_type' => 'gig_worker',
-                'email' => $user->email,
-                'error_message' => $e->getMessage(),
-                'error_type' => get_class($e),
-                'timestamp' => now()->toIso8601String(),
-            ]);
+        // Persist skills
+        $skillsRaw = $request->input('skills_with_experience');
+        if (is_string($skillsRaw)) {
+            $skills = json_decode($skillsRaw, true);
+            if (is_array($skills) && count($skills) > 0) {
+                $user->skills_with_experience = $skills;
+            }
+        } elseif (is_array($skillsRaw) && count($skillsRaw) > 0) {
+            $user->skills_with_experience = $skillsRaw;
         }
 
-        Log::info('ONBOARDING_COMPLETED', [
-            'event' => 'onboarding_completed',
+        // Upload resume
+        if ($request->hasFile('resume_file')) {
+            try {
+                Log::info('Onboarding: uploading resume to Supabase', ['user_id' => $user->id]);
+                $path = Storage::disk('supabase')->putFile('resumes/' . $user->id, $request->file('resume_file'));
+                if ($path) {
+                    $user->resume_file = '/supabase/' . $path;
+                    Log::info('Onboarding: resume uploaded', ['user_id' => $user->id, 'path' => $path]);
+                } else {
+                    Log::error('Onboarding: resume upload returned null', ['user_id' => $user->id]);
+                    throw ValidationException::withMessages([
+                        'resume_file' => 'Resume upload failed. Please try again or continue without.',
+                    ]);
+                }
+            } catch (ValidationException $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                Log::error('Onboarding: resume upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
+                throw ValidationException::withMessages([
+                    'resume_file' => 'Resume upload failed. Please try again or continue without.',
+                ]);
+            }
+        }
+
+        $user->portfolio_link = $validated['portfolio_link'] ?? null;
+        $user->save();
+    }
+
+    /**
+     * Step 5 = TEXT-DATA SAFETY NET.
+     *
+     * Files are NOT sent on step 5 (they're handled at steps 2 & 4).
+     * This call persists all accumulated text fields before profile_completed=true.
+     */
+    private function saveStep5(Request $request, User $user): void
+    {
+        $validated = $request->validate([
+            'professional_title'     => 'sometimes|nullable|string|max:150',
+            'hourly_rate'            => 'sometimes|nullable|numeric|min:0|max:99999',
+            'bio'                    => 'sometimes|nullable|string|max:1000',
+            'skills_with_experience' => 'sometimes|nullable|string',
+            'portfolio_link'         => 'sometimes|nullable|string|max:500',
+        ]);
+
+        // Only overwrite if non-empty so we don't erase data saved at earlier steps
+        if (!empty($validated['professional_title'])) {
+            $user->professional_title = $validated['professional_title'];
+        }
+        if (array_key_exists('hourly_rate', $validated)) {
+            $user->hourly_rate = $validated['hourly_rate'] ?: null;
+        }
+        if (!empty($validated['bio'])) {
+            $user->bio = $validated['bio'];
+        }
+        if (!empty($validated['portfolio_link'])) {
+            $user->portfolio_link = $validated['portfolio_link'];
+        }
+
+        // Skills JSON (sent as string from FormData)
+        if (!empty($validated['skills_with_experience'])) {
+            $skills = json_decode($validated['skills_with_experience'], true);
+            if (is_array($skills) && count($skills) > 0) {
+                $user->skills_with_experience = $skills;
+            }
+        }
+
+        $user->save();
+        Log::info('Onboarding step5: text data persisted', [
             'user_id' => $user->id,
-            'user_type' => 'gig_worker',
-            'user_email' => $user->email,
-            'completion_summary' => [
-                'profile_picture_uploaded' => isset($validated['profile_picture']),
-                'portfolio_link_saved' => !empty($validated['portfolio_link']),
-                'resume_file_uploaded' => isset($validated['resume_file']),
-                'profile_status' => 'pending',
-            ],
-            'timestamp' => now()->toIso8601String(),
+            'title'   => $user->professional_title,
+            'skills'  => count($user->skills_with_experience ?? []),
         ]);
-
-        return redirect()->route('gig-worker.dashboard')->with('success',
-            'Profile completed successfully! You\'ll be notified once your profile is approved.');
-    }
-
-    /**
-     * Skip onboarding (optional for gig workers)
-     */
-    public function skip(): RedirectResponse
-    {
-        $user = auth()->user();
-
-        $user->update([
-            'profile_completed' => true,
-            'profile_status' => 'approved',
-            'tutorial_completed' => true,
-        ]);
-
-        return redirect()->route('jobs.index')->with('info',
-            'You can complete your profile later from your profile settings.');
-    }
-
-    /**
-     * Get skills taxonomy from JSON file
-     */
-    private function getSkillsTaxonomy(): array
-    {
-        $jsonPath = base_path('full_freelance_services_taxonomy.json');
-        
-        if (file_exists($jsonPath)) {
-            $jsonContent = file_get_contents($jsonPath);
-            return json_decode($jsonContent, true);
-        }
-
-        return ['services' => []];
     }
 }
 

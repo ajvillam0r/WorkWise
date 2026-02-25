@@ -10,9 +10,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,16 +33,7 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         
-        // Optimize: Only load portfolio items if user is gig worker and select only needed columns
-        if ($user->isGigWorker()) {
-            $user->load([
-                'portfolioItems' => function ($query) {
-                    $query->select('id', 'user_id', 'title', 'description', 'project_url', 'images', 'document_file', 'project_type', 'display_order')
-                        ->orderBy('display_order')
-                        ->latest();
-                }
-            ]);
-        }
+        // Profile edit logic for general users (Employer focus)
         
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
@@ -49,8 +42,281 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update the user's profile information.
+     * Convert a stored '/supabase/...' path to a browser-accessible URL.
+     * Files are served through the Supabase proxy at /storage/supabase/{path}.
      */
+    private function supabaseUrl(?string $stored): ?string
+    {
+        if (!$stored || !is_string($stored)) {
+            return null;
+        }
+        $stored = trim($stored);
+        if ($stored === '') {
+            return null;
+        }
+        // Already a full URL (e.g. legacy or external)
+        if (str_starts_with($stored, 'http://') || str_starts_with($stored, 'https://')) {
+            return $stored;
+        }
+        // Strip the leading /supabase/ prefix and build the proxy URL
+        $path = ltrim(str_replace('/supabase/', '', $stored), '/');
+        if ($path === '') {
+            return null;
+        }
+        return url('/storage/supabase/' . $path);
+    }
+
+    /**
+     * Show the gig worker's own profile page.
+     */
+    public function gigWorkerProfile(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user();
+        $user->refresh();
+
+        if ($user->user_type !== 'gig_worker') {
+            return redirect()->route('profile.edit');
+        }
+
+        $rawPicture = $user->profile_picture ?? $user->profile_photo;
+
+        return Inertia::render('Profile/GigWorkerProfile', [
+            'user'   => [
+                'id'                     => $user->id,
+                'name'                   => $user->first_name . ' ' . $user->last_name,
+                'first_name'             => $user->first_name,
+                'last_name'              => $user->last_name,
+                'email'                  => $user->email,
+                'profile_picture'        => $this->supabaseUrl($rawPicture),
+                'professional_title'     => $user->professional_title,
+                'bio'                    => $user->bio,
+                'hourly_rate'            => $user->hourly_rate,
+                'skills_with_experience' => $user->skills_with_experience ?? [],
+                'portfolio_link'         => $user->portfolio_link,
+                'resume_file'            => $this->supabaseUrl($user->resume_file),
+                'profile_completed'      => $user->profile_completed,
+            ],
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Fetch Open Graph / meta data for a URL (for link preview).
+     * Returns title, description, image, site_name for automatic link preview cards.
+     */
+    public function linkPreview(Request $request)
+    {
+        $request->validate(['url' => 'required|url']);
+
+        $url = $request->input('url');
+        if (!preg_match('#^https?://#i', $url)) {
+            return response()->json(['error' => 'Invalid URL scheme'], 422);
+        }
+
+        try {
+            $response = Http::timeout(8)
+                ->withHeaders(['User-Agent' => 'WorkWise-LinkPreview/1.0'])
+                ->get($url);
+
+            if (!$response->successful()) {
+                return response()->json([
+                    'title' => null,
+                    'description' => null,
+                    'image' => null,
+                    'site_name' => null,
+                    'url' => $url,
+                ]);
+            }
+
+            $html = $response->body();
+            $title = $this->extractMeta($html, 'og:title')
+                ?? $this->extractMeta($html, 'twitter:title')
+                ?? $this->extractTitleTag($html);
+            $description = $this->extractMeta($html, 'og:description')
+                ?? $this->extractMeta($html, 'twitter:description')
+                ?? $this->extractMetaName($html, 'description');
+            $image = $this->extractMeta($html, 'og:image')
+                ?? $this->extractMeta($html, 'twitter:image');
+            $siteName = $this->extractMeta($html, 'og:site_name');
+
+            if ($image && !preg_match('#^https?://#i', $image)) {
+                $parsed = parse_url($url);
+                $base = ($parsed['scheme'] ?? 'https') . '://' . ($parsed['host'] ?? '');
+                $image = $base . ($image[0] === '/' ? '' : '/') . ltrim($image, '/');
+            }
+
+            return response()->json([
+                'title' => $title ? trim($title) : null,
+                'description' => $description ? trim($description) : null,
+                'image' => $image ? trim($image) : null,
+                'site_name' => $siteName ? trim($siteName) : null,
+                'url' => $url,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Link preview fetch failed: ' . $e->getMessage(), ['url' => $url]);
+            return response()->json([
+                'title' => null,
+                'description' => null,
+                'image' => null,
+                'site_name' => null,
+                'url' => $url,
+            ]);
+        }
+    }
+
+    private function extractMeta(string $html, string $property): ?string
+    {
+        if (preg_match('#<meta\s+[^>]*property\s*=\s*["\']' . preg_quote($property, '#') . '["\'][^>]*content\s*=\s*["\']([^"\']+)["\']#i', $html, $m)) {
+            return $m[1];
+        }
+        if (preg_match('#<meta\s+[^>]*content\s*=\s*["\']([^"\']+)["\'][^>]*property\s*=\s*["\']' . preg_quote($property, '#') . '["\']#i', $html, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
+    private function extractMetaName(string $html, string $name): ?string
+    {
+        if (preg_match('#<meta\s+[^>]*name\s*=\s*["\']' . preg_quote($name, '#') . '["\'][^>]*content\s*=\s*["\']([^"\']+)["\']#i', $html, $m)) {
+            return $m[1];
+        }
+        if (preg_match('#<meta\s+[^>]*content\s*=\s*["\']([^"\']+)["\'][^>]*name\s*=\s*["\']' . preg_quote($name, '#') . '["\']#i', $html, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
+    private function extractTitleTag(string $html): ?string
+    {
+        if (preg_match('#<title[^>]*>([^<]+)</title>#i', $html, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
+    /**
+     * Show the gig worker profile EDIT form.
+     */
+    public function editGigWorker(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->user_type !== 'gig_worker') {
+            return redirect()->route('profile.edit');
+        }
+
+        $rawPicture = $user->profile_picture ?? $user->profile_photo;
+
+        return Inertia::render('Profile/GigWorkerEdit', [
+            'user' => [
+                'id'                     => $user->id,
+                'name'                   => $user->first_name . ' ' . $user->last_name,
+                'first_name'             => $user->first_name,
+                'last_name'              => $user->last_name,
+                'email'                  => $user->email,
+                'profile_picture'        => $this->supabaseUrl($rawPicture),
+                'professional_title'     => $user->professional_title,
+                'bio'                    => $user->bio,
+                'hourly_rate'            => $user->hourly_rate,
+                'skills_with_experience' => $user->skills_with_experience ?? [],
+                'portfolio_link'         => $user->portfolio_link,
+                'resume_file'            => $this->supabaseUrl($user->resume_file),
+                'resume_file_name'       => $user->resume_file ? basename($user->resume_file) : null,
+            ],
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Handle gig worker profile update (photo + resume uploads + text fields).
+     */
+    public function updateGigWorker(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->user_type !== 'gig_worker') {
+            return redirect()->route('profile.edit');
+        }
+
+        $validated = $request->validate([
+            'first_name'             => 'required|string|max:255',
+            'last_name'              => 'required|string|max:255',
+            'professional_title'     => 'nullable|string|max:255',
+            'bio'                    => 'nullable|string|max:1000',
+            'hourly_rate'            => 'nullable|numeric|min:0|max:99999',
+            'portfolio_link'         => 'nullable|string|max:500',
+            'skills_with_experience' => 'nullable|string', // sent as JSON string
+            'profile_picture'        => 'nullable|image|mimes:jpeg,png,gif,webp|max:5120',
+            'resume_file'            => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+        ], [
+            'profile_picture.image'  => 'The profile picture must be an image (JPEG, PNG, GIF, or WebP).',
+            'profile_picture.mimes'  => 'The profile picture must be a JPEG, PNG, GIF, or WebP file.',
+            'profile_picture.max'    => 'The profile picture must not be larger than 5MB.',
+        ]);
+
+        // ── Profile picture upload ─────────────────────────────────────────
+        if ($request->hasFile('profile_picture')) {
+            try {
+                if ($user->profile_picture && str_starts_with($user->profile_picture, '/supabase/')) {
+                    $oldPath = str_replace('/supabase/', '', $user->profile_picture);
+                    Storage::disk('supabase')->delete($oldPath);
+                }
+                $path = Storage::disk('supabase')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
+                if ($path) {
+                    $user->profile_picture = '/supabase/' . $path;
+                    $user->profile_photo   = '/supabase/' . $path;
+                } else {
+                    Log::error('GigWorkerEdit: profile picture upload returned null path', ['user_id' => $user->id]);
+                    throw ValidationException::withMessages([
+                        'profile_picture' => 'Profile picture upload failed. Please try again or use a different image.',
+                    ]);
+                }
+            } catch (ValidationException $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                Log::error('GigWorkerEdit: profile picture upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
+                throw ValidationException::withMessages([
+                    'profile_picture' => 'Profile picture upload failed. Please check your connection and try again, or use a smaller image.',
+                ]);
+            }
+        }
+
+        // ── Resume upload ─────────────────────────────────────────────────
+        if ($request->hasFile('resume_file')) {
+            try {
+                if ($user->resume_file && str_starts_with($user->resume_file, '/supabase/')) {
+                    $oldPath = str_replace('/supabase/', '', $user->resume_file);
+                    Storage::disk('supabase')->delete($oldPath);
+                }
+                $path = Storage::disk('supabase')->putFile('resumes/' . $user->id, $request->file('resume_file'));
+                if ($path) {
+                    $user->resume_file = '/supabase/' . $path;
+                }
+            } catch (\Exception $e) {
+                Log::error('GigWorkerEdit: resume upload failed (non-fatal): ' . $e->getMessage());
+            }
+        }
+
+        // ── Skills JSON ───────────────────────────────────────────────────
+        if (!empty($validated['skills_with_experience'])) {
+            $skills = json_decode($validated['skills_with_experience'], true);
+            $user->skills_with_experience = is_array($skills) ? $skills : [];
+        } else {
+            $user->skills_with_experience = [];
+        }
+
+        // ── Text fields ───────────────────────────────────────────────────
+        $user->first_name         = $validated['first_name'];
+        $user->last_name          = $validated['last_name'];
+        $user->professional_title = $validated['professional_title'] ?? null;
+        $user->bio                = $validated['bio'] ?? null;
+        $user->hourly_rate        = $validated['hourly_rate'] ?? null;
+        $user->portfolio_link     = $validated['portfolio_link'] ?? null;
+        $user->save();
+
+        return redirect()->route('gig-worker.profile')->with('status', 'profile-updated');
+    }
+
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();
@@ -251,27 +517,12 @@ class ProfileController extends Controller
                 $user->email_verified_at = null;
             }
 
-            // Update profile completion status only if relevant fields changed
-            // Use ProfileCompletionService for consistency and accuracy
-            $completionRelevantFields = [
-                'hourly_rate', 'skills', 'skills_with_experience', 'specific_services',
-                'broad_category', 'company_name', 'work_type_needed', 'profile_picture',
-                'working_hours', 'timezone', 'preferred_communication', 'street_address',
-                'city', 'country', 'email_verified_at', 'resume_file', 'portfolio_link'
-            ];
-            
-            if (count(array_intersect($updatedFields, $completionRelevantFields)) > 0) {
-                // Clear cached profile completion data if any (legacy support)
-                Cache::forget("profile_completion_{$user->id}");
-            }
 
             // Only save if there are actual changes
             if ($user->isDirty()) {
                 // Use select only dirty attributes to minimize database query
                 $user->save();
                 
-                // Clear any related caches after successful update
-                Cache::forget("profile_completion_{$user->id}");
                 
                 Log::info('Profile updated successfully (partial update)', [
                     'user_id' => $user->id,
@@ -331,61 +582,6 @@ class ProfileController extends Controller
         return Redirect::to('/');
     }
 
-    /**
-     * Display a gig worker's public profile
-     * 
-     * DATA CONSISTENCY VERIFICATION (Requirement 9.1-9.6):
-     * - All user profile data comes directly from users table (no mock data)
-     * - Skills fetched from skills_with_experience field in database
-     * - Reviews fetched from reviews table with reviewer relationships
-     * - Portfolio items fetched from portfolio_items table
-     * - All data is real-time from database with no caching of profile content
-     */
-    public function showWorker(User $user): Response|RedirectResponse
-    {
-        // Redirect to own profile edit if viewing own profile (Requirement 1.2)
-        if ($user->id === auth()->id()) {
-            return Redirect::route('profile.edit')
-                ->with('message', 'You are viewing your own profile. You can edit it here.');
-        }
-
-        // Validate user is a gig worker (Requirement 1.2)
-        if (!$user->isGigWorker()) {
-            abort(404, 'This user is not a gig worker or the profile does not exist.');
-        }
-
-        // Eager load relationships from database (always fresh data, no caching)
-        // Reviews come from reviews table (Requirement 9.4)
-        // Portfolio items come from portfolio_items table (Requirement 9.5)
-        // Force fresh query to ensure latest reviews are displayed immediately after submission
-        $user->load([
-            'receivedReviews' => function ($query) {
-                $query->with('reviewer:id,first_name,last_name,profile_picture')
-                    ->latest()
-                    ->limit(10);
-            },
-            'portfolioItems' => function ($query) {
-                $query->orderBy('display_order')
-                    ->latest();
-            }
-        ]);
-
-        // Calculate rating summary from actual review data (Requirement 9.4)
-        // This ensures the rating summary is always up-to-date with the latest reviews
-        $ratingSummary = $this->calculateRatingSummary($user->receivedReviews);
-
-        // All data passed to frontend comes from database (Requirement 9.1, 9.2)
-        // - user: All fields from users table
-        // - reviews: From reviews table
-        // - rating_summary: Calculated from real reviews
-        // - portfolio_items: From portfolio_items table
-        return Inertia::render('Profiles/WorkerProfile', [
-            'user' => $user, // All profile fields from users table (Requirement 9.1, 9.2, 9.3)
-            'reviews' => $user->receivedReviews, // From reviews table (Requirement 9.4)
-            'rating_summary' => $ratingSummary, // Calculated from real reviews (Requirement 9.4)
-            'portfolio_items' => $user->portfolioItems, // From portfolio_items table (Requirement 9.5)
-        ]);
-    }
 
     /**
      * Display an employer's public profile

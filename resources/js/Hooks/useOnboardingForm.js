@@ -1,11 +1,11 @@
 ﻿import { useForm } from '@inertiajs/react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export default function useOnboardingForm({ 
-    initialData = {}, 
-    storageKey, 
+export default function useOnboardingForm({
+    initialData = {},
+    storageKey,
     onSubmit,
-    enablePersistence = true 
+    enablePersistence = true
 }) {
     const inertiaForm = useForm(initialData);
     const [files, setFiles] = useState({});
@@ -14,18 +14,40 @@ export default function useOnboardingForm({
     const isMounted = useRef(true);
     const STORAGE_EXPIRATION = 7 * 24 * 60 * 60 * 1000;
 
+    // Keep stable refs to avoid stale-closure / dep-array churn
+    const inertiaFormRef = useRef(inertiaForm);
+    inertiaFormRef.current = inertiaForm;
+
+    const filePreviewsRef = useRef(filePreviews);
+    filePreviewsRef.current = filePreviews;
+
+    const storageKeyRef = useRef(storageKey);
+    storageKeyRef.current = storageKey;
+
+    const enablePersistenceRef = useRef(enablePersistence);
+    enablePersistenceRef.current = enablePersistence;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     const getStorageKey = useCallback(() => {
-        return storageKey || 'onboarding_form_data';
-    }, [storageKey]);
+        return storageKeyRef.current || 'onboarding_form_data';
+    }, []); // storageKey read from ref – no deps needed
 
     const isStorageExpired = useCallback((timestamp) => {
         if (!timestamp) return true;
-        const now = Date.now();
-        return (now - timestamp) > STORAGE_EXPIRATION;
-    }, []);
+        return (Date.now() - timestamp) > STORAGE_EXPIRATION;
+    }, [STORAGE_EXPIRATION]);
+
+    const clearStorage = useCallback(() => {
+        try {
+            localStorage.removeItem(getStorageKey());
+        } catch (error) {
+            console.error('Failed to clear local storage:', error);
+        }
+    }, [getStorageKey]);
 
     const saveToStorage = useCallback((formData, fileRefs) => {
-        if (!enablePersistence) return;
+        if (!enablePersistenceRef.current) return;
         try {
             const storageData = {
                 version: '1.0',
@@ -37,10 +59,10 @@ export default function useOnboardingForm({
         } catch (error) {
             console.error('Failed to save to local storage:', error);
         }
-    }, [enablePersistence, getStorageKey]);
+    }, [getStorageKey]);
 
     const loadFromStorage = useCallback(() => {
-        if (!enablePersistence) return null;
+        if (!enablePersistenceRef.current) return null;
         try {
             const stored = localStorage.getItem(getStorageKey());
             if (!stored) return null;
@@ -54,31 +76,39 @@ export default function useOnboardingForm({
             console.error('Failed to load from local storage:', error);
             return null;
         }
-    }, [enablePersistence, getStorageKey, isStorageExpired]);
+    }, [getStorageKey, isStorageExpired, clearStorage]);
 
-    const clearStorage = useCallback(() => {
-        try {
-            localStorage.removeItem(getStorageKey());
-        } catch (error) {
-            console.error('Failed to clear local storage:', error);
-        }
-    }, [getStorageKey]);
-
+    // ── Restore from storage (runs ONCE after mount) ──────────────────────────
     useEffect(() => {
         if (isRestored) return;
         const storedData = loadFromStorage();
         if (storedData && storedData.data) {
             Object.keys(storedData.data).forEach(key => {
-                if (storedData.data[key] !== null && storedData.data[key] !== undefined) {
-                    inertiaForm.setData(key, storedData.data[key]);
+                const val = storedData.data[key];
+                if (val !== null && val !== undefined) {
+                    inertiaFormRef.current.setData(key, val);
                 }
             });
-            setIsRestored(true);
         }
-    }, [isRestored, loadFromStorage]);
+        // Mark restored regardless of whether there was data, so we never re-run
+        setIsRestored(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // intentionally runs once on mount only
+
+    // ── Persist form data after restore ──────────────────────────────────────
+    // We only want to save when the serialised data string actually changes.
+    const serialisedData = JSON.stringify(inertiaForm.data);
+    const serialisedDataRef = useRef(serialisedData);
 
     useEffect(() => {
         if (!isRestored) return;
+        // Avoid saving if data hasn't meaningfully changed
+        if (serialisedData === serialisedDataRef.current && Object.keys(files).length === 0) {
+            serialisedDataRef.current = serialisedData;
+            return;
+        }
+        serialisedDataRef.current = serialisedData;
+
         const fileRefs = {};
         Object.keys(files).forEach(key => {
             if (files[key]) {
@@ -90,11 +120,24 @@ export default function useOnboardingForm({
             }
         });
         const timeoutId = setTimeout(() => {
-            saveToStorage(inertiaForm.data, fileRefs);
+            saveToStorage(inertiaFormRef.current.data, fileRefs);
         }, 500);
         return () => clearTimeout(timeoutId);
-    }, [inertiaForm.data, files, isRestored, saveToStorage]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [serialisedData, files, isRestored]); // saveToStorage is stable, inertiaForm via ref
 
+    // ── Cleanup object URLs on unmount only ──────────────────────────────────
+    useEffect(() => {
+        return () => {
+            isMounted.current = false;
+            // Read from ref so this cleanup doesn't re-register on every preview change
+            Object.values(filePreviewsRef.current).forEach(url => {
+                if (url) URL.revokeObjectURL(url);
+            });
+        };
+    }, []); // empty deps – runs cleanup only on unmount
+
+    // ── File handling ─────────────────────────────────────────────────────────
     const handleFileChange = useCallback((fieldName, file) => {
         if (!file) {
             setFiles(prev => {
@@ -102,27 +145,28 @@ export default function useOnboardingForm({
                 delete updated[fieldName];
                 return updated;
             });
-            if (filePreviews[fieldName]) {
-                URL.revokeObjectURL(filePreviews[fieldName]);
-            }
+            const preview = filePreviewsRef.current[fieldName];
+            if (preview) URL.revokeObjectURL(preview);
             setFilePreviews(prev => {
                 const updated = { ...prev };
                 delete updated[fieldName];
                 return updated;
             });
-            inertiaForm.setData(fieldName, null);
+            inertiaFormRef.current.setData(fieldName, null);
             return;
         }
+
         setFiles(prev => ({ ...prev, [fieldName]: file }));
+
         if (file.type.startsWith('image/')) {
-            if (filePreviews[fieldName]) {
-                URL.revokeObjectURL(filePreviews[fieldName]);
-            }
+            const existingPreview = filePreviewsRef.current[fieldName];
+            if (existingPreview) URL.revokeObjectURL(existingPreview);
             const previewUrl = URL.createObjectURL(file);
             setFilePreviews(prev => ({ ...prev, [fieldName]: previewUrl }));
         } else {
-            if (filePreviews[fieldName]) {
-                URL.revokeObjectURL(filePreviews[fieldName]);
+            const existingPreview = filePreviewsRef.current[fieldName];
+            if (existingPreview) {
+                URL.revokeObjectURL(existingPreview);
                 setFilePreviews(prev => {
                     const updated = { ...prev };
                     delete updated[fieldName];
@@ -130,49 +174,38 @@ export default function useOnboardingForm({
                 });
             }
         }
-        inertiaForm.setData(fieldName, file);
-    }, [filePreviews, inertiaForm]);
 
-    useEffect(() => {
-        return () => {
-            isMounted.current = false;
-            Object.values(filePreviews).forEach(url => {
-                if (url) {
-                    URL.revokeObjectURL(url);
-                }
-            });
-        };
-    }, [filePreviews]);
+        inertiaFormRef.current.setData(fieldName, file);
+    }, []); // no deps – reads everything from refs
 
+    // ── Stable callbacks ──────────────────────────────────────────────────────
     const submit = useCallback((e) => {
-        if (e) {
-            e.preventDefault();
-        }
+        if (e) e.preventDefault();
         if (onSubmit) {
-            onSubmit(inertiaForm.data, {
+            onSubmit(inertiaFormRef.current.data, {
                 clearStorage,
-                ...inertiaForm
+                ...inertiaFormRef.current
             });
         }
-    }, [onSubmit, inertiaForm, clearStorage]);
+    }, [onSubmit, clearStorage]);
 
     const setData = useCallback((key, value) => {
-        inertiaForm.setData(key, value);
-    }, [inertiaForm]);
+        inertiaFormRef.current.setData(key, value);
+    }, []);
 
     const getFile = useCallback((fieldName) => {
         return files[fieldName] || null;
     }, [files]);
 
     const getPreview = useCallback((fieldName) => {
-        return filePreviews[fieldName] || null;
-    }, [filePreviews]);
+        return filePreviewsRef.current[fieldName] || null;
+    }, []); // reads from ref, no dep on filePreviews state
 
     const hasUnsavedChanges = useCallback(() => {
         const stored = loadFromStorage();
         if (!stored) return false;
-        return JSON.stringify(stored.data) !== JSON.stringify(inertiaForm.data);
-    }, [loadFromStorage, inertiaForm.data]);
+        return JSON.stringify(stored.data) !== JSON.stringify(inertiaFormRef.current.data);
+    }, [loadFromStorage]);
 
     return {
         data: inertiaForm.data,

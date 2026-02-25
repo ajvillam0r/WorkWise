@@ -38,6 +38,30 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * Convert a stored Supabase path (e.g. /supabase/profiles/...) to the proxy URL
+     * served by the app at /storage/supabase/{path}. Already-absolute URLs are returned
+     * as-is so legacy data or external URLs continue to work.
+     */
+    private function supabaseUrl(?string $stored): ?string
+    {
+        if (!$stored || !is_string($stored)) {
+            return null;
+        }
+        $stored = trim($stored);
+        if ($stored === '') {
+            return null;
+        }
+        if (str_starts_with($stored, 'http://') || str_starts_with($stored, 'https://')) {
+            return $stored;
+        }
+        $path = ltrim(str_replace('/supabase/', '', $stored), '/');
+        if ($path === '') {
+            return null;
+        }
+        return url('/storage/supabase/' . $path);
+    }
+
+    /**
      * Define the props that are shared by default.
      *
      * @return array<string, mixed>
@@ -57,9 +81,9 @@ class HandleInertiaRequests extends Middleware
                 'email' => $authenticatedUser->email,
                 'email_verified_at' => $authenticatedUser->email_verified_at,
                 'user_type' => $authenticatedUser->user_type,
-                'profile_photo' => $authenticatedUser->profile_photo,
-                'profile_picture' => $authenticatedUser->profile_picture,
-                'profile_picture_url' => $authenticatedUser->profile_picture_url, // Computed accessor with fallback
+                'profile_photo' => $this->supabaseUrl($authenticatedUser->profile_photo) ?? $authenticatedUser->profile_photo,
+                'profile_picture' => $this->supabaseUrl($authenticatedUser->profile_picture) ?? $authenticatedUser->profile_picture,
+                'profile_picture_url' => $this->supabaseUrl($authenticatedUser->profile_picture ?? $authenticatedUser->profile_photo ?? $authenticatedUser->avatar),
                 'avatar' => $authenticatedUser->avatar,
                 'professional_title' => $authenticatedUser->professional_title,
                 'is_admin' => $authenticatedUser->is_admin,

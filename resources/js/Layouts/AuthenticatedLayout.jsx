@@ -7,9 +7,6 @@ import axios from 'axios';
 import CsrfSync from '@/Components/CsrfSync';
 
 
-// Debug: Log component initialization
-console.log('[AuthenticatedLayout] Component loading - checking for TDZ issues with messagesUnreadCount');
-
 // Simplified notification icons
 const NotificationIcon = ({ type }) => {
     const iconMap = {
@@ -63,18 +60,8 @@ export default function AuthenticatedLayout({ header, children }) {
     const [loading, setLoading] = useState(false);
     const [optimisticUpdates, setOptimisticUpdates] = useState(new Set()); // Track optimistic updates
 
-    // Debug: Check state initialization order
-    try {
-        console.log('[AuthenticatedLayout] Before messagesUnreadCount init');
-    } catch (e) {
-        console.error('[AuthenticatedLayout] Error before state init:', e);
-    }
-
     // Messages modal removed; use MiniChatModal for all messaging (declare before refs/useEffects that use it)
     const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
-
-    // Debug: Verify state was initialized
-    console.log('[AuthenticatedLayout] messagesUnreadCount initialized:', messagesUnreadCount);
     const [conversations, setConversations] = useState([]);
     const [messagesLoading, setMessagesLoading] = useState(false);
 
@@ -307,11 +294,14 @@ export default function AuthenticatedLayout({ header, children }) {
     }, []);
 
 
-    // Fetch unread message count
+    // Fetch unread message count (only update state when count actually changed to avoid re-render loops)
     const fetchMessagesUnreadCount = async () => {
         try {
             const response = await axios.get('/messages/unread/count');
-            setMessagesUnreadCount(response.data.count || 0);
+            const newCount = response.data.count || 0;
+            if (newCount !== messagesUnreadCountRef.current) {
+                setMessagesUnreadCount(newCount);
+            }
         } catch (error) {
             console.error('Error fetching messages unread count:', error);
         }
@@ -502,10 +492,10 @@ export default function AuthenticatedLayout({ header, children }) {
     return (
         <div className="min-h-screen bg-white">
             <CsrfSync />
-            <nav className="border-b border-gray-200 bg-white">
+            <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
 
-                <div className="mx-auto" style={{ paddingLeft: '0.45in', paddingRight: '0.45in' }}>
-                    <div className="flex h-16 justify-between items-center">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex h-14 sm:h-16 justify-between items-center gap-4">
                         {/* Logo - Left */}
                         <div className="flex-shrink-0">
                             <Link href="/" className="flex items-center">
@@ -514,8 +504,8 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         {/* Enhanced Navigation - Center */}
-                        <div className="flex-1 flex justify-center">
-                            <div className="hidden md:flex space-x-8">
+                        <div className="flex-1 flex justify-center min-w-0">
+                            <div className="hidden md:flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
                                 {/* Dashboard */}
                                 <Link
                                     href={dashboardHref}
@@ -558,6 +548,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 }`}
                                         >
                                             AI Recommendations
+                                        </Link>
+                                        <Link
+                                            href="/profile/gig-worker"
+                                            className={`text-sm font-medium transition-colors ${window.route.current('gig-worker.profile')
+                                                ? 'text-blue-600'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            Profile
                                         </Link>
                                     </>
                                 )}
@@ -927,18 +926,25 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <Dropdown>
                                     <Dropdown.Trigger>
                                         <button className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-                                            {user.profile_photo ? (
-                                                <img
-                                                    src={user.profile_photo}
-                                                    alt={user.first_name || user.name}
-                                                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
-                                                />
-                                            ) : user.profile_picture ? (
-                                                <img
-                                                    src={user.profile_picture}
-                                                    alt={user.first_name || user.name}
-                                                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
-                                                />
+                                            {(user.profile_photo || user.profile_picture) ? (
+                                                isGigWorker ? (
+                                                    <Link
+                                                        href={route('gig-worker.profile')}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <img
+                                                            src={user.profile_photo || user.profile_picture}
+                                                            alt={user.first_name || user.name}
+                                                            className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                                                        />
+                                                    </Link>
+                                                ) : (
+                                                    <img
+                                                        src={user.profile_photo || user.profile_picture}
+                                                        alt={user.first_name || user.name}
+                                                        className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                                                    />
+                                                )
                                             ) : (
                                                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                                                     {user.first_name ? user.first_name.charAt(0).toUpperCase() : user.name.charAt(0).toUpperCase()}
@@ -956,7 +962,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             <div className="text-sm font-medium text-gray-900">{user.first_name ? `${user.first_name} ${user.last_name}` : user.name}</div>
                                             <div className="text-xs text-gray-500 capitalize">{user.user_type}</div>
                                         </div>
-                                        <Dropdown.Link href="/profile">
+                                        <Dropdown.Link href={isGigWorker ? '/profile/gig-worker' : '/profile'}>
                                             Profile Settings
                                         </Dropdown.Link>
                                         <Dropdown.Link href="/messages">
@@ -1120,7 +1126,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                         <div className="mt-3 space-y-1">
                             <Link
-                                href={route('profile.edit')}
+                                href={isGigWorker ? '/profile/gig-worker' : '/profile'}
                                 className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
                             >
                                 Profile Settings

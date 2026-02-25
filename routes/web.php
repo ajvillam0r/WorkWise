@@ -12,12 +12,10 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\GigWorkerOnboardingController;
-use App\Http\Controllers\ClientOnboardingController;
 use App\Http\Controllers\EmployerOnboardingController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIRecommendationController;
 use App\Http\Controllers\ClientWalletController;
-use App\Http\Controllers\FreelancerWalletController;
 use App\Http\Controllers\DepositController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\AnalyticsController;
@@ -31,8 +29,6 @@ use App\Http\Controllers\AdminFraudController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\EmployerDashboardController;
-use App\Http\Controllers\GigWorkerDashboardController;
-use App\Http\Controllers\Api\GigWorkerController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\IdVerificationController;
 use App\Http\Controllers\DebugController;
@@ -99,11 +95,6 @@ Route::get('/dashboard', function () {
         return redirect()->route('employer.dashboard');
     }
 
-    // Redirect gig workers to their dashboard
-    if ($user->user_type === 'gig_worker') {
-        return redirect()->route('gig-worker.dashboard');
-    }
-
     Log::info('Dashboard route accessed', ['user' => $user->toArray()]);
 
     return Inertia::render('Dashboard', [
@@ -116,20 +107,6 @@ Route::get('/dashboard', function () {
     ]);
 })->middleware(['auth'])->name('dashboard');
 
-// Gig Worker Dashboard Route
-Route::get('/gig-worker/dashboard', [GigWorkerDashboardController::class, 'index'])
-    ->middleware(['auth'])
-    ->name('gig-worker.dashboard');
-
-// Job Invitations Route
-Route::get('/gig-worker/invitations', function () {
-    return Inertia::render('JobInvitations', [
-        'auth' => [
-            'user' => Auth::user()
-        ],
-        'jobInvitations' => []
-    ]);
-})->middleware(['auth', 'verified'])->name('gig-worker.invitations');
 
 // Browse Freelancers Route
 Route::get('/freelancers', function () {
@@ -268,7 +245,7 @@ Route::middleware('auth')->group(function () {
         ]);
     });
 
-    // Onboarding routes
+    // Onboarding routes - Gig Worker
     Route::get('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'show'])->name('gig-worker.onboarding');
     Route::post('/onboarding/gig-worker', [GigWorkerOnboardingController::class, 'store'])->name('gig-worker.onboarding.store');
     Route::post('/onboarding/gig-worker/skip', [GigWorkerOnboardingController::class, 'skip'])->name('gig-worker.onboarding.skip');
@@ -292,9 +269,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile', [ProfileController::class, 'update'])->middleware('fraud.detection'); // For file uploads with method spoofing
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Profile viewing routes
-    Route::get('/workers/{user}', [ProfileController::class, 'showWorker'])->name('workers.show');
+    // Gig Worker public-facing profile page
+    Route::get('/profile/gig-worker', [ProfileController::class, 'gigWorkerProfile'])->name('gig-worker.profile');
+    // Link preview API (for portfolio link preview card)
+    Route::get('/api/link-preview', [ProfileController::class, 'linkPreview'])->name('api.link-preview');
+    // Gig Worker profile edit page
+    Route::get('/profile/gig-worker/edit', [ProfileController::class, 'editGigWorker'])->name('gig-worker.profile.edit');
+    Route::post('/profile/gig-worker/edit', [ProfileController::class, 'updateGigWorker'])->name('gig-worker.profile.update');
+
     Route::get('/employers/{user}', [ProfileController::class, 'showEmployer'])->name('employers.show');
+
+    // Employer-own profile and edit routes
+    Route::get('/profile/employer', [ProfileController::class, 'employerProfile'])->name('employer.profile');
+    Route::get('/profile/employer/edit', [ProfileController::class, 'editEmployer'])->name('employer.profile.edit');
+    Route::post('/profile/employer/edit', [ProfileController::class, 'updateEmployer'])->name('employer.profile.update');
 
     // R2 Proxy route (fallback while DNS propagates)
     Route::get('/r2/{path}', [ProfileController::class, 'proxyR2File'])
@@ -314,7 +302,7 @@ Route::middleware('auth')->group(function () {
             \Illuminate\Support\Facades\Log::error('Supabase proxy failed: ' . $e->getMessage(), ['path' => $path]);
             abort(404);
         }
-    })->where('path', '.*')->name('supabase.proxy');
+    })->where('path', '.+')->name('supabase.proxy');
 
     // ID Verification routes
     Route::get('/id-verification', function () {
@@ -348,10 +336,6 @@ Route::middleware('auth')->group(function () {
     // Job show route (public for authenticated users)
     Route::get('/jobs/{job}', [GigJobController::class, 'show'])->name('jobs.show');
 
-    // Gig Worker-only routes (bidding)
-    Route::middleware(['gig_worker'])->group(function () {
-        Route::post('/bids', [BidController::class, 'store'])->middleware('fraud.detection')->name('bids.store');
-    });
 
     // Bid routes (mixed permissions)
     Route::get('/bids', [BidController::class, 'index'])->name('bids.index');
@@ -389,11 +373,6 @@ Route::middleware('auth')->group(function () {
         Route::patch('/bids/{bid}', [BidController::class, 'update'])->name('bids.update');
     });
 
-    // Gig Worker-only bid actions (updating, deleting own bids)
-    Route::middleware(['gig_worker'])->group(function () {
-        Route::patch('/bids/{bid}/status', [BidController::class, 'updateStatus'])->name('bids.updateStatus');
-        Route::delete('/bids/{bid}', [BidController::class, 'destroy'])->name('bids.destroy');
-    });
 
     // DEBUG: Test route to check if routing works
     Route::patch('/test-bid/{bid}', function($bid) {
@@ -413,11 +392,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/projects/{project}/payment/refund', [PaymentController::class, 'refundPayment'])->name('payment.refund');
     });
 
-    // Gig Worker-only project actions
-    Route::middleware(['gig_worker'])->group(function () {
-        Route::post('/projects/{project}/complete', [ProjectController::class, 'complete'])->name('projects.complete');
-        Route::post('/projects/{project}/review', [ProjectController::class, 'review'])->name('projects.review');
-    });
 
     // Contract routes - mixed permissions
     Route::get('/contracts', [ContractController::class, 'index'])->name('contracts.index');
@@ -472,20 +446,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/create-intent', [ClientWalletController::class, 'createIntent'])->name('create-intent');
     });
 
-    // Gig Worker wallet (earnings and withdrawals)
-    Route::middleware(['gig_worker'])->prefix('gig-worker/wallet')->name('gig-worker.wallet.')->group(function () {
-        Route::get('/', [FreelancerWalletController::class, 'index'])->name('index');
-        Route::post('/withdraw', [FreelancerWalletController::class, 'requestWithdrawal'])->name('withdraw');
-    });
 
     // Legacy deposits route - redirect to appropriate wallet based on role
     Route::get('/deposits', function () {
-        $user = Auth::user();
-        if ($user->user_type === 'employer') {
-            return redirect()->route('employer.wallet.index');
-        } else {
-            return redirect()->route('gig-worker.wallet.index');
-        }
+        return redirect()->route('employer.wallet.index');
     })->middleware('auth')->name('deposits.index');
 
     // Stripe webhooks (unified)
@@ -652,17 +616,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     });
 });
 
-// Temporary API routes via web (for debugging)
-Route::prefix('api/gig-workers')->group(function () {
-    Route::get('/', [GigWorkerController::class, 'index']);
-    Route::get('/skills/available', [GigWorkerController::class, 'getAvailableSkills']);
-    Route::get('/stats/overview', [GigWorkerController::class, 'getStats']);
-    Route::get('/{id}', [GigWorkerController::class, 'show']);
-});
 
 // Debug routes for Railway deployment issues
 Route::get('/debug/railway', [DebugController::class, 'railwayDiagnosis']);
-Route::get('/debug/gig-worker-dashboard', [DebugController::class, 'testGigWorkerDashboard']);
 Route::get('/debug/error-log', [ErrorLogController::class, 'captureGigWorkerError']);
 Route::get('/debug/simple-test', [SimpleTestController::class, 'basicTest']);
 Route::get('/debug/test-model', [SimpleTestController::class, 'testModel']);

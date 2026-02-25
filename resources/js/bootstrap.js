@@ -32,7 +32,7 @@ window.axios.interceptors.response.use(
 );
 
 // Enhanced route helper with current() functionality
-window.route = function(name, params = {}) {
+window.route = function (name, params = {}) {
     const routes = {
         'dashboard': '/dashboard',
         'jobs.index': '/jobs',
@@ -44,6 +44,10 @@ window.route = function(name, params = {}) {
         'jobs.destroy': (id) => `/jobs/${id}`,
         'profile.edit': '/profile',
         'profile.update': '/profile',
+        'profile.destroy': '/profile',
+        'gig-worker.profile': '/profile/gig-worker',
+        'gig-worker.profile.edit': '/profile/gig-worker/edit',
+        'gig-worker.profile.update': '/profile/gig-worker/edit',
         'bids.index': '/bids',
         'bids.store': '/bids',
         'bids.update': (id) => `/bids/${id}`,
@@ -67,16 +71,29 @@ window.route = function(name, params = {}) {
         'contracts.processSignature': (id) => `/contracts/${id}/signature`,
         'contracts.downloadPdf': (id) => `/contracts/${id}/pdf`,
         'browse.freelancers': '/browse-freelancers',
+        // Onboarding routes
+        'gig-worker.onboarding': '/onboarding/gig-worker',
+        'gig-worker.onboarding.store': '/onboarding/gig-worker',
+        'gig-worker.onboarding.skip': '/onboarding/gig-worker/skip',
+        'employer.onboarding': '/onboarding/employer',
+        'employer.onboarding.store': '/onboarding/employer',
+        'employer.onboarding.skip': '/onboarding/employer/skip',
+        // ID Verification routes
         'id-verification.show': '/id-verification',
         'id-verification.upload': '/api/id-verification/upload',
         'id-verification.upload-front': '/api/id-verification/upload-front',
         'id-verification.upload-back': '/api/id-verification/upload-back',
         'id-verification.resubmit': '/api/id-verification/resubmit',
+        // Admin routes
+        'admin.dashboard': '/admin/dashboard',
         'admin.id-verifications.index': '/admin/id-verifications',
         'admin.id-verifications.show': (userId) => `/admin/id-verifications/${userId}`,
         'admin.id-verifications.approve': (userId) => `/admin/id-verifications/${userId}/approve`,
         'admin.id-verifications.reject': (userId) => `/admin/id-verifications/${userId}/reject`,
         'admin.id-verifications.requestResubmit': (userId) => `/admin/id-verifications/${userId}/request-resubmit`,
+        // Employer routes
+        'employer.dashboard': '/employer/dashboard',
+        // Auth routes
         'login': '/login',
         'logout': '/logout',
         'register': '/register',
@@ -88,11 +105,15 @@ window.route = function(name, params = {}) {
         return routes[name](params);
     }
 
+    if (!routes[name]) {
+        console.warn(`[route] Unknown route name: "${name}". Falling back to "#". Add it to bootstrap.js.`);
+    }
+
     return routes[name] || '#';
 };
 
 // Add current() method to route helper
-window.route.current = function(pattern) {
+window.route.current = function (pattern) {
     const currentPath = window.location.pathname;
 
     if (!pattern) {

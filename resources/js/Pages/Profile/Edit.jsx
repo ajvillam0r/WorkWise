@@ -197,13 +197,11 @@ export default function Edit({ mustVerifyEmail, status }) {
                 : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description'],
             availability: ['working_hours', 'availability_notes'],
             portfolio: ['portfolio_link', 'resume_file'],
-            matching: isGigWorker
-                ? ['timezone', 'availability_notes']
-                : ['typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'primary_hiring_needs'],
+            matching: ['typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'primary_hiring_needs'],
             security: [], // Password change handled separately
         };
         return fieldMap[section] || [];
-    }, [isGigWorker]);
+    }, []);
 
     // Section-level edit handlers
     const startEditingSection = useCallback((section) => {
@@ -341,10 +339,7 @@ export default function Edit({ mustVerifyEmail, status }) {
             // Determine which section this field belongs to
             const sectionMap = {
                 basic: ['first_name', 'last_name', 'email', 'phone', 'bio', 'country', 'province', 'municipality', 'street_address', 'city', 'postal_code'],
-                professional: isGigWorker
-                    ? ['professional_title', 'hourly_rate', 'broad_category', 'specific_services', 'skills_with_experience']
-                    : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description', 'primary_hiring_needs', 'typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'tax_id'],
-                availability: ['working_hours', 'timezone', 'preferred_communication', 'availability_notes'],
+                professional: ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description', 'primary_hiring_needs', 'typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'tax_id'],
             };
 
             let section = null;
@@ -456,11 +451,7 @@ export default function Edit({ mustVerifyEmail, status }) {
 
     const tabs = [
         { id: 'basic', name: 'Basic Info', icon: '👤' },
-        { id: 'professional', name: isGigWorker ? 'Professional' : 'Business', icon: isGigWorker ? '💼' : '🏢' },
-        ...(isGigWorker ? [
-            { id: 'availability', name: 'Availability', icon: '📅' },
-            { id: 'portfolio', name: 'Portfolio', icon: '🎨' },
-        ] : []),
+        { id: 'professional', name: 'Business', icon: '🏢' },
         { id: 'matching', name: 'Job Matching', icon: '🎯' },
         { id: 'security', name: 'Security', icon: '🔒' },
     ];
@@ -545,15 +536,9 @@ export default function Edit({ mustVerifyEmail, status }) {
                                             {data.first_name} {data.last_name}
                                         </h3>
                                         <VerificationBadges user={user} size="sm" className="justify-center mt-2 mb-3" />
-                                        <p className="text-sm text-gray-600 mb-3">
-                                            {isGigWorker ? user.professional_title || 'Gig Worker' : user.company_name || 'Employer'}
-                                        </p>
                                         <div className="mt-4">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-xl text-sm font-semibold shadow-md ${user.user_type === 'employer'
-                                                ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800'
-                                                : 'bg-gradient-to-r from-green-100 to-green-200 text-green-800'
-                                                }`}>
-                                                {user.user_type === 'employer' ? '🏢 Employer' : '💼 Gig Worker'}
+                                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-sm font-semibold shadow-md bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800">
+                                                🏢 Employer
                                             </span>
                                         </div>
                                     </div>
@@ -676,36 +661,6 @@ export default function Edit({ mustVerifyEmail, status }) {
                                     />
                                 )}
 
-                                {/* Availability Tab (Gig Worker Only) */}
-                                {activeTab === 'availability' && isGigWorker && (
-                                    <AvailabilityTab
-                                        data={data}
-                                        setData={setData}
-                                        errors={{ ...errors, ...clientErrors }}
-                                        isEditing={editingSections.availability}
-                                        processing={savingSections.availability}
-                                        hasChanges={Object.keys(getSectionChanges('availability')).length > 0}
-                                        onEdit={() => startEditingSection('availability')}
-                                        onCancel={() => cancelEditingSection('availability')}
-                                        onSave={() => saveSection('availability')}
-                                    />
-                                )}
-
-                                {/* Portfolio Tab (Gig Worker Only) */}
-                                {activeTab === 'portfolio' && isGigWorker && (
-                                    <PortfolioTab
-                                        data={data}
-                                        setData={setData}
-                                        errors={{ ...errors, ...clientErrors }}
-                                        isEditing={editingSections.portfolio}
-                                        processing={savingSections.portfolio}
-                                        hasChanges={Object.keys(getSectionChanges('portfolio')).length > 0}
-                                        onEdit={() => startEditingSection('portfolio')}
-                                        onCancel={() => cancelEditingSection('portfolio')}
-                                        onSave={() => saveSection('portfolio')}
-                                        user={user}
-                                    />
-                                )}
 
                                 {/* Matching Preferences Tab */}
                                 {activeTab === 'matching' && (

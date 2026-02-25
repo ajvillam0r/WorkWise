@@ -61,6 +61,11 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('admin.dashboard'));
         }
 
+        // Gig workers go to the jobs page after login
+        if ($user && $user->isGigWorker()) {
+            return redirect()->intended(route('jobs.index'));
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 

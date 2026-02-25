@@ -59,7 +59,7 @@ return [
             // Use local proxy to securely serve files from the private bucket
             'url' => env('APP_URL', 'http://localhost:8000') . '/storage/supabase',
             'use_path_style_endpoint' => true,
-            'throw' => true,
+            'throw' => false,  // Non-fatal: log the error instead of throwing
         ],
 
         's3' => [

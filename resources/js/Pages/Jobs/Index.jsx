@@ -16,25 +16,6 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
     });
     const [isSkillDropdownOpen, setIsSkillDropdownOpen] = useState(false);
 
-    // Helper function to safely parse required_skills
-    const parseSkills = (skills) => {
-        if (!skills) return [];
-
-        // If it's already an array, return it
-        if (Array.isArray(skills)) return skills;
-
-        // If it's a string, try to parse it as JSON
-        if (typeof skills === 'string') {
-            try {
-                const parsed = JSON.parse(skills);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (e) {
-                return [];
-            }
-        }
-
-        return [];
-    };
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         jobId: null,
@@ -78,25 +59,58 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
 
     const [processing, setProcessing] = useState(false);
 
+    // Parse legacy comma-separated skills
+    const parseSkills = (skillsReq) => {
+        if (!skillsReq) return [];
+        if (Array.isArray(skillsReq)) return skillsReq;
+        if (typeof skillsReq === 'string') {
+            try {
+                // Try to parse as JSON first (to catch arrays stored as strings)
+                const parsed = JSON.parse(skillsReq);
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e) {
+                // Not JSON, treat as comma-separated string
+                return skillsReq.split(',').map(s => s.trim()).filter(Boolean);
+            }
+        }
+        return [];
+    };
+
+    // Safe parsing for structured skills
+    const getStructuredSkills = (skillsRaw) => {
+        if (!skillsRaw) return [];
+        if (Array.isArray(skillsRaw)) return skillsRaw;
+        if (typeof skillsRaw === 'string') {
+            try {
+                const parsed = JSON.parse(skillsRaw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    };
+
     // Client-side filtering functions (fast, no API calls)
     const matchesSearch = (job) => {
         if (!search) return true;
         const searchLower = search.toLowerCase();
         const titleMatch = job.title?.toLowerCase().includes(searchLower);
         const descMatch = job.description?.toLowerCase().includes(searchLower);
-        
+
         // Check structured skills first, then fallback to legacy
         let skillsMatch = false;
-        if (job.skills_requirements?.length > 0) {
-            skillsMatch = job.skills_requirements.some(s => 
-                s.skill.toLowerCase().includes(searchLower)
+        const structuredSkills = getStructuredSkills(job.skills_requirements);
+        if (structuredSkills.length > 0) {
+            skillsMatch = structuredSkills.some(s =>
+                s.skill?.toLowerCase().includes(searchLower)
             );
         } else {
-            skillsMatch = parseSkills(job.required_skills).some(skill => 
+            skillsMatch = parseSkills(job.required_skills).some(skill =>
                 skill.toLowerCase().includes(searchLower)
             );
         }
-        
+
         return titleMatch || descMatch || skillsMatch;
     };
 
@@ -110,13 +124,13 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
         if (!normalizedSelectedSkills.length) return true;
         const jobSkills = parseSkills(skillSet);
         if (!Array.isArray(jobSkills) || jobSkills.length === 0) return false;
-        
+
         const normalizedJobSkills = jobSkills
             .map((skill) => typeof skill === 'string' ? skill.toLowerCase() : '')
             .filter((skill) => skill.length > 0);
-        
+
         if (normalizedJobSkills.length === 0) return false;
-        
+
         return normalizedSelectedSkills.every((skill) =>
             normalizedJobSkills.includes(skill)
         );
@@ -124,33 +138,33 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
 
     const jobBudgetMatches = (minValue, maxValue) => {
         if (budgetFilter.min === null && budgetFilter.max === null) return true;
-        
+
         const jobMin = minValue !== undefined ? minValue : null;
         const jobMax = maxValue !== undefined ? maxValue : null;
-        
+
         const normalizedMin = jobMin === null || jobMin === '' || jobMin === undefined
             ? null
             : Number.isFinite(jobMin) ? jobMin : Number.isFinite(parseFloat(jobMin)) ? parseFloat(jobMin) : null;
-        
+
         const normalizedMax = jobMax === null || jobMax === '' || jobMax === undefined
             ? null
             : Number.isFinite(jobMax) ? jobMax : Number.isFinite(parseFloat(jobMax)) ? parseFloat(jobMax) : null;
-        
+
         if (normalizedMin === null && normalizedMax === null) return true;
-        
+
         const rangeMin = normalizedMin ?? normalizedMax;
         const rangeMax = normalizedMax ?? normalizedMin;
-        
+
         if (rangeMin === null && rangeMax === null) return true;
-        
+
         if (budgetFilter.min !== null && rangeMax !== null && rangeMax < budgetFilter.min) {
             return false;
         }
-        
+
         if (budgetFilter.max !== null && rangeMin !== null && rangeMin > budgetFilter.max) {
             return false;
         }
-        
+
         return true;
     };
 
@@ -200,7 +214,7 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
     // Fast client-side filtering with useMemo
     const filteredJobs = useMemo(() => {
         if (!jobs.data) return [];
-        
+
         return jobs.data.filter((job) => {
             if (!matchesSearch(job)) return false;
             if (!matchesExperience(job.experience_level)) return false;
@@ -339,7 +353,7 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
             <div className="relative py-12 bg-white overflow-hidden">
                 {/* Animated Background Shapes */}
                 <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {/* Search and Filters with Sidebar Layout for Gig Workers */}
@@ -624,22 +638,22 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                                 <div className="text-sm font-medium text-blue-600 mb-3">Required Skills</div>
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {/* Show structured skills if available */}
-                                                                    {job?.skills_requirements?.length > 0 ? (
+                                                                    {getStructuredSkills(job?.skills_requirements).length > 0 ? (
                                                                         <>
-                                                                            {job.skills_requirements
+                                                                            {getStructuredSkills(job.skills_requirements)
                                                                                 .filter(s => s.importance === 'required')
                                                                                 .slice(0, 5)
                                                                                 .map((skill, index) => (
                                                                                     <div key={index} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm hover:shadow-md transition-all duration-200">
                                                                                         <span>{skill.skill}</span>
                                                                                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getExperienceBadge(skill.experience_level)}`}>
-                                                                                            {skill.experience_level.charAt(0).toUpperCase()}
+                                                                                            {skill.experience_level?.charAt(0).toUpperCase() || ''}
                                                                                         </span>
                                                                                     </div>
                                                                                 ))}
-                                                                            {job.skills_requirements.filter(s => s.importance === 'required').length > 5 && (
-                                                                                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600" title={`+${job.skills_requirements.filter(s => s.importance === 'required').length - 5} more skills`}>
-                                                                                    +{job.skills_requirements.filter(s => s.importance === 'required').length - 5} more
+                                                                            {getStructuredSkills(job.skills_requirements).filter(s => s.importance === 'required').length > 5 && (
+                                                                                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600" title={`+${getStructuredSkills(job.skills_requirements).filter(s => s.importance === 'required').length - 5} more skills`}>
+                                                                                    +{getStructuredSkills(job.skills_requirements).filter(s => s.importance === 'required').length - 5} more
                                                                                 </span>
                                                                             )}
                                                                         </>
@@ -797,22 +811,22 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                             <div className="text-sm font-medium text-blue-600 mb-3">Required Skills</div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {/* Show structured skills if available */}
-                                                                {job?.skills_requirements?.length > 0 ? (
+                                                                {getStructuredSkills(job?.skills_requirements).length > 0 ? (
                                                                     <>
-                                                                        {job.skills_requirements
+                                                                        {getStructuredSkills(job.skills_requirements)
                                                                             .filter(s => s.importance === 'required')
                                                                             .slice(0, 5)
                                                                             .map((skill, index) => (
                                                                                 <div key={index} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm hover:shadow-md transition-all duration-200">
                                                                                     <span>{skill.skill}</span>
                                                                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getExperienceBadge(skill.experience_level)}`}>
-                                                                                        {skill.experience_level.charAt(0).toUpperCase()}
+                                                                                        {skill.experience_level?.charAt(0).toUpperCase() || ''}
                                                                                     </span>
                                                                                 </div>
                                                                             ))}
-                                                                        {job.skills_requirements.filter(s => s.importance === 'required').length > 5 && (
-                                                                            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600" title={`+${job.skills_requirements.filter(s => s.importance === 'required').length - 5} more skills`}>
-                                                                                +{job.skills_requirements.filter(s => s.importance === 'required').length - 5} more
+                                                                        {getStructuredSkills(job.skills_requirements).filter(s => s.importance === 'required').length > 5 && (
+                                                                            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600" title={`+${getStructuredSkills(job.skills_requirements).filter(s => s.importance === 'required').length - 5} more skills`}>
+                                                                                +{getStructuredSkills(job.skills_requirements).filter(s => s.importance === 'required').length - 5} more
                                                                             </span>
                                                                         )}
                                                                     </>
@@ -914,13 +928,11 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                             <Link
                                                                 key={index}
                                                                 href={link.url || '#'}
-                                                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                                                    link.active
-                                                                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                                                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                                                } ${index === 0 ? 'rounded-l-md' : ''} ${
-                                                                    index === jobs.links.length - 1 ? 'rounded-r-md' : ''
-                                                                }`}
+                                                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${link.active
+                                                                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                                                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                                                    } ${index === 0 ? 'rounded-l-md' : ''} ${index === jobs.links.length - 1 ? 'rounded-r-md' : ''
+                                                                    }`}
                                                                 dangerouslySetInnerHTML={{ __html: link.label }}
                                                             />
                                                         ))}
@@ -966,12 +978,10 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                 <div className="fixed inset-0 bg-gray-600/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
                     <div className="relative top-20 mx-auto p-6 border border-gray-200 w-96 shadow-2xl rounded-xl bg-white/90 backdrop-blur-sm">
                         <div className="mt-3 text-center">
-                            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${
-                                confirmModal.confirmColor === 'red' ? 'bg-red-100' : 'bg-yellow-100'
-                            }`}>
-                                <svg className={`h-6 w-6 ${
-                                    confirmModal.confirmColor === 'red' ? 'text-red-600' : 'text-yellow-600'
-                                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${confirmModal.confirmColor === 'red' ? 'bg-red-100' : 'bg-yellow-100'
+                                }`}>
+                                <svg className={`h-6 w-6 ${confirmModal.confirmColor === 'red' ? 'text-red-600' : 'text-yellow-600'
+                                    }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                 </svg>
@@ -988,11 +998,10 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                 <button
                                     onClick={confirmAction}
                                     disabled={processing}
-                                    className={`px-6 py-3 ${
-                                        confirmModal.confirmColor === 'red'
-                                            ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
-                                            : 'bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700'
-                                    } text-white font-semibold rounded-xl w-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:transform-none`}
+                                    className={`px-6 py-3 ${confirmModal.confirmColor === 'red'
+                                        ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                                        : 'bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700'
+                                        } text-white font-semibold rounded-xl w-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:transform-none`}
                                 >
                                     {processing ? 'Processing...' : confirmModal.confirmText}
                                 </button>

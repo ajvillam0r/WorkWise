@@ -29,12 +29,20 @@ class ProfileController extends Controller
      * Display the user's profile form.
      * Optimized: Only loads necessary relationships and caches profile completion.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
-        
-        // Profile edit logic for general users (Employer focus)
-        
+
+        // Proactive redirection to specialized edit pages
+        if ($user->user_type === 'employer') {
+            return redirect()->route('employer.profile.edit');
+        }
+
+        if ($user->user_type === 'gig_worker') {
+            return redirect()->route('gig-worker.profile.edit');
+        }
+
+        // Profile edit logic for general users (Fallback)
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
@@ -315,6 +323,166 @@ class ProfileController extends Controller
         $user->save();
 
         return redirect()->route('gig-worker.profile')->with('status', 'profile-updated');
+    }
+
+    /**
+     * Show the employer's own profile page.
+     */
+    public function employerProfile(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user();
+        $user->refresh();
+
+        if ($user->user_type !== 'employer') {
+            return redirect()->route('profile.edit');
+        }
+
+        $rawPicture = $user->profile_picture ?? $user->profile_photo;
+
+        // Calculate job statistics
+        $totalJobsPosted = $user->postedJobs()->count();
+        $totalSpent = $user->paymentsMade()->where('status', 'completed')->sum('amount');
+        
+        $hiredJobsCount = $user->postedJobs()->whereHas('projects', function($q) {
+            $q->whereIn('status', ['active', 'completed']);
+        })->count();
+        
+        $hireRate = $totalJobsPosted > 0 ? round(($hiredJobsCount / $totalJobsPosted) * 100) : 0;
+
+        return Inertia::render('Profile/EmployerProfile', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->first_name . ' ' . $user->last_name,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'company_name' => $user->company_name,
+                'industry' => $user->industry,
+                'company_size' => $user->company_size,
+                'bio' => $user->bio,
+                'company_description' => $user->company_description,
+                'profile_picture' => $this->supabaseUrl($rawPicture),
+                'location' => $user->city . ($user->country ? ', ' . $user->country : ''),
+                'joined_date' => $user->created_at->format('M Y'),
+                'profile_completed' => $user->profile_completed,
+            ],
+            'stats' => [
+                'jobs_posted' => $totalJobsPosted,
+                'total_spent' => number_format((float)$totalSpent, 2),
+                'hire_rate' => $hireRate . '%',
+            ],
+            'activeJobs' => $user->postedJobs()
+                ->where('status', 'open')
+                ->latest()
+                ->limit(5)
+                ->get(),
+            'pastProjects' => $user->employerProjects()
+                ->with(['gigWorker:id,first_name,last_name,profile_picture'])
+                ->whereIn('status', ['completed', 'active']) // Include active projects in history if needed, or just completed
+                ->latest()
+                ->limit(5)
+                ->get(),
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Show the employer profile EDIT form.
+     */
+    public function editEmployer(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->user_type !== 'employer') {
+            return redirect()->route('profile.edit');
+        }
+
+        $rawPicture = $user->profile_picture ?? $user->profile_photo;
+
+        return Inertia::render('Profile/EmployerEdit', [
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'company_name' => $user->company_name,
+                'industry' => $user->industry,
+                'company_size' => $user->company_size,
+                'company_website' => $user->company_website,
+                'bio' => $user->bio,
+                'company_description' => $user->company_description,
+                'profile_picture' => $this->supabaseUrl($rawPicture),
+                'country' => $user->country,
+                'city' => $user->city,
+                'street_address' => $user->street_address,
+                'postal_code' => $user->postal_code,
+            ],
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Handle employer profile update.
+     */
+    public function updateEmployer(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->user_type !== 'employer') {
+            return redirect()->route('profile.edit');
+        }
+
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'company_name' => 'nullable|string|max:255',
+            'industry' => 'nullable|string|max:255',
+            'company_size' => 'nullable|string|max:255',
+            'company_website' => 'nullable|url|max:255',
+            'bio' => 'nullable|string|max:1000',
+            'company_description' => 'nullable|string|max:2000',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,gif,webp|max:5120',
+            'country' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'street_address' => 'nullable|string|max:255',
+            'postal_code' => 'nullable|string|max:255',
+        ]);
+
+        // Handle profile picture (Company Logo) upload
+        if ($request->hasFile('profile_picture')) {
+            try {
+                if ($user->profile_picture && str_starts_with($user->profile_picture, '/supabase/')) {
+                    $oldPath = str_replace('/supabase/', '', $user->profile_picture);
+                    Storage::disk('supabase')->delete($oldPath);
+                }
+                $path = Storage::disk('supabase')->putFile('profiles/' . $user->id, $request->file('profile_picture'));
+                if ($path) {
+                    $user->profile_picture = '/supabase/' . $path;
+                    $user->profile_photo = '/supabase/' . $path;
+                }
+            } catch (\Exception $e) {
+                Log::error('EmployerEdit: profile picture upload failed: ' . $e->getMessage());
+                return back()->with('error', 'Failed to upload profile picture.');
+            }
+        }
+
+        // Text fields
+        $user->first_name = $validated['first_name'];
+        $user->last_name = $validated['last_name'];
+        $user->company_name = $validated['company_name'] ?? null;
+        $user->industry = $validated['industry'] ?? null;
+        $user->company_size = $validated['company_size'] ?? null;
+        $user->company_website = $validated['company_website'] ?? null;
+        $user->bio = $validated['bio'] ?? null;
+        $user->company_description = $validated['company_description'] ?? null;
+        $user->country = $validated['country'] ?? null;
+        $user->city = $validated['city'] ?? null;
+        $user->street_address = $validated['street_address'] ?? null;
+        $user->postal_code = $validated['postal_code'] ?? null;
+        
+        $user->save();
+
+        return redirect()->route('employer.profile')->with('status', 'profile-updated');
     }
 
     public function update(ProfileUpdateRequest $request): RedirectResponse

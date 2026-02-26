@@ -10,9 +10,6 @@ import useToast from '@/Hooks/useToast';
 import { validateSection, validateField } from '@/utils/validation';
 import BasicInfoTab from './Tabs/BasicInfoTab';
 import ProfessionalTab from './Tabs/ProfessionalTab';
-import AvailabilityTab from './Tabs/AvailabilityTab';
-import PortfolioTab from './Tabs/PortfolioTab';
-import MatchingPreferencesTab from './Tabs/MatchingPreferencesTab';
 
 export default function Edit({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
@@ -28,9 +25,6 @@ export default function Edit({ mustVerifyEmail, status }) {
     const [editingSections, setEditingSections] = useState({
         basic: false,
         professional: false,
-        availability: false,
-        portfolio: false,
-        matching: false,
         security: false,
     });
 
@@ -38,9 +32,6 @@ export default function Edit({ mustVerifyEmail, status }) {
     const [savingSections, setSavingSections] = useState({
         basic: false,
         professional: false,
-        availability: false,
-        portfolio: false,
-        matching: false,
         security: false,
     });
 
@@ -181,9 +172,6 @@ export default function Edit({ mustVerifyEmail, status }) {
     const isCurrentTabEditing = useMemo(() => {
         if (activeTab === 'basic') return editingSections.basic;
         if (activeTab === 'professional') return editingSections.professional;
-        if (activeTab === 'availability') return editingSections.availability;
-        if (activeTab === 'portfolio') return editingSections.portfolio;
-        if (activeTab === 'matching') return editingSections.matching;
         if (activeTab === 'security') return editingSections.security;
         return false;
     }, [activeTab, editingSections]);
@@ -195,9 +183,6 @@ export default function Edit({ mustVerifyEmail, status }) {
             professional: isGigWorker
                 ? ['professional_title', 'hourly_rate', 'broad_category', 'specific_services', 'skills_with_experience']
                 : ['company_name', 'work_type_needed', 'budget_range', 'project_intent', 'company_size', 'industry', 'company_website', 'company_description'],
-            availability: ['working_hours', 'availability_notes'],
-            portfolio: ['portfolio_link', 'resume_file'],
-            matching: ['typical_project_budget', 'typical_project_duration', 'preferred_experience_level', 'hiring_frequency', 'primary_hiring_needs'],
             security: [], // Password change handled separately
         };
         return fieldMap[section] || [];
@@ -452,7 +437,6 @@ export default function Edit({ mustVerifyEmail, status }) {
     const tabs = [
         { id: 'basic', name: 'Basic Info', icon: '👤' },
         { id: 'professional', name: 'Business', icon: '🏢' },
-        { id: 'matching', name: 'Job Matching', icon: '🎯' },
         { id: 'security', name: 'Security', icon: '🔒' },
     ];
 
@@ -662,21 +646,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                                 )}
 
 
-                                {/* Matching Preferences Tab */}
-                                {activeTab === 'matching' && (
-                                    <MatchingPreferencesTab
-                                        data={data}
-                                        setData={setData}
-                                        errors={{ ...errors, ...clientErrors }}
-                                        isGigWorker={isGigWorker}
-                                        isEditing={editingSections.matching}
-                                        processing={savingSections.matching}
-                                        hasChanges={Object.keys(getSectionChanges('matching')).length > 0}
-                                        onEdit={() => startEditingSection('matching')}
-                                        onCancel={() => cancelEditingSection('matching')}
-                                        onSave={() => saveSection('matching')}
-                                    />
-                                )}
+
 
                                 {/* Legacy Basic Tab Code - Remove after migration */}
                                 {false && activeTab === 'basic' && (
@@ -1499,217 +1469,9 @@ export default function Edit({ mustVerifyEmail, status }) {
                                     </div>
                                 )}
 
-                                {/* Availability Tab */}
-                                {activeTab === 'availability' && isGigWorker && (
-                                    <AvailabilityTab
-                                        data={data}
-                                        setData={setData}
-                                        errors={{ ...errors, ...clientErrors }}
-                                        isEditing={editingSections.availability}
-                                        processing={savingSections.availability}
-                                        hasChanges={Object.keys(getSectionChanges('availability')).length > 0}
-                                        onEdit={() => startEditingSection('availability')}
-                                        onCancel={() => cancelEditingSection('availability')}
-                                        onSave={() => saveSection('availability')}
-                                    />
-                                )}
 
-                                {/* Legacy Availability Tab - Remove after full migration */}
-                                {false && activeTab === 'availability' && isGigWorker && (
-                                    <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
-                                        <div className="mb-6 flex justify-between items-start">
-                                            <h3 className="text-2xl font-bold text-gray-900">Availability & Communication</h3>
-                                        </div>
-                                        <div className="space-y-6">
-                                            {/* Working Hours */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                                    Working Hours
-                                                </label>
-                                                <div className="space-y-2">
-                                                    {Object.keys(data.working_hours).map((day) => (
-                                                        <div key={day} className="flex items-center gap-4">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={data.working_hours[day].enabled}
-                                                                onChange={(e) => {
-                                                                    setData('working_hours', {
-                                                                        ...data.working_hours,
-                                                                        [day]: { ...data.working_hours[day], enabled: e.target.checked }
-                                                                    });
-                                                                }}
-                                                                disabled={!editingSections.availability}
-                                                                className="w-5 h-5 text-blue-600 rounded"
-                                                            />
-                                                            <span className="w-24 capitalize font-medium">{day}</span>
-                                                            {data.working_hours[day].enabled && (
-                                                                <>
-                                                                    <input
-                                                                        type="time"
-                                                                        value={data.working_hours[day].start}
-                                                                        onChange={(e) => {
-                                                                            setData('working_hours', {
-                                                                                ...data.working_hours,
-                                                                                [day]: { ...data.working_hours[day], start: e.target.value }
-                                                                            });
-                                                                        }}
-                                                                        disabled={!editingSections.availability}
-                                                                        className="px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100"
-                                                                    />
-                                                                    <span className="text-gray-600">to</span>
-                                                                    <input
-                                                                        type="time"
-                                                                        value={data.working_hours[day].end}
-                                                                        onChange={(e) => {
-                                                                            setData('working_hours', {
-                                                                                ...data.working_hours,
-                                                                                [day]: { ...data.working_hours[day], end: e.target.value }
-                                                                            });
-                                                                        }}
-                                                                        disabled={!editingSections.availability}
-                                                                        className="px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100"
-                                                                    />
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
 
-                                            {/* Timezone */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Timezone
-                                                </label>
-                                                <select
-                                                    value={data.timezone}
-                                                    onChange={(e) => setData('timezone', e.target.value)}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    <option value="Asia/Manila">Asia/Manila (PHT)</option>
-                                                    <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-                                                    <option value="America/New_York">America/New_York (EST)</option>
-                                                    <option value="Europe/London">Europe/London (GMT)</option>
-                                                </select>
-                                            </div>
 
-                                            {/* Preferred Communication */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Preferred Communication Methods
-                                                </label>
-                                                <div className="space-y-2">
-                                                    {['email', 'chat', 'video_call', 'phone'].map((method) => (
-                                                        <label key={method} className="flex items-center gap-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={data.preferred_communication.includes(method)}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) {
-                                                                        setData('preferred_communication', [...data.preferred_communication, method]);
-                                                                    } else {
-                                                                        setData('preferred_communication',
-                                                                            data.preferred_communication.filter(m => m !== method)
-                                                                        );
-                                                                    }
-                                                                }}
-                                                                className="w-5 h-5 text-blue-600 rounded"
-                                                            />
-                                                            <span className="capitalize">{method.replace('_', ' ')}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Availability Notes */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Availability Notes
-                                                </label>
-                                                <textarea
-                                                    value={data.availability_notes}
-                                                    onChange={(e) => setData('availability_notes', e.target.value)}
-                                                    rows={4}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="Any additional notes about your availability..."
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Portfolio Tab */}
-                                {activeTab === 'portfolio' && isGigWorker && (
-                                    <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 p-8">
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Portfolio</h3>
-                                        <p className="text-sm text-gray-600 mb-4">
-                                            Your portfolio items are managed separately during onboarding.
-                                        </p>
-                                        {user.portfolio_items && user.portfolio_items.length > 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {user.portfolio_items.map((item, index) => (
-                                                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                                                        <div className="flex items-start justify-between mb-2">
-                                                            <h4 className="font-semibold text-lg">{item.title}</h4>
-                                                            {item.project_type === 'resume' && (
-                                                                <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                                                    Resume
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-
-                                                        {/* Show document download for resume type */}
-                                                        {item.project_type === 'resume' && item.document_file && (
-                                                            <a
-                                                                href={item.document_file}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                download
-                                                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-                                                            >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                                </svg>
-                                                                Download Resume
-                                                            </a>
-                                                        )}
-
-                                                        {/* Show project URL for other types */}
-                                                        {item.project_type !== 'resume' && item.project_url && (
-                                                            <a href={item.project_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                                                                View Project →
-                                                            </a>
-                                                        )}
-
-                                                        {/* Show images for visual projects */}
-                                                        {item.project_type !== 'resume' && item.images && item.images.length > 0 && (
-                                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                                {item.images.slice(0, 3).map((img, imgIdx) => (
-                                                                    <img
-                                                                        key={imgIdx}
-                                                                        src={img}
-                                                                        alt={`${item.title} - Image ${imgIdx + 1}`}
-                                                                        className="h-16 w-16 object-cover rounded border"
-                                                                    />
-                                                                ))}
-                                                                {item.images.length > 3 && (
-                                                                    <div className="h-16 w-16 flex items-center justify-center bg-gray-100 rounded border text-xs text-gray-600">
-                                                                        +{item.images.length - 3}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                                                <p className="text-gray-500">No portfolio items yet. Add them during your onboarding process.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
 
                                 {/* Security Tab */}
                                 {activeTab === 'security' && (

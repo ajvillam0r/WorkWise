@@ -962,7 +962,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                             <div className="text-sm font-medium text-gray-900">{user.first_name ? `${user.first_name} ${user.last_name}` : user.name}</div>
                                             <div className="text-xs text-gray-500 capitalize">{user.user_type}</div>
                                         </div>
-                                        <Dropdown.Link href={isGigWorker ? '/profile/gig-worker' : '/profile'}>
+                                        <Dropdown.Link href={isGigWorker ? '/profile/gig-worker' : (isEmployer ? '/profile/employer' : '/profile')}>
                                             Profile Settings
                                         </Dropdown.Link>
                                         <Dropdown.Link href="/messages">
@@ -1126,7 +1126,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                         <div className="mt-3 space-y-1">
                             <Link
-                                href={isGigWorker ? '/profile/gig-worker' : '/profile'}
+                                href={isGigWorker ? '/profile/gig-worker' : (isEmployer ? '/profile/employer' : '/profile')}
                                 className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
                             >
                                 Profile Settings

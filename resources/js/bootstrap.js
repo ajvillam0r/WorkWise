@@ -93,6 +93,9 @@ window.route = function (name, params = {}) {
         'admin.id-verifications.requestResubmit': (userId) => `/admin/id-verifications/${userId}/request-resubmit`,
         // Employer routes
         'employer.dashboard': '/employer/dashboard',
+        'employer.profile': '/profile/employer',
+        'employer.profile.edit': '/profile/employer/edit',
+        'employer.profile.update': '/profile/employer/edit',
         // Auth routes
         'login': '/login',
         'logout': '/logout',
@@ -107,6 +110,9 @@ window.route = function (name, params = {}) {
 
     if (!routes[name]) {
         console.warn(`[route] Unknown route name: "${name}". Falling back to "#". Add it to bootstrap.js.`);
+        // #region agent log
+        fetch('http://127.0.0.1:7501/ingest/c1ee8a40-5240-4871-b19a-db022ef79a5e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'224090'},body:JSON.stringify({sessionId:'224090',runId:'post-fix',hypothesisId:'H-A',location:'bootstrap.js:112',message:'route fallback triggered',data:{routeName:name},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
     }
 
     return routes[name] || '#';

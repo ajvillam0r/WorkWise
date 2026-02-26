@@ -22,7 +22,7 @@ export async function refreshCsrfToken() {
         if (response.ok) {
             // Extract CSRF token from cookie
             const csrfToken = getCsrfTokenFromCookie();
-            
+
             if (csrfToken) {
                 // Update the meta tag
                 updateCsrfMetaTag(csrfToken);
@@ -34,7 +34,7 @@ export async function refreshCsrfToken() {
                 return csrfToken;
             }
         }
-        
+
         console.warn('Failed to refresh CSRF token');
         return null;
     } catch (error) {
@@ -51,12 +51,12 @@ function getCsrfTokenFromCookie() {
     const name = 'XSRF-TOKEN';
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    
+
     if (parts.length === 2) {
         const token = parts.pop().split(';').shift();
         return decodeURIComponent(token);
     }
-    
+
     return null;
 }
 
@@ -66,13 +66,13 @@ function getCsrfTokenFromCookie() {
  */
 function updateCsrfMetaTag(token) {
     let metaTag = document.querySelector('meta[name="csrf-token"]');
-    
+
     if (!metaTag) {
         metaTag = document.createElement('meta');
         metaTag.name = 'csrf-token';
         document.head.appendChild(metaTag);
     }
-    
+
     metaTag.content = token;
 }
 
@@ -82,17 +82,14 @@ function updateCsrfMetaTag(token) {
  * @returns {number} Interval ID that can be used to stop the refresh
  */
 export function startCsrfRefresh(intervalMinutes = 30) {
-    // Refresh immediately on start
-    refreshCsrfToken();
-    
     // Then refresh periodically
     const intervalMs = intervalMinutes * 60 * 1000;
     const intervalId = setInterval(() => {
         refreshCsrfToken();
     }, intervalMs);
-    
+
     console.log(`CSRF token refresh started (every ${intervalMinutes} minutes)`);
-    
+
     return intervalId;
 }
 
@@ -114,14 +111,14 @@ export function stopCsrfRefresh(intervalId) {
  */
 export function useCsrfRefresh(enabled = true, intervalMinutes = 30) {
     if (typeof window === 'undefined') return;
-    
+
     const { useEffect } = require('react');
-    
+
     useEffect(() => {
         if (!enabled) return;
-        
+
         const intervalId = startCsrfRefresh(intervalMinutes);
-        
+
         return () => {
             stopCsrfRefresh(intervalId);
         };

@@ -104,7 +104,125 @@ class ProfileController extends Controller
                 'resume_file'            => $this->supabaseUrl($user->resume_file),
                 'profile_completed'      => $user->profile_completed,
             ],
+            'pastProjects' => $user->freelancerProjects()
+                ->with([
+                    'employer:id,first_name,last_name,profile_picture',
+                    'job:id,title',
+                    'reviews' => fn ($q) => $q->where('reviewer_id', $user->id)->limit(1),
+                ])
+                ->whereIn('status', ['completed', 'active'])
+                ->latest()
+                ->limit(5)
+                ->get(),
             'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Store job context in session and redirect to clean gig worker profile URL.
+     * Used when employer clicks "View Profile" from AI Match so the address bar shows /gig-worker/{id} only.
+     */
+    public function storeGigWorkerProfileContext(Request $request, User $user): RedirectResponse
+    {
+        if ($user->user_type !== 'gig_worker') {
+            abort(404, 'Gig worker profile not found.');
+        }
+
+        $ctx = $request->query('ctx');
+        if ($ctx && is_string($ctx)) {
+            try {
+                $decrypted = decrypt($ctx);
+                if (is_array($decrypted) && isset($decrypted['job_id'])) {
+                    $request->session()->put('profile_job_context', [
+                        'user_id' => $user->id,
+                        'job_id' => $decrypted['job_id'],
+                        'job_title' => (string) ($decrypted['job_title'] ?? ''),
+                        'job_budget' => (string) ($decrypted['job_budget'] ?? 'Negotiable'),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Invalid token; continue without context
+            }
+        }
+
+        return redirect()->route('gig-worker.profile.show', $user);
+    }
+
+    /**
+     * Show another gig worker's profile (e.g. from AI Match "View Profile").
+     * Authenticated users can view; employers see "Hire Me" and no edit controls.
+     * Job context can come from session (set by storeGigWorkerProfileContext) or from ?ctx=.
+     */
+    public function showGigWorker(Request $request, User $user): Response|RedirectResponse
+    {
+        if ($user->id === $request->user()->id) {
+            return redirect()->route('gig-worker.profile');
+        }
+
+        if ($user->user_type !== 'gig_worker') {
+            abort(404, 'Gig worker profile not found.');
+        }
+
+        $rawPicture = $user->profile_picture ?? $user->profile_photo;
+        $skillsWithExperience = $user->skills_with_experience;
+        $skillsArray = is_array($skillsWithExperience) ? $skillsWithExperience : [];
+
+        $jobContext = null;
+        // Prefer context stored in session (from /gig-worker/{id}/view?ctx=... redirect) for a clean URL
+        $stored = $request->session()->get('profile_job_context');
+        if (is_array($stored) && isset($stored['user_id']) && (int) $stored['user_id'] === (int) $user->id) {
+            $jobContext = [
+                'job_id' => (string) ($stored['job_id'] ?? ''),
+                'job_title' => (string) ($stored['job_title'] ?? ''),
+                'job_budget' => (string) ($stored['job_budget'] ?? 'Negotiable'),
+            ];
+            $request->session()->forget('profile_job_context');
+        } else {
+            $ctx = $request->query('ctx');
+            if ($ctx && is_string($ctx)) {
+                try {
+                    $decrypted = decrypt($ctx);
+                    if (is_array($decrypted) && isset($decrypted['job_id'])) {
+                        $jobContext = [
+                            'job_id' => (string) $decrypted['job_id'],
+                            'job_title' => (string) ($decrypted['job_title'] ?? ''),
+                            'job_budget' => (string) ($decrypted['job_budget'] ?? 'Negotiable'),
+                        ];
+                    }
+                } catch (\Throwable $e) {
+                    // Invalid or expired token; leave jobContext null
+                }
+            }
+        }
+
+        return Inertia::render('Profile/GigWorkerProfile', [
+            'user'   => [
+                'id'                     => $user->id,
+                'name'                   => $user->first_name . ' ' . $user->last_name,
+                'first_name'             => $user->first_name,
+                'last_name'              => $user->last_name,
+                'email'                  => $user->email,
+                'profile_picture'        => $this->supabaseUrl($rawPicture),
+                'professional_title'     => $user->professional_title,
+                'bio'                    => $user->bio,
+                'hourly_rate'            => $user->hourly_rate,
+                'skills_with_experience' => $skillsArray,
+                'portfolio_link'         => $user->portfolio_link,
+                'resume_file'            => $this->supabaseUrl($user->resume_file),
+                'profile_completed'      => $user->profile_completed,
+            ],
+            'pastProjects' => $user->freelancerProjects()
+                ->with([
+                    'employer:id,first_name,last_name,profile_picture',
+                    'job:id,title',
+                    'reviews' => fn ($q) => $q->where('reviewer_id', $user->id)->limit(1),
+                ])
+                ->whereIn('status', ['completed', 'active'])
+                ->latest()
+                ->limit(5)
+                ->get(),
+            'status' => session('status'),
+            'jobContext' => $jobContext,
         ]);
     }
 
@@ -357,6 +475,7 @@ class ProfileController extends Controller
                 'last_name' => $user->last_name,
                 'email' => $user->email,
                 'company_name' => $user->company_name,
+                'company_website' => $user->company_website,
                 'industry' => $user->industry,
                 'company_size' => $user->company_size,
                 'bio' => $user->bio,
@@ -372,13 +491,18 @@ class ProfileController extends Controller
                 'hire_rate' => $hireRate . '%',
             ],
             'activeJobs' => $user->postedJobs()
+                ->withCount('bids')
                 ->where('status', 'open')
                 ->latest()
                 ->limit(5)
                 ->get(),
             'pastProjects' => $user->employerProjects()
-                ->with(['gigWorker:id,first_name,last_name,profile_picture'])
-                ->whereIn('status', ['completed', 'active']) // Include active projects in history if needed, or just completed
+                ->with([
+                    'gigWorker:id,first_name,last_name,profile_picture',
+                    'job:id,title',
+                    'reviews' => fn ($q) => $q->where('reviewer_id', $user->id)->limit(1),
+                ])
+                ->whereIn('status', ['completed', 'active'])
                 ->latest()
                 ->limit(5)
                 ->get(),

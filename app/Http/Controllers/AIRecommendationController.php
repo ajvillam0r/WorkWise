@@ -20,40 +20,124 @@ class AIRecommendationController extends Controller
     }
 
     /**
-     * Show AI recommendations page
+     * Show employer-specific AI matches
      */
-    public function index(): Response
+    public function employerMatches(Request $request): Response
     {
         $user = auth()->user();
+        if ($user->user_type !== 'employer') {
+            return redirect()->route('ai.recommendations');
+        }
+
         $recommendations = [];
-        $skills = [];
+        $singleJobId = null;
 
         try {
-            // Set execution time limit to prevent timeout
-            set_time_limit(25); // 25 seconds max
-            
-            if ($user->user_type === 'gig_worker') {
-                $recommendations = $this->matchService->getRecommendedJobs($user, 5);
+            set_time_limit(25);
+
+            $refresh = $request->query('refresh') === '1';
+            $requestedJobId = $request->query('job_id');
+
+            if ($requestedJobId) {
+                $job = $user->postedJobs()
+                    ->where('status', 'open')
+                    ->where('id', $requestedJobId)
+                    ->first();
+ 
+                if ($job) {
+                    $singleJobId = $job->id;
+                    $recommendations[$job->id] = [
+                        'job' => $job,
+                        'matches' => $this->matchService->getJobMatches($job, 5, $refresh)
+                    ];
+                }
             } else {
-                // For employers, limit to first 3 active jobs to prevent timeout
                 $activeJobs = $user->postedJobs()
                     ->where('status', 'open')
                     ->limit(3)
                     ->get();
-                    
+ 
                 foreach ($activeJobs as $job) {
                     $recommendations[$job->id] = [
                         'job' => $job,
-                        'matches' => $this->matchService->getJobMatches($job, 3) // Limit matches per job
+                        'matches' => $this->matchService->getJobMatches($job, 3, $refresh)
                     ];
                 }
             }
         } catch (\Exception $e) {
-            // If matching fails, return empty recommendations with error message
-            \Log::error('AI Recommendations error: ' . $e->getMessage());
-            $recommendations = [];
+            \Log::error('Employer AI matches error: ' . $e->getMessage());
         }
 
+        // Add encrypted context token to each match so "View Profile" uses ?ctx= instead of raw query params
+        foreach ($recommendations as $jobId => $data) {
+            $job = $data['job'];
+            $budgetDisplay = ($job->budget_min !== null && $job->budget_max !== null)
+                ? "₱{$job->budget_min} - ₱{$job->budget_max}"
+                : 'Negotiable';
+            $token = encrypt([
+                'job_id' => $job->id,
+                'job_title' => $job->title ?? '',
+                'job_budget' => $budgetDisplay,
+            ]);
+            $recommendations[$jobId]['matches'] = array_map(function ($m) use ($token) {
+                $m['profile_context_token'] = $token;
+                return $m;
+            }, $data['matches']);
+        }
+
+        return Inertia::render('AI/AimatchEmployer', [
+            'recommendations' => $recommendations,
+            'skills' => $this->getUniqueSkills(),
+            'singleJobId' => $singleJobId,
+        ]);
+    }
+
+    /**
+     * Show gig worker-specific AI job matches
+     */
+    public function gigWorkerMatches(): Response
+    {
+        $user = auth()->user();
+        if ($user->user_type !== 'gig_worker') {
+            return redirect()->route('ai.recommendations');
+        }
+
+        $recommendations = [];
+        try {
+            set_time_limit(25);
+            $refresh = request()->query('refresh') === '1';
+            $recommendations = $this->matchService->getRecommendedJobs($user, 5, $refresh);
+        } catch (\Exception $e) {
+            \Log::error('Gig worker AI recommendations error: ' . $e->getMessage());
+        }
+
+        return Inertia::render('AI/AimatchGigWorker', [
+            'recommendations' => $recommendations,
+            'skills' => $this->getUniqueSkills(),
+        ]);
+    }
+
+    /**
+     * Normalize a single skill element to a trimmed string.
+     * Handles both flat strings and nested arrays (e.g. ['skill' => 'PHP'] or ['PHP', 'intermediate']).
+     */
+    private function normalizeSkillElement(mixed $skill): string
+    {
+        if (is_string($skill)) {
+            return trim($skill);
+        }
+        if (is_array($skill)) {
+            $name = $skill['skill'] ?? $skill[0] ?? '';
+            return trim((string) $name);
+        }
+        return '';
+    }
+
+    /**
+     * Helper to get unique skills from jobs
+     */
+    private function getUniqueSkills(): array
+    {
         $skills = collect(
             GigJob::query()
                 ->whereNotNull('required_skills')
@@ -67,34 +151,35 @@ class AIRecommendationController extends Controller
                     : (json_decode($skillSet, true) ?: []);
 
                 foreach ($skillsArray as $skill) {
-                    $trimmed = trim((string) $skill);
-
-                    if ($trimmed === '') {
-                        continue;
-                    }
-
+                    $trimmed = $this->normalizeSkillElement($skill);
+                    if ($trimmed === '') continue;
                     $normalized = strtolower($trimmed);
-
                     if (!array_key_exists($normalized, $unique)) {
                         $unique[$normalized] = $trimmed;
                     }
                 }
-
                 return $unique;
             }, []);
 
-        $skills = collect($skills)
+        return collect($skills)
             ->values()
             ->sort(fn ($a, $b) => strcasecmp($a, $b))
             ->values()
             ->all();
+    }
 
-        return Inertia::render('AI/Recommendations', [
-            'recommendations' => $recommendations,
-            'userType' => $user->user_type,
-            'hasError' => empty($recommendations) && $user->postedJobs()->where('status', 'open')->exists(),
-            'skills' => $skills,
-        ]);
+    /**
+     * Show AI recommendations page (Legacy redirect/handler)
+     */
+    public function index(): Response
+    {
+        $user = auth()->user();
+        
+        if ($user->user_type === 'employer') {
+            return $this->employerMatches();
+        }
+        
+        return $this->gigWorkerMatches();
     }
 
     /**
@@ -173,7 +258,7 @@ class AIRecommendationController extends Controller
                     : (json_decode($skillSet, true) ?: []);
 
                 foreach ($skillsArray as $skill) {
-                    $trimmed = trim((string) $skill);
+                    $trimmed = $this->normalizeSkillElement($skill);
 
                     if ($trimmed === '') {
                         continue;

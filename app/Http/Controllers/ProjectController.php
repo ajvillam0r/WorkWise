@@ -52,6 +52,7 @@ class ProjectController extends Controller
             'employer',
             'gigWorker',
             'transactions',
+            'reviews' => fn ($q) => $q->with('reviewer:id,first_name,last_name,profile_picture'),
             'messages' => function ($query) {
                 $query->orderBy('created_at', 'desc')->limit(10);
             }

@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use App\Models\GigJob;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 class MatchService
 {
@@ -16,19 +16,57 @@ class MatchService
     private string $certPath;
     private bool $isConfigured;
 
+    private array $models;
+
     public function __construct()
     {
         // Use QWEN_API_KEY for Groq API
         $this->apiKey = env('QWEN_API_KEY');
-        $this->model = 'llama-3.1-8b-instant';
         $this->baseUrl = 'https://api.groq.com/openai/v1';
         $this->certPath = base_path('cacert.pem');
         $this->isConfigured = !empty($this->apiKey);
 
+        // Define models and their parameters in priority order
+        $this->models = [
+            [
+                'name' => 'llama-3.3-70b-versatile',
+                'temperature' => 1.0,
+                'max_completion_tokens' => 1024,
+                'top_p' => 1.0,
+            ],
+            [
+                'name' => 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'temperature' => 1.0,
+                'max_completion_tokens' => 1024,
+                'top_p' => 1.0,
+            ],
+            [
+                'name' => 'meta-llama/llama-4-maverick-17b-128e-instruct',
+                'temperature' => 1.0,
+                'max_completion_tokens' => 1024,
+                'top_p' => 1.0,
+            ],
+            [
+                'name' => 'qwen/qwen3-32b',
+                'temperature' => 0.6,
+                'max_completion_tokens' => 4096,
+                'top_p' => 0.95,
+            ],
+            [
+                'name' => 'llama-3.1-8b-instant',
+                'temperature' => 1.0,
+                'max_completion_tokens' => 1024,
+                'top_p' => 1.0,
+            ]
+        ];
+
+        // Default to the first model just for logging purposes
+        $this->model = $this->models[0]['name'];
+
         if (!$this->isConfigured) {
             Log::warning('QWEN_API_KEY is not configured. AI matching will use fallback mode.');
         } else {
-            Log::info('AI matching configured with Groq API (llama-3.1-8b-instant)');
+            Log::info('AI matching configured with Groq API and multi-model failover.');
         }
     }
 
@@ -60,13 +98,31 @@ class MatchService
         }
         
         // Fallback to required_skills (legacy)
-        $requiredSkills = $job->required_skills ?? [];
+        $rawSkills = $job->required_skills ?? [];
+
+        // Handle JSON-encoded strings that haven't been cast yet
+        if (is_string($rawSkills)) {
+            $rawSkills = json_decode($rawSkills, true) ?? [];
+        }
+
+        // Flatten each element to a plain string — elements may be plain strings,
+        // associative arrays ['skill'=>'PHP',...], or indexed arrays ['PHP','intermediate']
+        $requiredSkills = array_values(array_filter(array_map(function ($skill) {
+            if (is_string($skill)) {
+                return trim($skill);
+            }
+            if (is_array($skill)) {
+                return trim((string) ($skill['skill'] ?? $skill[0] ?? ''));
+            }
+            return '';
+        }, (array) $rawSkills)));
+
         $defaultExperienceLevel = $job->experience_level ?? 'intermediate';
-        
+
         $required = array_map(fn($skill) => [
-            'skill' => $skill,
+            'skill'            => $skill,
             'experience_level' => $defaultExperienceLevel,
-            'importance' => 'required'
+            'importance'       => 'required',
         ], $requiredSkills);
         
         return [
@@ -93,8 +149,9 @@ class MatchService
     }
 
     /**
-     * Find a specific skill in worker's skill set
-     * 
+     * Find a specific skill in worker's skill set.
+     * Handles structured arrays, indexed arrays, and plain strings.
+     *
      * @param array $workerSkills
      * @param string $skillName
      * @return array|null
@@ -102,13 +159,24 @@ class MatchService
     private function findWorkerSkill(array $workerSkills, string $skillName): ?array
     {
         $skillNameLower = strtolower($skillName);
-        
+
         foreach ($workerSkills as $skill) {
-            if (isset($skill['skill']) && strtolower($skill['skill']) === $skillNameLower) {
-                return $skill;
+            if (is_string($skill)) {
+                if (strtolower($skill) === $skillNameLower) {
+                    return ['skill' => $skill, 'experience_level' => 'intermediate'];
+                }
+            } elseif (is_array($skill)) {
+                // Support ['skill' => 'PHP', 'experience_level' => '...'] and ['PHP', 'intermediate']
+                $candidateName = $skill['skill'] ?? $skill[0] ?? null;
+                if ($candidateName !== null && strtolower((string) $candidateName) === $skillNameLower) {
+                    return [
+                        'skill'            => (string) $candidateName,
+                        'experience_level' => $skill['experience_level'] ?? $skill[1] ?? 'intermediate',
+                    ];
+                }
             }
         }
-        
+
         return null;
     }
 
@@ -251,10 +319,11 @@ class MatchService
     {
         // Try to use structured skill matching if available
         $jobSkills = $this->getJobSkillsForMatching($job);
-        $workerSkills = $gigWorker->skills_with_experience ?? [];
+        
+        $workerSkills = $this->normalizeSkills($gigWorker->skills_with_experience);
         
         // If worker has structured skills, use the new matching algorithm
-        if (!empty($workerSkills) && !empty($jobSkills['all_skill_names'])) {
+        if (is_array($workerSkills) && !empty($workerSkills) && !empty($jobSkills['all_skill_names'])) {
             $matchResult = $this->calculateSkillMatchScore($jobSkills, $workerSkills);
             $explanation = $this->generateMatchExplanation($matchResult, $jobSkills);
             
@@ -410,7 +479,7 @@ class MatchService
                       "Budget: ₱{$job->budget_min} - ₱{$job->budget_max} ({$job->budget_type})";
 
             // Prepare gig worker profile with structured skills if available
-            $workerSkills = $gigWorker->skills_with_experience ?? [];
+            $workerSkills = $this->normalizeSkills($gigWorker->skills_with_experience);
             $experienceLevel = $gigWorker->experience_level ?? 'Not specified';
             $hourlyRate = $gigWorker->hourly_rate ?? 'Not set';
             $professionalTitle = $gigWorker->professional_title ?? 'Not specified';
@@ -418,14 +487,17 @@ class MatchService
             // Format worker skills with experience levels
             $workerSkillsText = '';
             if (!empty($workerSkills)) {
-                $workerSkillsList = array_map(fn($s) => 
-                    "{$s['skill']} ({$s['experience_level']})", 
-                    $workerSkills
-                );
+                $workerSkillsList = array_map(function($s) {
+                    $name = is_array($s) ? ($s['skill'] ?? 'Unknown') : $s;
+                    $level = is_array($s) ? ($s['experience_level'] ?? 'intermediate') : 'intermediate';
+                    return "{$name} ({$level})";
+                }, $workerSkills);
                 $workerSkillsText = implode(', ', $workerSkillsList);
             } else {
-                $legacySkills = $gigWorker->skills ?? [];
-                $workerSkillsText = empty($legacySkills) ? 'No skills listed' : implode(', ', $legacySkills);
+                $legacySkills = $this->normalizeSkills($gigWorker->skills);
+                $workerSkillsText = empty($legacySkills)
+                    ? 'No skills listed'
+                    : implode(', ', array_column($legacySkills, 'skill'));
             }
 
             $gigWorkerText = "Your Profile:\n" .
@@ -435,74 +507,72 @@ class MatchService
                             "Hourly Rate: ₱{$hourlyRate}\n" .
                             "Bio: " . substr($gigWorker->bio ?? 'No bio provided', 0, 150);
 
-            // Make API call to Groq
-            $response = Http::withToken($this->apiKey)
-                ->withOptions([
-                    'verify' => $this->certPath
-                ])
-                ->timeout(30)
-                ->post($this->baseUrl . '/chat/completions', [
-                    'model' => $this->model,
-                    'messages' => [
-                        [
-                            'role' => 'system',
-                            'content' => 'You are an expert AI career advisor for Philippine freelance job matching. You MUST analyze ONLY skills and experience compatibility. SCORING GUIDELINES: Give 80-100 for excellent skill matches (4+ direct skills), 60-79 for good matches (2-3 direct skills), 40-59 for fair matches (1-2 direct skills or many related skills), 20-39 for weak matches (only related/transferable skills), 0-19 for poor matches (minimal relevance). IMPORTANT: Be encouraging yet realistic. Focus on: 1) Count exact skill matches, 2) Identify related/complementary skills, 3) Match experience levels (beginner/intermediate/expert), 4) Note skill gaps with learning potential. Address gig worker as "you/your". Use ₱ for currency. Format: "Score: X\nReason: [Detailed 2-3 sentence explanation with specific skill matches, experience alignment, and growth potential]"'
-                        ],
-                        [
-                            'role' => 'user',
-                            'content' => "Match Analysis - Focus ONLY on skills & experience:\n\n📋 JOB REQUIREMENTS:\n{$jobText}\n\n👤 YOUR PROFILE:\n{$gigWorkerText}\n\nAnalyze:\n1. EXACT skill matches (list them)\n2. Related/complementary skills you have\n3. Experience level match (beginner/intermediate/expert)\n4. Skill gaps and learning curve\n5. Overall compatibility score (0-100)\n\nBe specific about which skills match and why. Ignore budget, location, ratings."
-                        ]
-                    ],
-                    'temperature' => 1,
-                    'max_completion_tokens' => 1024,
-                    'top_p' => 1,
-                    'stream' => false
-                ]);
+            // Attempt API call with failover logic
+            foreach ($this->models as $index => $modelConfig) {
+                try {
+                    $response = Http::withToken($this->apiKey)
+                        ->withOptions([
+                            'verify' => $this->certPath
+                        ])
+                        ->timeout($modelConfig['name'] === 'qwen/qwen3-32b' ? 45 : 30) // Wait longer for larger token outputs
+                        ->post($this->baseUrl . '/chat/completions', [
+                            'model' => $modelConfig['name'],
+                            'messages' => [
+                                [
+                                    'role' => 'system',
+                                    'content' => 'You are an expert AI career advisor for Philippine freelance job matching. You MUST analyze ONLY skills and experience compatibility. SCORING GUIDELINES: Give 80-100 for excellent skill matches (4+ direct skills), 60-79 for good matches (2-3 direct skills), 40-59 for fair matches (1-2 direct skills or many related skills), 20-39 for weak matches (only related/transferable skills), 0-19 for poor matches (minimal relevance). IMPORTANT: Be encouraging yet realistic. Focus on: 1) Count exact skill matches, 2) Identify related/complementary skills, 3) Match experience levels (beginner/intermediate/expert), 4) Note skill gaps with learning potential. Address gig worker as "you/your". Use ₱ for currency. Format: "Score: X\nReason: [Detailed 2-3 sentence explanation with specific skill matches, experience alignment, and growth potential]"'
+                                ],
+                                [
+                                    'role' => 'user',
+                                    'content' => "Match Analysis - Focus ONLY on skills & experience:\n\n📋 JOB REQUIREMENTS:\n{$jobText}\n\n👤 YOUR PROFILE:\n{$gigWorkerText}\n\nAnalyze:\n1. EXACT skill matches (list them)\n2. Related/complementary skills you have\n3. Experience level match (beginner/intermediate/expert)\n4. Skill gaps and learning curve\n5. Overall compatibility score (0-100)\n\nBe specific about which skills match and why. Ignore budget, location, ratings."
+                                ]
+                            ],
+                            'temperature' => $modelConfig['temperature'],
+                            'max_completion_tokens' => $modelConfig['max_completion_tokens'],
+                            'top_p' => $modelConfig['top_p'],
+                            'stream' => false
+                        ]);
 
-            if ($response->successful()) {
-                $responseData = $response->json();
-                
-                // Log full response for debugging
-                Log::debug('Groq API Response', ['response' => $responseData]);
-                
-                // Check if response has expected structure
-                if (!isset($responseData['choices'][0]['message']['content'])) {
-                    Log::error('Groq API response missing expected structure', ['response' => $responseData]);
-                    throw new \Exception('Invalid response structure from Groq API');
+                    if ($response->successful()) {
+                        $responseData = $response->json();
+                        
+                        if (!isset($responseData['choices'][0]['message']['content'])) {
+                            continue; // Try next model on invalid structure
+                        }
+                        
+                        $content = $responseData['choices'][0]['message']['content'];
+                        
+                        preg_match('/Score:\s*(\d+)/i', $content, $scoreMatch);
+                        preg_match('/Reason:\s*(.+?)(?=\n\n|\n*$)/ims', $content, $reasonMatch);
+
+                        if (empty($scoreMatch[1])) {
+                             continue; // Try next model if parsing fails
+                        }
+
+                        $result = [
+                            'score' => min(100, (int) $scoreMatch[1]), // Cap at 100
+                            'reason' => trim($reasonMatch[1] ?? 'No explanation provided'),
+                            'success' => true,
+                            'model_used' => $modelConfig['name']
+                        ];
+
+                        Cache::put($cacheKey, $result, now()->addHours(24));
+                        return $result;
+                    }
+                    
+                    // Specific status code handling for logging
+                    if ($response->status() === 429 || $response->status() === 503) {
+                        Log::warning("Model {$modelConfig['name']} rate limited/unavailable. Attempting failover...");
+                    }
+
+                } catch (\Exception $e) {
+                    Log::error("Model {$modelConfig['name']} failed", ['error' => $e->getMessage()]);
+                    // Continue to next model
                 }
-                
-                $content = $responseData['choices'][0]['message']['content'];
-                
-                // Parse the response with improved regex
-                preg_match('/Score:\s*(\d+)/i', $content, $scoreMatch);
-                preg_match('/Reason:\s*(.+?)(?=\n\n|\n*$)/ims', $content, $reasonMatch);
-
-                // Log the AI response for debugging
-                Log::debug('AI Response', [
-                    'content' => $content,
-                    'score_match' => $scoreMatch,
-                    'reason_match' => $reasonMatch
-                ]);
-
-                // If AI parsing fails, use fallback scoring
-                if (empty($scoreMatch[1])) {
-                    Log::info('AI parsing failed, using fallback scoring', ['content' => $content]);
-                    return $this->getFallbackMatch($job, $gigWorker);
-                }
-
-                $result = [
-                    'score' => min(100, (int) $scoreMatch[1]), // Cap at 100
-                    'reason' => trim($reasonMatch[1] ?? 'No explanation provided'),
-                    'success' => true
-                ];
-
-                // Cache the result for 24 hours
-                Cache::put($cacheKey, $result, now()->addHours(24));
-
-                return $result;
             }
 
-            throw new \Exception('Failed to get response from Groq API: ' . $response->status());
+            // If all models fail, throw exception to trigger fallback
+            throw new \Exception('All Groq models failed to return a valid response.');
 
         } catch (\Exception $e) {
             Log::error('AI Match Error', [
@@ -519,12 +589,17 @@ class MatchService
     /**
      * Get matches for a specific job with AI-powered analysis
      */
-    public function getJobMatches(GigJob $job, int $limit = 5): array
+    public function getJobMatches(GigJob $job, int $limit = 5, bool $randomize = false): array
     {
         // Limit the number of gig workers to process to prevent timeouts
-        $gigWorkers = User::where('user_type', 'gig_worker')
-            ->whereNotNull('skills_with_experience')
-            ->limit(15) // Process max 15 gig workers for AI analysis
+        $query = User::where('user_type', 'gig_worker')
+            ->whereNotNull('skills_with_experience');
+            
+        if ($randomize) {
+            $query->inRandomOrder();
+        }
+
+        $gigWorkers = $query->limit(15) // Process max 15 gig workers for AI analysis
             ->get();
 
         $matches = [];
@@ -567,6 +642,7 @@ class MatchService
             'job_id' => $job->id,
             'processed_workers' => $processedCount,
             'matches_found' => count($matches),
+            'randomized' => $randomize,
             'time_taken' => round(microtime(true) - $startTime, 2) . 's'
         ]);
 
@@ -577,13 +653,18 @@ class MatchService
     /**
      * Get recommended jobs for a gig worker with AI-powered matching
      */
-    public function getRecommendedJobs(User $gigWorker, int $limit = 5): array
+    public function getRecommendedJobs(User $gigWorker, int $limit = 5, bool $randomize = false): array
     {
         // Limit the number of jobs to process to prevent timeouts
-        $jobs = GigJob::with(['employer'])
+        $query = GigJob::with(['employer'])
             ->where('status', 'open')
-            ->whereNotNull('required_skills')
-            ->limit(10) // Process max 10 jobs for AI analysis
+            ->whereNotNull('required_skills');
+
+        if ($randomize) {
+            $query->inRandomOrder();
+        }
+
+        $jobs = $query->limit(10) // Process max 10 jobs for AI analysis
             ->get();
 
         $matches = [];
@@ -631,5 +712,52 @@ class MatchService
 
         // Return top matches
         return array_slice($matches, 0, $limit);
+    }
+
+    /**
+     * Normalize skills data to ensure it's always an array.
+     * Handles: null, JSON strings, plain string arrays, indexed arrays,
+     * and associative arrays (['skill'=>'...', 'experience_level'=>'...']).
+     */
+    private function normalizeSkills($skills): array
+    {
+        if (is_null($skills)) {
+            return [];
+        }
+
+        if (is_string($skills)) {
+            $decoded = json_decode($skills, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $skills = $decoded;
+            } else {
+                // Plain string — treat as a single skill name
+                return [['skill' => trim($skills), 'experience_level' => 'intermediate']];
+            }
+        }
+
+        if (!is_array($skills)) {
+            return [];
+        }
+
+        // Normalise each element to a consistent structure
+        $result = [];
+        foreach ($skills as $skill) {
+            if (is_string($skill)) {
+                $name = trim($skill);
+                if ($name !== '') {
+                    $result[] = ['skill' => $name, 'experience_level' => 'intermediate'];
+                }
+            } elseif (is_array($skill)) {
+                // Associative: ['skill' => 'PHP', 'experience_level' => 'intermediate']
+                // Indexed:     ['PHP', 'intermediate']
+                $name  = trim((string) ($skill['skill'] ?? $skill[0] ?? ''));
+                $level = $skill['experience_level'] ?? $skill[1] ?? 'intermediate';
+                if ($name !== '') {
+                    $result[] = ['skill' => $name, 'experience_level' => (string) $level];
+                }
+            }
+        }
+
+        return $result;
     }
 } 

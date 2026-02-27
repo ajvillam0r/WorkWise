@@ -104,6 +104,8 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
     const [openMenuId, setOpenMenuId] = useState(null);
     const [deletingMessageId, setDeletingMessageId] = useState(null);
     const [replyingTo, setReplyingTo] = useState(null);
+    const [showPriceModal, setShowPriceModal] = useState(false);
+    const [negotiatedPrice, setNegotiatedPrice] = useState('');
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -418,8 +420,8 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                             )}
 
                             <div className={`message-bubble px-4 py-3 rounded-2xl shadow-sm ${isOwnMessage
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-md'
-                                    : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-md'
+                                : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'
                                 } ${isDeleting ? 'opacity-50' : ''}`}>
                                 {/* Replied message preview */}
                                 {repliedMessage && (
@@ -489,7 +491,49 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                                         </div>
                                     )
                                 ) : (
-                                    <div className="whitespace-pre-wrap leading-relaxed">{message.message}</div>
+                                    message.message?.startsWith('[JOB_PREVIEW] ') ? (() => {
+                                        try {
+                                            const jobData = JSON.parse(message.message.replace('[JOB_PREVIEW] ', ''));
+                                            return (
+                                                <div className="space-y-3">
+                                                    <p className="whitespace-pre-wrap leading-relaxed">Hi! I'm interested in hiring you for a project. Let's discuss!</p>
+                                                    <a href={`/jobs/${jobData.id}`}
+                                                        className={`block p-4 rounded-xl border transition-all hover:-translate-y-0.5 shadow-sm ${isOwnMessage
+                                                            ? 'bg-white/10 border-white/20 hover:bg-white/20'
+                                                            : 'bg-gray-50 border-gray-200 hover:bg-white hover:shadow-md'
+                                                            }`}>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className={`material-icons text-lg ${isOwnMessage ? 'text-blue-200' : 'text-blue-600'}`}>work</span>
+                                                            <div className={`text-xs font-bold uppercase tracking-wider ${isOwnMessage ? 'text-blue-100' : 'text-blue-600'}`}>
+                                                                Job Invitation
+                                                            </div>
+                                                        </div>
+                                                        <h4 className={`text-lg font-bold mb-1 ${isOwnMessage ? 'text-white' : 'text-gray-900'}`}>
+                                                            {jobData.title}
+                                                        </h4>
+                                                        <div className={`flex items-center gap-2 text-sm font-medium ${isOwnMessage ? 'text-blue-100' : 'text-emerald-600'}`}>
+                                                            <span className="material-icons text-base">payments</span>
+                                                            {jobData.budget || 'Negotiable'}
+                                                        </div>
+                                                    </a>
+                                                    {isOwnMessage ? null : (
+                                                        <div className="mt-2 text-center">
+                                                            <button
+                                                                onClick={(e) => { e.preventDefault(); setNewMessage(`Hi! I'd love to learn more about the "${jobData.title}" role. What are the next steps?`); document.querySelector('textarea')?.focus(); }}
+                                                                className="px-4 py-2 w-full bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                                                            >
+                                                                Reply & Negotiate
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        } catch (e) {
+                                            return <div className="whitespace-pre-wrap leading-relaxed">{message.message}</div>;
+                                        }
+                                    })() : (
+                                        <div className="whitespace-pre-wrap leading-relaxed">{message.message}</div>
+                                    )
                                 )}
                             </div>
                         </div>
@@ -538,8 +582,8 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                                 </h2>
                                 <div className="flex items-center space-x-3 mt-1">
                                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${user.user_type === 'employer'
-                                            ? 'bg-blue-100 text-blue-800'
-                                            : 'bg-emerald-100 text-emerald-800'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-emerald-100 text-emerald-800'
                                         }`}>
                                         {user.user_type === 'employer' ? 'Employer' : 'Gig Worker'}
                                     </span>
@@ -551,6 +595,18 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
                         </div>
                     </div>
                     <div className="flex items-center space-x-3">
+                        {currentUser.user_type === 'employer' && (
+                            <button
+                                onClick={() => setShowPriceModal(true)}
+                                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all shadow-sm"
+                                title="Confirm Negotiated Price"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Confirm Price
+                            </button>
+                        )}
                         <button
                             onClick={fetchNewMessages}
                             disabled={loading}
@@ -566,6 +622,59 @@ export default function EnhancedConversation({ user, messages: initialMessages, 
             }
         >
             <Head title={`Chat with ${user.first_name} ${user.last_name}`} />
+
+            {/* Price Confirmation Modal */}
+            {showPriceModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-gray-900">Confirm Negotiated Price</h3>
+                            <button onClick={() => setShowPriceModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-sm text-gray-600 mb-4">
+                                Enter the final price you have negotiated with {user.first_name}. This will pre-fill the contract creation form.
+                            </p>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Final Agreed Price (₱)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={negotiatedPrice}
+                                    onChange={(e) => setNegotiatedPrice(e.target.value)}
+                                    placeholder="e.g. 5000"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowPriceModal(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (negotiatedPrice) {
+                                        window.location.href = `/contracts/create?gig_worker_id=${user.id}&price=${encodeURIComponent(negotiatedPrice)}`;
+                                    }
+                                }}
+                                disabled={!negotiatedPrice}
+                                className="px-4 py-2 text-sm font-bold text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+                            >
+                                Create Contract
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="py-8">
                 <div className="max-w-5xl mx-auto sm:px-6 lg:px-8">

@@ -18,12 +18,12 @@ class GigJobController extends Controller
 
         if ($user && $user->isEmployer()) {
             // For employers, show their own jobs (all statuses)
-            $query = GigJob::with(['employer', 'bids'])
+            $query = GigJob::with(['employer'])->withCount('bids')
                 ->where('employer_id', $user->id)
                 ->latest();
         } else {
             // For gig workers and guests, show all open jobs
-            $query = GigJob::with(['employer', 'bids'])
+            $query = GigJob::with(['employer'])->withCount('bids')
                 ->where('status', 'open')
                 ->latest();
         }
@@ -58,10 +58,9 @@ class GigJobController extends Controller
 
         $jobs = $query->paginate(12);
 
-        // Add budget display and bids count to each job
+        // Add budget display to each job
         $jobs->getCollection()->transform(function ($job) {
             $job->budget_display = $job->getBudgetDisplayAttribute();
-            $job->bids_count = $job->bids()->count();
             return $job;
         });
 

@@ -56,174 +56,146 @@ class EmployerOnboardingController extends Controller
     /**
      * Handle the employer onboarding form submission
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $user = auth()->user();
+        $step = (int) $request->input('step', 1);
 
         Log::info('Employer onboarding submission started', [
             'user_id' => $user->id,
-            'email' => $user->email,
-            'has_profile_picture' => $request->hasFile('profile_picture'),
+            'step' => $step,
             'company_name' => $request->input('company_name'),
-            'company_size' => $request->input('company_size'),
-            'industry' => $request->input('industry'),
         ]);
 
-        // Validate the onboarding data
+        try {
+            match ($step) {
+                2 => $this->saveStep2($request, $user),
+                3 => $this->saveStep3($request, $user),
+                4 => $this->saveStep4($request, $user),
+                5 => $this->saveStep5($request, $user),
+                default => null,
+            };
+
+            // If step 5 is submitted, mark profile as complete and approved
+            if ($step === 5) {
+                $user->update([
+                    'profile_completed' => true,
+                    'profile_status' => 'approved' 
+                ]);
+
+                Log::info('ONBOARDING_COMPLETED', [
+                    'user_id' => $user->id,
+                    'user_type' => 'employer',
+                    'timestamp' => now()->toIso8601String(),
+                ]);
+
+                return redirect()->route('employer.dashboard')->with('success',
+                    'Welcome to WorkWise! Your profile is complete and you can now start posting jobs.');
+            }
+
+            return back()->with('success', "Step {$step} saved.");
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('ONBOARDING_STEP_SAVE_FAILED', [
+                'step' => $step,
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors([
+                'general' => 'Failed to save progress. Please try again.'
+            ])->withInput();
+        }
+    }
+
+    /**
+     * Step 2: Company Identity
+     */
+    private function saveStep2(Request $request, $user)
+    {
         $validated = $request->validate([
-            // Step 1: Company/Individual Information
             'company_name' => 'nullable|string|max:255',
             'company_size' => 'required|in:individual,2-10,11-50,51-200,200+',
             'industry' => 'required|string|max:255',
+            'profile_picture' => 'nullable|image|max:2048',
+        ]);
+
+        if ($request->hasFile('profile_picture')) {
+            $validation = $this->fileUploadService->validateFile($request->file('profile_picture'), [
+                'type' => 'image',
+                'user_id' => $user->id,
+                'user_type' => 'employer',
+            ]);
+
+            if ($validation['success']) {
+                $uploadResult = $this->fileUploadService->uploadWithRetry($request->file('profile_picture'), 'profiles', 1, [
+                    'user_id' => $user->id,
+                    'user_type' => 'employer',
+                    'use_proxy' => true,
+                ]);
+
+                if ($uploadResult['success']) {
+                    $storedPath = '/supabase/' . ltrim($uploadResult['path'], '/');
+                    $user->profile_picture = $storedPath;
+                    $user->profile_photo   = $storedPath;
+                }
+            }
+        }
+
+        $user->company_name = $validated['company_name'];
+        $user->company_size = $validated['company_size'];
+        $user->industry = $validated['industry'];
+        $user->save();
+    }
+
+    /**
+     * Step 3: Company Bio & Website
+     */
+    private function saveStep3(Request $request, $user)
+    {
+        $validated = $request->validate([
             'company_website' => 'nullable|url|max:255',
             'company_description' => 'required|string|min:50|max:1000',
-            'profile_picture' => 'nullable|image|max:2048',
-            
-            // Step 2: Hiring Preferences
+        ]);
+
+        $user->company_website = $validated['company_website'];
+        $user->company_description = $validated['company_description'];
+        $user->save();
+    }
+
+    /**
+     * Step 4: Hiring Preferences
+     */
+    private function saveStep4(Request $request, $user)
+    {
+        $validated = $request->validate([
             'primary_hiring_needs' => 'required|array|min:1',
             'primary_hiring_needs.*' => 'string|max:255',
             'typical_project_budget' => 'required|in:under_500,500-2000,2000-5000,5000-10000,10000+',
             'typical_project_duration' => 'required|in:short_term,medium_term,long_term,ongoing',
             'preferred_experience_level' => 'required|in:any,beginner,intermediate,expert',
             'hiring_frequency' => 'required|in:one_time,occasional,regular,ongoing',
-        ], [
-            // Step 1 validation messages
-            'company_size.required' => 'Please select your company size to help us understand your hiring needs.',
-            'company_size.in' => 'Please select a valid company size option.',
-            'industry.required' => 'Please specify your industry to help match you with relevant gig workers.',
-            'industry.max' => 'Industry name must not exceed 255 characters.',
-            'company_website.url' => 'Please provide a valid website URL (e.g., https://example.com).',
-            'company_website.max' => 'Website URL must not exceed 255 characters.',
-            'company_description.required' => 'Please provide a description of your company or business needs to attract quality candidates.',
-            'company_description.min' => 'Company description must be at least 50 characters to provide meaningful information to gig workers.',
-            'company_description.max' => 'Company description must not exceed 1000 characters.',
-            'profile_picture.image' => 'Profile picture must be an image file (JPG, PNG, GIF, or WebP).',
-            'profile_picture.max' => 'Profile picture must not exceed 2MB in size.',
-            
-            // Step 2 validation messages
-            'primary_hiring_needs.required' => 'Please select at least one category that represents your hiring needs.',
-            'primary_hiring_needs.min' => 'Please select at least one hiring need category to help us match you with suitable gig workers.',
-            'primary_hiring_needs.array' => 'Hiring needs must be provided as a list of categories.',
-            'typical_project_budget.required' => 'Please select your typical project budget range to help gig workers understand your expectations.',
-            'typical_project_budget.in' => 'Please select a valid budget range option.',
-            'typical_project_duration.required' => 'Please select your typical project duration to help match you with available gig workers.',
-            'typical_project_duration.in' => 'Please select a valid project duration option.',
-            'preferred_experience_level.required' => 'Please select your preferred experience level for gig workers.',
-            'preferred_experience_level.in' => 'Please select a valid experience level option.',
-            'hiring_frequency.required' => 'Please indicate how frequently you plan to hire gig workers.',
-            'hiring_frequency.in' => 'Please select a valid hiring frequency option.',
         ]);
 
-        // Handle profile picture upload to Supabase using FileUploadService
-        if ($request->hasFile('profile_picture')) {
-            // Increase execution time for file upload
-            set_time_limit(120);
-            
-            Log::info('Employer profile picture upload started', [
-                'user_id' => $user->id,
-                'file_name' => $request->file('profile_picture')->getClientOriginalName(),
-                'file_size' => $request->file('profile_picture')->getSize(),
-            ]);
+        $user->primary_hiring_needs = $validated['primary_hiring_needs'];
+        $user->typical_project_budget = $validated['typical_project_budget'];
+        $user->typical_project_duration = $validated['typical_project_duration'];
+        $user->preferred_experience_level = $validated['preferred_experience_level'];
+        $user->hiring_frequency = $validated['hiring_frequency'];
+        $user->save();
+    }
 
-            // Validate file before upload
-            $validation = $this->fileUploadService->validateFile(
-                $request->file('profile_picture'),
-                [
-                    'type' => 'image',
-                    'user_id' => $user->id,
-                    'user_type' => 'employer',
-                ]
-            );
-
-            if (!$validation['success']) {
-                Log::warning('Employer profile picture validation failed', [
-                    'user_id' => $user->id,
-                    'error' => $validation['error'],
-                    'error_code' => $validation['error_code'],
-                ]);
-
-                return back()->withErrors([
-                    'profile_picture' => $validation['error']
-                ])->withInput();
-            }
-
-            // Upload with retry logic (reduced retries to avoid timeout)
-            $uploadResult = $this->fileUploadService->uploadWithRetry(
-                $request->file('profile_picture'),
-                'profiles',
-                1, // Reduced from 2 to 1 retry to avoid timeout
-                [
-                    'user_id' => $user->id,
-                    'user_type' => 'employer',
-                    'use_proxy' => true, // Use app proxy URL for profile pictures
-                ]
-            );
-
-            if ($uploadResult['success']) {
-                $validated['profile_picture'] = $uploadResult['url'];
-                
-                Log::info('Employer profile picture uploaded successfully', [
-                    'user_id' => $user->id,
-                    'url' => $uploadResult['url'],
-                    'path' => $uploadResult['path'],
-                ]);
-            } else {
-                Log::error('Employer profile picture upload failed', [
-                    'user_id' => $user->id,
-                    'error' => $uploadResult['error'],
-                    'error_code' => $uploadResult['error_code'],
-                ]);
-
-                // Profile picture is optional - continue without it but inform user
-                return back()->withErrors([
-                    'profile_picture' => 'Failed to upload profile picture. Please try again or continue without it.'
-                ])->withInput();
-            }
-        }
-
-        // Update user profile with transaction for data consistency
-        try {
-            $user->update(array_merge($validated, [
-                'profile_completed' => true,
-                'profile_status' => 'approved' // Employers are auto-approved
-            ]));
-
-            Log::info('ONBOARDING_COMPLETED', [
-                'event' => 'onboarding_completed',
-                'user_id' => $user->id,
-                'user_type' => 'employer',
-                'user_email' => $user->email,
-                'completion_summary' => [
-                    'company_name' => $user->company_name,
-                    'company_size' => $user->company_size,
-                    'industry' => $user->industry,
-                    'profile_picture_uploaded' => isset($validated['profile_picture']),
-                    'primary_hiring_needs_count' => count($validated['primary_hiring_needs'] ?? []),
-                    'typical_project_budget' => $validated['typical_project_budget'] ?? null,
-                    'hiring_frequency' => $validated['hiring_frequency'] ?? null,
-                    'profile_status' => 'approved',
-                ],
-                'timestamp' => now()->toIso8601String(),
-            ]);
-
-            return redirect()->route('employer.dashboard')->with('success',
-                'Welcome to WorkWise! Your profile is complete and you can now start posting jobs and hiring talented gig workers.');
-                
-        } catch (\Exception $e) {
-            Log::error('ONBOARDING_PROFILE_UPDATE_FAILED', [
-                'event' => 'onboarding_profile_update_failed',
-                'user_id' => $user->id,
-                'user_type' => 'employer',
-                'error_message' => $e->getMessage(),
-                'error_type' => get_class($e),
-                'stack_trace' => $e->getTraceAsString(),
-                'timestamp' => now()->toIso8601String(),
-            ]);
-
-            return back()->withErrors([
-                'general' => 'Failed to complete onboarding. Please try again or contact support if the issue persists.'
-            ])->withInput();
-        }
+    /**
+     * Step 5: Final Review Persistence
+     */
+    private function saveStep5(Request $request, $user)
+    {
+        // Re-validate everything just in case something was bypassed
+        $this->saveStep2($request, $user);
+        $this->saveStep3($request, $user);
+        $this->saveStep4($request, $user);
     }
 
     /**

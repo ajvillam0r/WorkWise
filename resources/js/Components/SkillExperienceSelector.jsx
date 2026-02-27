@@ -8,8 +8,12 @@ export default function SkillExperienceSelector({
     onChange = () => {},
     type = 'required',
     maxSkills = 10,
-    showImportance = true
+    showImportance = true,
+    defaultExperienceLevel = null
 }) {
+    const useJobLevelOnly = defaultExperienceLevel != null && defaultExperienceLevel !== '';
+    const effectiveLevel = useJobLevelOnly ? defaultExperienceLevel : null;
+
     const [input, setInput] = useState('');
     const [suggestions, setSuggestions] = useState([]);
     const [selectedSkill, setSelectedSkill] = useState(null);
@@ -65,7 +69,7 @@ export default function SkillExperienceSelector({
 
         const newSkill = {
             skill: selectedSkill.trim(), // Store with proper casing, but trimmed
-            experience_level: selectedLevel,
+            experience_level: useJobLevelOnly ? effectiveLevel : selectedLevel,
             importance: type === 'nice_to_have' ? 'preferred' : selectedImportance
         };
 
@@ -77,7 +81,7 @@ export default function SkillExperienceSelector({
         setSuggestions([]);
         setSelectedLevel('intermediate');
         setSelectedImportance(type === 'nice_to_have' ? 'preferred' : 'required');
-    }, [selectedSkill, selectedLevel, selectedImportance, skills, onChange, maxSkills, type]);
+    }, [selectedSkill, selectedLevel, selectedImportance, skills, onChange, maxSkills, type, useJobLevelOnly, effectiveLevel]);
 
     // Handle Enter key to add custom skill
     const handleKeyPress = useCallback((e) => {
@@ -136,7 +140,7 @@ export default function SkillExperienceSelector({
 
             {/* Add Skill Form */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className={`grid grid-cols-1 gap-3 ${useJobLevelOnly ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
                     {/* Skill Input */}
                     <div className="md:col-span-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -204,7 +208,8 @@ export default function SkillExperienceSelector({
                         </div>
                     </div>
 
-                    {/* Experience Level Select */}
+                    {/* Experience Level Select (hidden when using job-level only) */}
+                    {!useJobLevelOnly && (
                     <div className="md:col-span-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Experience Level
@@ -221,6 +226,7 @@ export default function SkillExperienceSelector({
                             ))}
                         </select>
                     </div>
+                    )}
 
                     {/* Importance Select (only for required skills) */}
                     {showImportance && type !== 'nice_to_have' && (
@@ -275,13 +281,14 @@ export default function SkillExperienceSelector({
                                 <div className="flex-1">
                                     <p className="font-medium text-gray-800">{skill.skill}</p>
                                     <p className="text-xs text-gray-600">
-                                        {skill.experience_level.charAt(0).toUpperCase() + skill.experience_level.slice(1)}
+                                        {(skill.experience_level || effectiveLevel || 'intermediate').charAt(0).toUpperCase() + (skill.experience_level || effectiveLevel || 'intermediate').slice(1)}
                                         {showImportance && ` • ${skill.importance.charAt(0).toUpperCase() + skill.importance.slice(1)}`}
                                     </p>
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    {/* Experience Level Dropdown */}
+                                    {/* Experience Level Dropdown (hidden when using job-level only) */}
+                                    {!useJobLevelOnly && (
                                     <select
                                         value={skill.experience_level}
                                         onChange={(e) => updateSkillLevel(idx, e.target.value)}
@@ -293,6 +300,7 @@ export default function SkillExperienceSelector({
                                             </option>
                                         ))}
                                     </select>
+                                    )}
 
                                     {/* Importance Dropdown */}
                                     {showImportance && type !== 'nice_to_have' && (

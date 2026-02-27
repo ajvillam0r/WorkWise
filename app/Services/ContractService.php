@@ -121,6 +121,68 @@ class ContractService
     }
 
     /**
+     * Create direct contract (without a bid)
+     */
+    public function createDirectContract(Project $project, string $scopeOfWork, float $totalPayment): Contract
+    {
+        try {
+            $job = $project->job;
+            $employer = $job->employer;
+            $gigWorker = $project->gigWorker;
+
+            $startDate = now()->addDays(2);
+            $endDate = $startDate->copy()->addDays((int) $project->agreed_duration_days);
+
+            $employerResponsibilities = [
+                'Provide detailed requirements and feedback promptly.',
+                'Supply all necessary content and materials for the project.',
+                'Approve milestones and release payments as per the agreed schedule.',
+                'Respond to communications within 48 hours during business days.'
+            ];
+
+            $gigWorkerResponsibilities = [
+                'Complete the tasks as outlined in the scope of work.',
+                'Communicate regularly with the employer regarding progress.',
+                'Deliver work according to the agreed deadlines and quality standards.',
+                'Make revisions based on employer feedback within reasonable limits.'
+            ];
+
+            $contractData = [
+                'contract_id' => Contract::generateContractId(),
+                'project_id' => $project->id,
+                'employer_id' => $employer->id,
+                'gig_worker_id' => $gigWorker->id,
+                'job_id' => $job->id,
+                'bid_id' => null,
+                'scope_of_work' => $scopeOfWork,
+                'total_payment' => $totalPayment,
+                'contract_type' => 'Fixed-Price Contract (Direct Hire)',
+                'project_start_date' => $startDate->toDateString(),
+                'project_end_date' => $endDate->toDateString(),
+                'employer_responsibilities' => $employerResponsibilities,
+                'gig_worker_responsibilities' => $gigWorkerResponsibilities,
+                'preferred_communication' => 'Email and WorkWise messaging',
+                'communication_frequency' => 'Weekly updates',
+                'status' => 'pending_employer_signature'
+            ];
+
+            $contract = Contract::create($contractData);
+
+            $project->update([
+                'contract_id' => $contract->id
+            ]);
+
+            return $contract;
+        } catch (\Exception $e) {
+            \Log::error('Direct Contract creation failed in service', [
+                'project_id' => $project->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Generate scope of work from job and bid
      */
     private function generateScopeOfWork($job, $bid): string

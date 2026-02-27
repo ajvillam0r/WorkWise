@@ -88,8 +88,9 @@ function EditBtn({ onClick }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function GigWorkerProfile({ user, status }) {
-    const skills = user.skills_with_experience || [];
+export default function GigWorkerProfile({ user, status, jobContext, pastProjects = [] }) {
+    const rawSkills = user.skills_with_experience;
+    const skills = Array.isArray(rawSkills) ? rawSkills : [];
     const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'GW';
 
     const [linkPreview, setLinkPreview] = useState({ data: null, loading: false, error: false });
@@ -102,6 +103,42 @@ export default function GigWorkerProfile({ user, status }) {
             .then((data) => setLinkPreview({ data, loading: false, error: !!data.error }))
             .catch(() => setLinkPreview((p) => ({ ...p, loading: false, error: true })));
     }, [user.portfolio_link]);
+
+    const { auth } = usePage().props;
+    const authUser = auth?.user;
+    const isEmployerViewing = authUser?.user_type === 'employer';
+    const isOwnProfile = authUser?.id === user.id;
+
+    const [isHiring, setIsHiring] = useState(false);
+
+    const handleHireMe = () => {
+        setIsHiring(true);
+
+        // Prefer job context from props (decoded from encrypted ctx), then URL
+        const jobId = jobContext?.job_id ?? new URLSearchParams(window.location.search).get('job_id');
+        const jobTitle = jobContext?.job_title ?? new URLSearchParams(window.location.search).get('job_title');
+        const jobBudget = jobContext?.job_budget ?? new URLSearchParams(window.location.search).get('job_budget');
+
+        let messageText = "Hi! I viewed your profile and I'm interested in discussing a potential job opportunity with you.";
+        if (jobId && jobTitle) {
+            messageText = `[JOB_PREVIEW] ${JSON.stringify({
+                id: jobId,
+                title: jobTitle,
+                budget: jobBudget || "Negotiable"
+            })}`;
+        }
+
+        window.axios.post(route('messages.store'), {
+            receiver_id: user.id,
+            message: messageText
+        }).then(() => {
+            router.visit(route('messages.conversation', user.id));
+        }).catch((error) => {
+            console.error("Error sending hire message", error);
+            setIsHiring(false);
+            router.visit(route('messages.conversation', user.id));
+        });
+    };
 
     const goToEdit = () => router.visit('/profile/gig-worker/edit');
     const goToOnboarding = () => router.visit(route('gig-worker.onboarding'));
@@ -138,12 +175,14 @@ export default function GigWorkerProfile({ user, status }) {
                             <div className="flex flex-col md:flex-row items-center md:items-end gap-4">
                                 <div className="relative">
                                     <Avatar user={user} size="lg" />
-                                    <button
-                                        onClick={goToEdit}
-                                        className="absolute bottom-1 right-1 bg-white p-1.5 rounded-full shadow-sm border border-gray-100 text-gray-600 hover:text-blue-600 transition-colors"
-                                    >
-                                        <span className="material-icons text-base leading-none">photo_camera</span>
-                                    </button>
+                                    {!isEmployerViewing && (
+                                        <button
+                                            onClick={goToEdit}
+                                            className="absolute bottom-1 right-1 bg-white p-1.5 rounded-full shadow-sm border border-gray-100 text-gray-600 hover:text-blue-600 transition-colors"
+                                        >
+                                            <span className="material-icons text-base leading-none">photo_camera</span>
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="text-center md:text-left mb-2 md:mb-0">
                                     <h1 className="text-2xl font-bold text-gray-900 flex items-center justify-center md:justify-start gap-2">
@@ -164,17 +203,34 @@ export default function GigWorkerProfile({ user, status }) {
 
                             {/* Right: action buttons */}
                             <div className="flex gap-3 mt-4 md:mt-0">
-                                <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-2 shadow-sm">
-                                    <span className="material-icons text-lg">share</span>
-                                    Share
-                                </button>
-                                <button
-                                    onClick={goToEdit}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm shadow-blue-500/30"
-                                >
-                                    <span className="material-icons text-lg">edit</span>
-                                    Edit Profile
-                                </button>
+                                {!isEmployerViewing && (
+                                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-2 shadow-sm">
+                                        <span className="material-icons text-lg">share</span>
+                                        Share
+                                    </button>
+                                )}
+                                {isEmployerViewing ? (
+                                    <button
+                                        onClick={handleHireMe}
+                                        disabled={isHiring}
+                                        className={`px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-sm font-bold transition flex items-center gap-2 shadow-md shadow-blue-500/30 tracking-wide uppercase ${isHiring ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                    >
+                                        {isHiring ? (
+                                            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                        ) : (
+                                            <span className="material-icons text-lg">work</span>
+                                        )}
+                                        {isHiring ? 'Processing...' : 'Hire Me'}
+                                    </button>
+                                ) : isOwnProfile && (
+                                    <button
+                                        onClick={goToEdit}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm shadow-blue-500/30"
+                                    >
+                                        <span className="material-icons text-lg">edit</span>
+                                        Edit Profile
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -210,7 +266,7 @@ export default function GigWorkerProfile({ user, status }) {
                                 <div className="mb-5">
                                     <SectionHeader
                                         title="Hourly Rate"
-                                        action={<EditBtn onClick={goToEdit} />}
+                                        action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
                                     />
                                     <p className="text-2xl font-bold text-gray-900">
                                         {user.hourly_rate
@@ -223,7 +279,7 @@ export default function GigWorkerProfile({ user, status }) {
                                 <div>
                                     <SectionHeader
                                         title="Availability"
-                                        action={<EditBtn onClick={goToEdit} />}
+                                        action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
                                     />
                                     <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-100">
                                         <span className="material-icons text-lg">bolt</span>
@@ -282,7 +338,7 @@ export default function GigWorkerProfile({ user, status }) {
                             <Card className="p-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-bold text-gray-900">About Me</h2>
-                                    <EditBtn onClick={goToEdit} />
+                                    {!isEmployerViewing && <EditBtn onClick={goToEdit} />}
                                 </div>
                                 {user.bio ? (
                                     <div className="text-gray-600 text-sm leading-relaxed space-y-2">
@@ -294,27 +350,84 @@ export default function GigWorkerProfile({ user, status }) {
                                     <div className="text-center py-8">
                                         <span className="material-icons text-4xl text-gray-200 mb-2">person_outline</span>
                                         <p className="text-sm text-gray-400">No bio yet.</p>
-                                        <button onClick={goToEdit} className="mt-3 text-sm text-blue-600 hover:underline font-medium">Add your bio</button>
+                                        {!isEmployerViewing && (
+                                            <button onClick={goToEdit} className="mt-3 text-sm text-blue-600 hover:underline font-medium">Add your bio</button>
+                                        )}
                                     </div>
                                 )}
                             </Card>
 
-                            {/* Work History placeholder */}
+                            {/* Work History */}
                             <Card className="p-6">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-lg font-bold text-gray-900">Work History</h2>
-                                    <button className="p-1 text-gray-400 hover:text-gray-600 transition">
-                                        <span className="material-icons">filter_list</span>
-                                    </button>
                                 </div>
-                                <div className="text-center py-10">
-                                    <span className="material-icons text-5xl text-gray-200 mb-3">work_outline</span>
-                                    <p className="text-sm font-medium text-gray-500">No completed jobs yet</p>
-                                    <p className="text-xs text-gray-400 mt-1">Your completed work history will appear here.</p>
-                                    <Link href={route('jobs.index')} className="mt-4 inline-block text-sm text-blue-600 hover:underline font-medium">
-                                        Browse available jobs →
-                                    </Link>
-                                </div>
+                                {pastProjects && pastProjects.length > 0 ? (
+                                    <div className="space-y-6">
+                                        {pastProjects.map((project) => {
+                                            const review = project.reviews && project.reviews[0];
+                                            const completedDate = project.completed_at
+                                                ? new Date(project.completed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                                : project.created_at
+                                                    ? new Date(project.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                                    : '—';
+                                            const emp = project.employer;
+                                            const empInitials = emp ? `${emp.first_name?.[0] || ''}${emp.last_name?.[0] || ''}`.toUpperCase() : '—';
+                                            const empName = emp ? `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Employer' : '—';
+                                            return (
+                                                <div key={project.id} className="flex gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
+                                                    <div className="w-32 h-24 sm:w-40 sm:h-28 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                                                        <span className="material-symbols-outlined text-4xl text-gray-300">
+                                                            {project.status === 'completed' ? 'task_alt' : 'rocket_launch'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-bold text-gray-900">{project.job?.title || 'Project'}</h4>
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            {project.status === 'completed' ? `Completed ${completedDate}` : 'In Progress'}
+                                                        </p>
+                                                        {review && (
+                                                            <div className="mt-2 flex items-center gap-1">
+                                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                                    <span key={star} className={star <= review.rating ? 'text-amber-400' : 'text-gray-200'}>
+                                                                        ★
+                                                                    </span>
+                                                                ))}
+                                                                <span className="text-sm font-medium text-gray-600 ml-1">{Number(review.rating).toFixed(1)}</span>
+                                                            </div>
+                                                        )}
+                                                        {review?.comment && (
+                                                            <p className="text-sm text-gray-600 mt-2 italic">&ldquo;{review.comment}&rdquo;</p>
+                                                        )}
+                                                        <div className="flex items-center gap-2 mt-3">
+                                                            {emp?.profile_picture ? (
+                                                                <img src={emp.profile_picture} alt={empName} className="w-8 h-8 rounded-full object-cover border border-gray-100" />
+                                                            ) : (
+                                                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+                                                                    {empInitials}
+                                                                </div>
+                                                            )}
+                                                            <span className="text-xs text-gray-500">
+                                                                Client: <span className="font-medium text-gray-700">{empName}</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-10">
+                                        <span className="material-icons text-5xl text-gray-200 mb-3">work_outline</span>
+                                        <p className="text-sm font-medium text-gray-500">No completed jobs yet</p>
+                                        <p className="text-xs text-gray-400 mt-1">Your completed work history will appear here.</p>
+                                        {!isEmployerViewing && isOwnProfile && (
+                                            <Link href={route('jobs.index')} className="mt-4 inline-block text-sm text-blue-600 hover:underline font-medium">
+                                                Browse available jobs →
+                                            </Link>
+                                        )}
+                                    </div>
+                                )}
                             </Card>
 
                             {/* Portfolio */}
@@ -400,7 +513,9 @@ export default function GigWorkerProfile({ user, status }) {
                                     <div className="text-center py-8">
                                         <span className="material-icons text-5xl text-gray-200 mb-3">folder_open</span>
                                         <p className="text-sm text-gray-400">No portfolio link added.</p>
-                                        <button onClick={goToEdit} className="mt-3 text-sm text-blue-600 hover:underline font-medium">Add portfolio link</button>
+                                        {!isEmployerViewing && (
+                                            <button onClick={goToEdit} className="mt-3 text-sm text-blue-600 hover:underline font-medium">Add portfolio link</button>
+                                        )}
                                     </div>
                                 )}
                             </Card>
@@ -412,7 +527,7 @@ export default function GigWorkerProfile({ user, status }) {
                             <Card className="p-5">
                                 <SectionHeader
                                     title="Top Skills"
-                                    action={<EditBtn onClick={goToEdit} />}
+                                    action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
                                 />
                                 {skills.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
@@ -435,7 +550,9 @@ export default function GigWorkerProfile({ user, status }) {
                                 ) : (
                                     <div className="text-center py-4">
                                         <p className="text-xs text-gray-400">No skills added.</p>
-                                        <button onClick={goToEdit} className="mt-2 text-xs text-blue-600 hover:underline">Add skills</button>
+                                        {!isEmployerViewing && (
+                                            <button onClick={goToEdit} className="mt-2 text-xs text-blue-600 hover:underline">Add skills</button>
+                                        )}
                                     </div>
                                 )}
                             </Card>
@@ -468,7 +585,7 @@ export default function GigWorkerProfile({ user, status }) {
                             <Card className="p-5">
                                 <SectionHeader
                                     title="Languages"
-                                    action={<EditBtn onClick={goToEdit} />}
+                                    action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
                                 />
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
@@ -499,15 +616,16 @@ export default function GigWorkerProfile({ user, status }) {
                                         </div>
                                     ) : null}
 
-                                    {/* Add account button */}
-                                    <div className="flex items-center justify-between group">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
-                                                <span className="material-icons text-lg">add</span>
+                                    {!isEmployerViewing && (
+                                        <div className="flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+                                                    <span className="material-icons text-lg">add</span>
+                                                </div>
+                                                <span className="text-sm text-gray-500">Link Account</span>
                                             </div>
-                                            <span className="text-sm text-gray-500">Link Account</span>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </Card>
                         </div>

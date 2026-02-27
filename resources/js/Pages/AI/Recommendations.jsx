@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import Pagination from "@/Components/Pagination";
@@ -26,13 +26,21 @@ export default function Recommendations({
 
     const [filters, setFilters] = useState({
         experience: "all",
-
         budgetMin: "",
-
         budgetMax: "",
-
         skills: [],
     });
+
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        router.reload({
+            data: { refresh: 1 },
+            onFinish: () => setIsRefreshing(false),
+            preserveScroll: true,
+        });
+    };
 
     const [isSkillDropdownOpen, setIsSkillDropdownOpen] = useState(false);
 
@@ -117,9 +125,13 @@ export default function Recommendations({
 
         const normalizedSkillSet = skillSet
 
-            .map((skill) =>
-                typeof skill === "string" ? skill.toLowerCase() : "",
-            )
+            .map((skill) => {
+                const name =
+                    typeof skill === "string"
+                        ? skill
+                        : skill?.skill ?? skill?.[0] ?? "";
+                return typeof name === "string" ? name.toLowerCase() : "";
+            })
 
             .filter((skill) => skill.length > 0);
 
@@ -145,19 +157,19 @@ export default function Recommendations({
             jobMin === null || jobMin === "" || jobMin === undefined
                 ? null
                 : Number.isFinite(jobMin)
-                  ? jobMin
-                  : Number.isFinite(parseFloat(jobMin))
-                    ? parseFloat(jobMin)
-                    : null;
+                    ? jobMin
+                    : Number.isFinite(parseFloat(jobMin))
+                        ? parseFloat(jobMin)
+                        : null;
 
         const normalizedMax =
             jobMax === null || jobMax === "" || jobMax === undefined
                 ? null
                 : Number.isFinite(jobMax)
-                  ? jobMax
-                  : Number.isFinite(parseFloat(jobMax))
-                    ? parseFloat(jobMax)
-                    : null;
+                    ? jobMax
+                    : Number.isFinite(parseFloat(jobMax))
+                        ? parseFloat(jobMax)
+                        : null;
 
         if (normalizedMin === null && normalizedMax === null) {
             return true;
@@ -207,8 +219,8 @@ export default function Recommendations({
             typeof hourlyRate === "number"
                 ? hourlyRate
                 : Number.isFinite(parseFloat(hourlyRate))
-                  ? parseFloat(hourlyRate)
-                  : null;
+                    ? parseFloat(hourlyRate)
+                    : null;
 
         if (rate === null) {
             return true;
@@ -247,10 +259,10 @@ export default function Recommendations({
 
                 skills: alreadySelected
                     ? current.skills.filter(
-                          (selectedSkill) =>
-                              selectedSkill.toLowerCase() !==
-                              skill.toLowerCase(),
-                      )
+                        (selectedSkill) =>
+                            selectedSkill.toLowerCase() !==
+                            skill.toLowerCase(),
+                    )
                     : [...current.skills, skill],
             };
         });
@@ -313,22 +325,22 @@ export default function Recommendations({
             (accumulator, [jobId, data]) => {
                 const matches = Array.isArray(data.matches)
                     ? data.matches.filter((match) => {
-                          const gigWorker = match.gig_worker || {};
+                        const gigWorker = match.gig_worker || {};
 
-                          if (!matchesExperience(gigWorker.experience_level)) {
-                              return false;
-                          }
+                        if (!matchesExperience(gigWorker.experience_level)) {
+                            return false;
+                        }
 
-                          if (!workerBudgetMatches(gigWorker.hourly_rate)) {
-                              return false;
-                          }
+                        if (!workerBudgetMatches(gigWorker.hourly_rate)) {
+                            return false;
+                        }
 
-                          if (!matchesSkillFilter(gigWorker.skills)) {
-                              return false;
-                          }
+                        if (!matchesSkillFilter(gigWorker.skills)) {
+                            return false;
+                        }
 
-                          return true;
-                      })
+                        return true;
+                    })
                     : [];
 
                 return {
@@ -442,122 +454,128 @@ export default function Recommendations({
                             key={index}
                             className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border-l-4 border-blue-500 border border-gray-200"
                         >
-                        <div className="p-8">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-2xl">💼</span>
+                            <div className="p-8">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-2xl">💼</span>
 
-                                        <h3 className="text-lg font-semibold text-gray-900">
-                                            <Link
-                                                href={route(
-                                                    "jobs.show",
-                                                    match.job.id,
-                                                )}
-                                                className="hover:text-blue-600 transition-colors"
-                                            >
-                                                {match.job.title}
-                                            </Link>
-                                        </h3>
-                                    </div>
-
-                                    <div className="text-sm text-gray-600 flex items-center gap-4">
-                                        <span>
-                                            Posted by:{" "}
-                                            <span className="font-medium">
-                                                {match.job.employer &&
-                                                    `${match.job.employer.first_name} ${match.job.employer.last_name}`}
-                                            </span>
-                                        </span>
-
-                                        {match.job.experience_level && (
-                                            <span className="px-3 py-1 bg-gray-100 rounded-xl text-sm font-medium shadow-md">
-                                                {match.job.experience_level
-                                                    .charAt(0)
-                                                    .toUpperCase() +
-                                                    match.job.experience_level.slice(
-                                                        1,
+                                            <h3 className="text-lg font-semibold text-gray-900">
+                                                <Link
+                                                    href={route(
+                                                        "jobs.show",
+                                                        match.job.id,
                                                     )}
+                                                    className="hover:text-blue-600 transition-colors"
+                                                >
+                                                    {match.job.title}
+                                                </Link>
+                                            </h3>
+                                        </div>
+
+                                        <div className="text-sm text-gray-600 flex items-center gap-4">
+                                            <span>
+                                                Posted by:{" "}
+                                                <span className="font-medium">
+                                                    {match.job.employer &&
+                                                        `${match.job.employer.first_name} ${match.job.employer.last_name}`}
+                                                </span>
                                             </span>
-                                        )}
-                                    </div>
-                                </div>
 
-                                <div className="text-right">
-                                    <div
-                                        className={`text-3xl font-bold ${getMatchScoreColor(match.score)}`}
-                                    >
-                                        {match.score}%
-                                    </div>
-
-                                    <div className="text-xs text-gray-500 font-medium">
-                                        {match.score >= 80
-                                            ? "🎯 Excellent"
-                                            : match.score >= 60
-                                              ? "👍 Good"
-                                              : match.score >= 40
-                                                ? "✓ Fair"
-                                                : "⚠️ Weak"}{" "}
-                                        Match
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-4 border border-blue-200 shadow-md">
-                                <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                                    <span>🤖</span> AI Analysis - Why this
-                                    matches your profile:
-                                </h4>
-
-                                <p className="text-gray-700 leading-relaxed">
-                                    {match.reason}
-                                </p>
-                            </div>
-
-                            {match.job.required_skills &&
-                                match.job.required_skills.length > 0 && (
-                                    <div className="mb-4">
-                                        <h4 className="text-xs font-medium text-gray-700 mb-2">
-                                            Required Skills:
-                                        </h4>
-
-                                        <div className="flex flex-wrap gap-2">
-                                            {match.job.required_skills.map(
-                                                (skill, idx) => (
-                                                    <span
-                                                        key={idx}
-                                                        className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-xl shadow-md"
-                                                    >
-                                                        {skill}
-                                                    </span>
-                                                ),
+                                            {match.job.experience_level && (
+                                                <span className="px-3 py-1 bg-gray-100 rounded-xl text-sm font-medium shadow-md">
+                                                    {match.job.experience_level
+                                                        .charAt(0)
+                                                        .toUpperCase() +
+                                                        match.job.experience_level.slice(
+                                                            1,
+                                                        )}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
-                                )}
 
-                            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                                <div className="text-sm text-gray-600">
-                                    <span className="font-medium">Budget:</span>{" "}
-                                    {match.job.budget_display ||
-                                        `₱${match.job.budget_min || 0} - ₱${match.job.budget_max || 0}`}
-                                    {match.job.budget_type && (
-                                        <span className="text-xs text-gray-500 ml-1">
-                                            ({match.job.budget_type})
-                                        </span>
-                                    )}
+                                    <div className="text-right">
+                                        <div
+                                            className={`text-3xl font-bold ${getMatchScoreColor(match.score)}`}
+                                        >
+                                            {match.score}%
+                                        </div>
+
+                                        <div className="text-xs text-gray-500 font-medium">
+                                            {match.score >= 80
+                                                ? "🎯 Excellent"
+                                                : match.score >= 60
+                                                    ? "👍 Good"
+                                                    : match.score >= 40
+                                                        ? "✓ Fair"
+                                                        : "⚠️ Weak"}{" "}
+                                            Match
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <Link
-                                    href={route("jobs.show", match.job.id)}
-                                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-                                >
-                                    View Job Details →
-                                </Link>
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-4 border border-blue-200 shadow-md">
+                                    <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                                        <span>🤖</span> AI Analysis - Why this
+                                        matches your profile:
+                                    </h4>
+
+                                    <p className="text-gray-700 leading-relaxed">
+                                        {match.reason}
+                                    </p>
+                                </div>
+
+                                {match.job.required_skills &&
+                                    match.job.required_skills.length > 0 && (
+                                        <div className="mb-4">
+                                            <h4 className="text-xs font-medium text-gray-700 mb-2">
+                                                Required Skills:
+                                            </h4>
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {match.job.required_skills.map(
+                                                    (skill, idx) => {
+                                                        const label =
+                                                            typeof skill === "string"
+                                                                ? skill
+                                                                : skill?.skill ?? skill?.[0] ?? "";
+                                                        return (
+                                                            <span
+                                                                key={idx}
+                                                                className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-xl shadow-md"
+                                                            >
+                                                                {label}
+                                                            </span>
+                                                        );
+                                                    },
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                                    <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Budget:</span>{" "}
+                                        {match.job.budget_display ||
+                                            `₱${match.job.budget_min || 0} - ₱${match.job.budget_max || 0}`}
+                                        {match.job.budget_type && (
+                                            <span className="text-xs text-gray-500 ml-1">
+                                                ({match.job.budget_type})
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <Link
+                                        href={route("jobs.show", match.job.id)}
+                                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                    >
+                                        View Job Details →
+                                    </Link>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
                 </div>
 
                 {/* Pagination for Gig Worker Recommendations */}
@@ -589,7 +607,7 @@ export default function Recommendations({
             return (
                 <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
                     <div className="p-8 text-center">
-                        <div className="text-6xl mb-4">dY"?</div>
+                        <div className="text-6xl mb-4">👥</div>
 
                         <h3 className="text-lg font-medium text-gray-900 mb-2">
                             {filtersApplied
@@ -611,333 +629,404 @@ export default function Recommendations({
             <>
                 <div className="space-y-8">
                     {entries.map(([jobId, jobData]) => {
-                    const matches = (jobData.matches || []).filter(
-                        (match) => match && match.gig_worker,
-                    );
+                        const matches = (jobData.matches || []).filter(
+                            (match) => match && match.gig_worker,
+                        );
 
-                    if (!matches.length) {
-                        return null;
-                    }
+                        if (!matches.length) {
+                            return null;
+                        }
 
-                    const excellentMatches = matches.filter(
-                        (match) => match.score >= 20,
-                    );
+                        const excellentMatches = matches.filter(
+                            (match) => match.score >= 80,
+                        );
 
-                    const goodMatches = matches.filter(
-                        (match) => match.score >= 10 && match.score < 20,
-                    );
+                        const goodMatches = matches.filter(
+                            (match) => match.score >= 60 && match.score < 80,
+                        );
 
-                    const basicMatches = matches.filter(
-                        (match) => match.score > 0 && match.score < 10,
-                    );
+                        const basicMatches = matches.filter(
+                            (match) => match.score > 0 && match.score < 60,
+                        );
 
-                    const showEmptyState =
-                        !excellentMatches.length &&
-                        !goodMatches.length &&
-                        !basicMatches.length;
+                        const getProfileUrl = (match, workerId) =>
+                            match.profile_context_token
+                                ? `/gig-worker/${workerId}/view?ctx=${encodeURIComponent(match.profile_context_token)}`
+                                : `/gig-worker/${workerId}?job_id=${jobId}&job_title=${encodeURIComponent(jobData.job?.title || '')}&job_budget=${encodeURIComponent(jobData.job?.budget_min != null && jobData.job?.budget_max != null ? `₱${jobData.job.budget_min} - ₱${jobData.job.budget_max}` : 'Negotiable')}`;
 
-                    return (
-                        <div
-                            key={jobId}
-                            className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200"
-                        >
-                            <div className="p-8">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                    Matches for:{" "}
-                                    {jobData.job?.title || "Untitled Job"}
-                                </h3>
+                        const showEmptyState =
+                            !excellentMatches.length &&
+                            !goodMatches.length &&
+                            !basicMatches.length;
 
-                                <div className="space-y-4">
-                                    {showEmptyState ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            <p>
-                                                No matching gig workers found
-                                                for this job.
-                                            </p>
+                        return (
+                            <div
+                                key={jobId}
+                                className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200"
+                            >
+                                <div className="p-8">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                        Matches for:{" "}
+                                        {jobData.job?.title || "Untitled Job"}
+                                    </h3>
 
-                                            <p className="text-sm mt-2">
-                                                Try adjusting your job
-                                                requirements or wait for more
-                                                gig workers to join the
-                                                platform.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {excellentMatches.length > 0 && (
-                                                <>
-                                                    <div className="mb-4">
-                                                        <h4 className="text-sm font-medium text-green-700 mb-2">
-                                                            dYZ_ Excellent
-                                                            Matches (
-                                                            {
-                                                                excellentMatches.length
-                                                            }
-                                                            )
-                                                        </h4>
-                                                    </div>
+                                    <div className="space-y-4">
+                                        {showEmptyState ? (
+                                            <div className="text-center py-8 text-gray-500">
+                                                <p>
+                                                    No matching gig workers found
+                                                    for this job.
+                                                </p>
 
-                                                    {excellentMatches.map(
-                                                        (match, index) => {
-                                                            const worker =
-                                                                match.gig_worker ||
-                                                                {};
+                                                <p className="text-sm mt-2">
+                                                    Try adjusting your job
+                                                    requirements or wait for more
+                                                    gig workers to join the
+                                                    platform.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {excellentMatches.length > 0 && (
+                                                    <>
+                                                        <div className="mb-4">
+                                                            <h4 className="text-sm font-medium text-green-700 mb-2">
+                                                                🎯 Excellent
+                                                                Matches (
+                                                                {
+                                                                    excellentMatches.length
+                                                                }
+                                                                )
+                                                            </h4>
+                                                        </div>
 
-                                                            return (
-                                                                <div
-                                                                    key={`excellent-${jobId}-${index}`}
-                                                                    className="border border-green-200 bg-gradient-to-br from-green-50 to-white rounded-xl p-6 shadow-md"
-                                                                >
-                                                                    <div className="flex justify-between items-start">
-                                                                        <div className="flex-1">
-                                                                            <h4 className="font-medium text-gray-900">
-                                                                                {
-                                                                                    worker.first_name
-                                                                                }{" "}
-                                                                                {
-                                                                                    worker.last_name
-                                                                                }
-                                                                            </h4>
+                                                        {excellentMatches.map(
+                                                            (match, index) => {
+                                                                const worker =
+                                                                    match.gig_worker ||
+                                                                    {};
 
-                                                                            <div className="text-sm text-gray-600 mt-1">
-                                                                                {worker.experience_level ||
-                                                                                    "Not specified"}{" "}
-                                                                                |{" "}
-                                                                                {worker.professional_title ||
-                                                                                    "Gig Worker"}
+                                                                return (
+                                                                    <div
+                                                                        key={`excellent-${jobId}-${index}`}
+                                                                        className="border border-green-200 bg-gradient-to-br from-green-50 to-white rounded-xl p-6 shadow-md"
+                                                                    >
+                                                                        <div className="flex justify-between items-start">
+                                                                            <div className="flex-1 flex gap-4">
+                                                                                <img
+                                                                                    src={worker.profile_picture ? `/storage/${worker.profile_picture}` : `https://ui-avatars.com/api/?name=${worker.first_name}+${worker.last_name}&background=random`}
+                                                                                    alt={`${worker.first_name} ${worker.last_name}`}
+                                                                                    className="w-16 h-16 rounded-full object-cover shadow-sm bg-white"
+                                                                                />
+                                                                                <div>
+                                                                                    <h4 className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                                                                                        <Link href={getProfileUrl(match, worker.id)} className="uppercase">
+                                                                                            {worker.first_name} {worker.last_name}
+                                                                                        </Link>
+                                                                                    </h4>
+                                                                                    <div className="text-sm font-medium text-blue-600 mt-0.5">
+                                                                                        {worker.professional_title || "Gig Worker"}
+                                                                                    </div>
+                                                                                    <div className="text-xs text-gray-600 mt-1 flex flex-col gap-1">
+                                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                                            <span className="flex items-center gap-1">
+                                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                                                                {worker.email}
+                                                                                            </span>
+                                                                                            {worker.email_verified_at && (
+                                                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800" title="Email Verified">
+                                                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                                                                    Email
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {worker.id_verification_status === "verified" && (
+                                                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800" title="Valid ID Verified">
+                                                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                                                                    ID
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {(worker.city || worker.country) && (
+                                                                                            <div className="flex items-center gap-1 mt-0.5 text-gray-500">
+                                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                                                {[worker.city, worker.country].filter(Boolean).join(", ")}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="text-right">
+                                                                                <div className="text-2xl font-bold text-green-600">
+                                                                                    {
+                                                                                        match.score
+                                                                                    }
+                                                                                    %
+                                                                                </div>
+
+                                                                                <div className="text-sm text-gray-500">
+                                                                                    Match
+                                                                                    Score
+                                                                                </div>
                                                                             </div>
                                                                         </div>
 
-                                                                        <div className="text-right">
-                                                                            <div className="text-2xl font-bold text-green-600">
+                                                                        <div className="bg-green-100 rounded-xl p-4 mt-3 shadow-sm">
+                                                                            <p className="text-sm text-gray-700">
                                                                                 {
-                                                                                    match.score
+                                                                                    match.reason
                                                                                 }
-                                                                                %
-                                                                            </div>
-
-                                                                            <div className="text-sm text-gray-500">
-                                                                                Match
-                                                                                Score
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="bg-green-100 rounded-xl p-4 mt-3 shadow-sm">
-                                                                        <p className="text-sm text-gray-700">
-                                                                            {
-                                                                                match.reason
-                                                                            }
-                                                                        </p>
-                                                                    </div>
-
-                                                                    <div className="mt-4 flex justify-end">
-                                                                        <button
-                                                                            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 opacity-50 cursor-not-allowed"
-                                                                            disabled
-                                                                        >
-                                                                            View
-                                                                            Profile
-                                                                            (Coming
-                                                                            Soon)
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        },
-                                                    )}
-                                                </>
-                                            )}
-
-                                            {goodMatches.length > 0 && (
-                                                <>
-                                                    <div className="mb-4">
-                                                        <h4 className="text-sm font-medium text-blue-700 mb-2">
-                                                            dY`? Good Matches (
-                                                            {goodMatches.length}
-                                                            )
-                                                        </h4>
-
-                                                        <p className="text-xs text-gray-600">
-                                                            These gig workers
-                                                            have relevant skills
-                                                            and could be a good
-                                                            fit with some
-                                                            training.
-                                                        </p>
-                                                    </div>
-
-                                                    {goodMatches.map(
-                                                        (match, index) => {
-                                                            const worker =
-                                                                match.gig_worker ||
-                                                                {};
-
-                                                            return (
-                                                                <div
-                                                                    key={`good-${jobId}-${index}`}
-                                                                    className="border border-blue-200 bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 shadow-md"
-                                                                >
-                                                                    <div className="flex justify-between items-start">
-                                                                        <div className="flex-1">
-                                                                            <h4 className="font-medium text-gray-900">
-                                                                                {
-                                                                                    worker.first_name
-                                                                                }{" "}
-                                                                                {
-                                                                                    worker.last_name
-                                                                                }
-                                                                            </h4>
-
-                                                                            <div className="text-sm text-gray-600 mt-1">
-                                                                                {worker.experience_level ||
-                                                                                    "Not specified"}{" "}
-                                                                                |{" "}
-                                                                                {worker.professional_title ||
-                                                                                    "Gig Worker"}
-                                                                            </div>
+                                                                            </p>
                                                                         </div>
 
-                                                                        <div className="text-right">
-                                                                            <div className="text-2xl font-bold text-blue-600">
-                                                                                {
-                                                                                    match.score
-                                                                                }
-                                                                                %
-                                                                            </div>
-
-                                                                            <div className="text-sm text-gray-500">
-                                                                                Match
-                                                                                Score
-                                                                            </div>
+                                                                        <div className="mt-4 flex justify-end">
+                                                                            <Link
+                                                                                href={getProfileUrl(match, worker.id)}
+                                                                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                                                            >
+                                                                                View Profile →
+                                                                            </Link>
                                                                         </div>
                                                                     </div>
+                                                                );
+                                                            },
+                                                        )}
+                                                    </>
+                                                )}
 
-                                                                    <div className="bg-blue-100 rounded-xl p-4 mt-3 shadow-sm">
-                                                                        <p className="text-sm text-gray-700">
-                                                                            {
-                                                                                match.reason
-                                                                            }
-                                                                        </p>
-                                                                    </div>
+                                                {goodMatches.length > 0 && (
+                                                    <>
+                                                        <div className="mb-4">
+                                                            <h4 className="text-sm font-medium text-blue-700 mb-2">
+                                                                👍 Good Matches (
+                                                                {goodMatches.length}
+                                                                )
+                                                            </h4>
 
-                                                                    <div className="mt-4 flex justify-end">
-                                                                        <button
-                                                                            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 opacity-50 cursor-not-allowed"
-                                                                            disabled
-                                                                        >
-                                                                            View
-                                                                            Profile
-                                                                            (Coming
-                                                                            Soon)
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        },
-                                                    )}
-                                                </>
-                                            )}
+                                                            <p className="text-xs text-gray-600">
+                                                                These gig workers
+                                                                have relevant skills
+                                                                and could be a good
+                                                                fit with some
+                                                                training.
+                                                            </p>
+                                                        </div>
 
-                                            {basicMatches.length > 0 && (
-                                                <>
-                                                    <div className="mb-4">
-                                                        <h4 className="text-sm font-medium text-yellow-700 mb-2">
-                                                            dY? Potential
-                                                            Matches (
-                                                            {
-                                                                basicMatches.length
-                                                            }
-                                                            )
-                                                        </h4>
+                                                        {goodMatches.map(
+                                                            (match, index) => {
+                                                                const worker =
+                                                                    match.gig_worker ||
+                                                                    {};
 
-                                                        <p className="text-xs text-gray-600">
-                                                            These gig workers
-                                                            show some relevant
-                                                            background and could
-                                                            develop into strong
-                                                            candidates.
-                                                        </p>
-                                                    </div>
+                                                                return (
+                                                                    <div
+                                                                        key={`good-${jobId}-${index}`}
+                                                                        className="border border-blue-200 bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 shadow-md"
+                                                                    >
+                                                                        <div className="flex justify-between items-start">
+                                                                            <div className="flex-1 flex gap-4">
+                                                                                <img
+                                                                                    src={worker.profile_picture ? `/storage/${worker.profile_picture}` : `https://ui-avatars.com/api/?name=${worker.first_name}+${worker.last_name}&background=random`}
+                                                                                    alt={`${worker.first_name} ${worker.last_name}`}
+                                                                                    className="w-16 h-16 rounded-full object-cover shadow-sm bg-white"
+                                                                                />
+                                                                                <div>
+                                                                                    <h4 className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                                                                                        <Link href={getProfileUrl(match, worker.id)} className="uppercase">
+                                                                                            {worker.first_name} {worker.last_name}
+                                                                                        </Link>
+                                                                                    </h4>
+                                                                                    <div className="text-sm font-medium text-blue-600 mt-0.5">
+                                                                                        {worker.professional_title || "Gig Worker"}
+                                                                                    </div>
+                                                                                    <div className="text-xs text-gray-600 mt-1 flex flex-col gap-1">
+                                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                                            <span className="flex items-center gap-1">
+                                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                                                                {worker.email}
+                                                                                            </span>
+                                                                                            {worker.email_verified_at && (
+                                                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800" title="Email Verified">
+                                                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                                                                    Email
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {worker.id_verification_status === "verified" && (
+                                                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800" title="Valid ID Verified">
+                                                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                                                                    ID
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {(worker.city || worker.country) && (
+                                                                                            <div className="flex items-center gap-1 mt-0.5 text-gray-500">
+                                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                                                {[worker.city, worker.country].filter(Boolean).join(", ")}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
 
-                                                    {basicMatches.map(
-                                                        (match, index) => {
-                                                            const worker =
-                                                                match.gig_worker ||
-                                                                {};
+                                                                            <div className="text-right">
+                                                                                <div className="text-2xl font-bold text-blue-600">
+                                                                                    {
+                                                                                        match.score
+                                                                                    }
+                                                                                    %
+                                                                                </div>
 
-                                                            return (
-                                                                <div
-                                                                    key={`basic-${jobId}-${index}`}
-                                                                    className="border border-yellow-200 bg-gradient-to-br from-yellow-50 to-white rounded-xl p-6 shadow-md"
-                                                                >
-                                                                    <div className="flex justify-between items-start">
-                                                                        <div className="flex-1">
-                                                                            <h4 className="font-medium text-gray-900">
-                                                                                {
-                                                                                    worker.first_name
-                                                                                }{" "}
-                                                                                {
-                                                                                    worker.last_name
-                                                                                }
-                                                                            </h4>
-
-                                                                            <div className="text-sm text-gray-600 mt-1">
-                                                                                {worker.experience_level ||
-                                                                                    "Not specified"}{" "}
-                                                                                |{" "}
-                                                                                {worker.professional_title ||
-                                                                                    "Gig Worker"}
+                                                                                <div className="text-sm text-gray-500">
+                                                                                    Match
+                                                                                    Score
+                                                                                </div>
                                                                             </div>
                                                                         </div>
 
-                                                                        <div className="text-right">
-                                                                            <div className="text-2xl font-bold text-yellow-600">
+                                                                        <div className="bg-blue-100 rounded-xl p-4 mt-3 shadow-sm">
+                                                                            <p className="text-sm text-gray-700">
                                                                                 {
-                                                                                    match.score
+                                                                                    match.reason
                                                                                 }
-                                                                                %
-                                                                            </div>
+                                                                            </p>
+                                                                        </div>
 
-                                                                            <div className="text-sm text-gray-500">
-                                                                                Match
-                                                                                Score
-                                                                            </div>
+                                                                        <div className="mt-4 flex justify-end">
+                                                                            <Link
+                                                                                href={getProfileUrl(match, worker.id)}
+                                                                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                                                            >
+                                                                                View Profile →
+                                                                            </Link>
                                                                         </div>
                                                                     </div>
+                                                                );
+                                                            },
+                                                        )}
+                                                    </>
+                                                )}
 
-                                                                    <div className="bg-yellow-100 rounded-xl p-4 mt-3 shadow-sm">
-                                                                        <p className="text-sm text-gray-700">
-                                                                            {
-                                                                                match.reason
-                                                                            }
-                                                                        </p>
-                                                                    </div>
+                                                {basicMatches.length > 0 && (
+                                                    <>
+                                                        <div className="mb-4">
+                                                            <h4 className="text-sm font-medium text-yellow-700 mb-2">
+                                                                💡 Potential
+                                                                Matches (
+                                                                {
+                                                                    basicMatches.length
+                                                                }
+                                                                )
+                                                            </h4>
 
-                                                                    <div className="mt-4 flex justify-end">
-                                                                        <button
-                                                                            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 opacity-50 cursor-not-allowed"
-                                                                            disabled
-                                                                        >
-                                                                            View
-                                                                            Profile
-                                                                            (Coming
-                                                                            Soon)
-                                                                        </button>
+                                                            <p className="text-xs text-gray-600">
+                                                                These gig workers
+                                                                show some relevant
+                                                                background and could
+                                                                develop into strong
+                                                                candidates.
+                                                            </p>
+                                                        </div>
+
+                                                        {basicMatches.map(
+                                                            (match, index) => {
+                                                                const worker =
+                                                                    match.gig_worker ||
+                                                                    {};
+
+                                                                return (
+                                                                    <div
+                                                                        key={`basic-${jobId}-${index}`}
+                                                                        className="border border-yellow-200 bg-gradient-to-br from-yellow-50 to-white rounded-xl p-6 shadow-md"
+                                                                    >
+                                                                        <div className="flex justify-between items-start">
+                                                                            <div className="flex-1 flex gap-4">
+                                                                                <img
+                                                                                    src={worker.profile_picture ? `/storage/${worker.profile_picture}` : `https://ui-avatars.com/api/?name=${worker.first_name}+${worker.last_name}&background=random`}
+                                                                                    alt={`${worker.first_name} ${worker.last_name}`}
+                                                                                    className="w-16 h-16 rounded-full object-cover shadow-sm bg-white"
+                                                                                />
+                                                                                <div>
+                                                                                    <h4 className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                                                                                        <Link href={getProfileUrl(match, worker.id)} className="uppercase">
+                                                                                            {worker.first_name} {worker.last_name}
+                                                                                        </Link>
+                                                                                    </h4>
+                                                                                    <div className="text-sm font-medium text-blue-600 mt-0.5">
+                                                                                        {worker.professional_title || "Gig Worker"}
+                                                                                    </div>
+                                                                                    <div className="text-xs text-gray-600 mt-1 flex flex-col gap-1">
+                                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                                            <span className="flex items-center gap-1">
+                                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                                                                {worker.email}
+                                                                                            </span>
+                                                                                            {worker.email_verified_at && (
+                                                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800" title="Email Verified">
+                                                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                                                                    Email
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {worker.id_verification_status === "verified" && (
+                                                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800" title="Valid ID Verified">
+                                                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                                                                    ID
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {(worker.city || worker.country) && (
+                                                                                            <div className="flex items-center gap-1 mt-0.5 text-gray-500">
+                                                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                                                {[worker.city, worker.country].filter(Boolean).join(", ")}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="text-right">
+                                                                                <div className="text-2xl font-bold text-yellow-600">
+                                                                                    {
+                                                                                        match.score
+                                                                                    }
+                                                                                    %
+                                                                                </div>
+
+                                                                                <div className="text-sm text-gray-500">
+                                                                                    Match
+                                                                                    Score
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="bg-yellow-100 rounded-xl p-4 mt-3 shadow-sm">
+                                                                            <p className="text-sm text-gray-700">
+                                                                                {
+                                                                                    match.reason
+                                                                                }
+                                                                            </p>
+                                                                        </div>
+
+                                                                        <div className="mt-4 flex justify-end">
+                                                                            <Link
+                                                                                href={getProfileUrl(match, worker.id)}
+                                                                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                                                            >
+                                                                                View Profile →
+                                                                            </Link>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            );
-                                                        },
-                                                    )}
-                                                </>
-                                            )}
-                                        </>
-                                    )}
+                                                                );
+                                                            },
+                                                        )}
+                                                    </>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
                 </div>
 
                 {/* Pagination for Employer Recommendations */}
@@ -990,6 +1079,17 @@ export default function Recommendations({
                                         ? "AI-Powered Job Recommendations"
                                         : "AI-Matched Gig Workers"}
                                 </h3>
+
+                                <button
+                                    onClick={handleRefresh}
+                                    disabled={isRefreshing}
+                                    className={`ml-auto flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-semibold transition-all ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    <span className={isRefreshing ? 'animate-spin' : ''}>
+                                        {isRefreshing ? '⏳' : '🔄'}
+                                    </span>
+                                    {isRefreshing ? 'Refreshing...' : 'Refresh Matches'}
+                                </button>
                             </div>
 
                             <p className="text-blue-100">

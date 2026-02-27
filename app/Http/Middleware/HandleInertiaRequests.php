@@ -144,6 +144,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'needsEmailVerification' => $request->user() ? is_null($request->user()->email_verified_at) : false,
             ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
         ];
     }
 }

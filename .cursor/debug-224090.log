@@ -17,3 +17,9 @@
 {"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"bootstrap.js:112","message":"route fallback triggered","data":{"routeName":"analytics.index"},"timestamp":1772082351718}
 {"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"bootstrap.js:112","message":"route fallback triggered","data":{"routeName":"analytics.index"},"timestamp":1772082352402}
 {"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"bootstrap.js:112","message":"route fallback triggered","data":{"routeName":"analytics.index"},"timestamp":1772082355197}
+{"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"EmployerProfile.jsx:53","message":"goToEdit called","data":{"resolvedRoute":"/profile/employer/edit","typeofResolved":"string"},"timestamp":1772084423926}
+{"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"bootstrap.js:112","message":"route fallback triggered","data":{"routeName":"analytics.index"},"timestamp":1772084505162}
+{"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"bootstrap.js:112","message":"route fallback triggered","data":{"routeName":"analytics.index"},"timestamp":1772084505186}
+{"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"bootstrap.js:112","message":"route fallback triggered","data":{"routeName":"notifications.index"},"timestamp":1772084505161}
+{"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"bootstrap.js:112","message":"route fallback triggered","data":{"routeName":"analytics.index"},"timestamp":1772084507042}
+{"sessionId":"224090","runId":"post-fix","hypothesisId":"H-A","location":"EmployerProfile.jsx:53","message":"goToEdit called","data":{"resolvedRoute":"http://127.0.0.1:8000/profile/employer/edit","typeofResolved":"string"},"timestamp":1772108626832}

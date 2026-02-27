@@ -78,9 +78,12 @@ class EmployerDashboardController extends Controller
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
                     'email' => $user->email,
                     'user_type' => $user->user_type,
-                    'profile_picture' => $user->profile_picture,
+                    'profile_picture' => $this->supabaseUrl($user->profile_picture ?? $user->profile_photo),
+                    'profile_photo' => $this->supabaseUrl($user->profile_photo ?? $user->profile_picture),
                     'id_verification_status' => [
                         'is_verified' => $user->isIDVerified(),
                         'has_id_front' => !empty($user->id_front_image),
@@ -107,6 +110,29 @@ class EmployerDashboardController extends Controller
                 'monthlySpent' => $analytics['spending_analysis']['monthly']
             ]
         ]);
+    }
+
+    /**
+     * Convert a stored '/supabase/...' path to a browser-accessible URL.
+     * Files are served through the app proxy at /storage/supabase/{path}.
+     */
+    private function supabaseUrl(?string $stored): ?string
+    {
+        if (!$stored || !is_string($stored)) {
+            return null;
+        }
+        $stored = trim($stored);
+        if ($stored === '') {
+            return null;
+        }
+        if (str_starts_with($stored, 'http://') || str_starts_with($stored, 'https://')) {
+            return $stored;
+        }
+        $path = ltrim(str_replace('/supabase/', '', $stored), '/');
+        if ($path === '') {
+            return null;
+        }
+        return url('/storage/supabase/' . $path);
     }
 
     private function getJobsSummary($user)

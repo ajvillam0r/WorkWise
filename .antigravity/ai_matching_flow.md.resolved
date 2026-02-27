@@ -1,0 +1,56 @@
+# AI Matching & Hiring Flow Overview (v2)
+
+This document outlines the refined AI matching logic and the direct hiring process on WorkWise.
+
+## 1. Groq Model Strategy & Failover
+
+To ensure maximum reliability and performance using only the Groq API, we implement a **Multi-Model Priority Failover** architecture.
+
+### Top 5 Recommended Models
+1. **llama-3.3-70b-versatile**: Primary model for complex, high-accuracy matching.
+2. **meta-llama/llama-4-scout-17b-16e-instruct**: Secondary model for specialized reasoning.
+3. **meta-llama/llama-4-maverick-17b-128e-instruct**: Third-tier fallback for instructions.
+4. **qwen/qwen3-32b**: Fourth-tier alternative if Llama models are saturated.
+5. **llama-3.1-8b-instant**: Final "instant" fallback for speed and high rate limits.
+
+### Failover Architecture
+- **Automatic Retry**: If the primary model returns a 429 (Rate Limit) or 503 (Overloaded), the `AIService` automatically attempts the request using the next model in the priority list.
+- **Latency Optimization**: For non-critical insights, the system may default to the "Instant" model to preserve tokens/limits for high-priority matching.
+
+---
+
+## 2. Gig Worker Profile Completeness
+
+A gig worker must complete the following to be eligible for high-tier AI matching:
+- **Identity**: Valid ID Verification (`verified` status).
+- **Professionalism**: Professional Title, Bio (min 50 chars), and Profile Picture.
+- **Skills**: Minimum of 3 Skills with defined Experience Levels (`beginner`, `intermediate`, `expert`).
+- **Services**: Minimum of 2 Specific Services from the taxonomy.
+- **Logistics**: Hourly Rate (min ₱5/hr), Timezone, Working Hours, and Street Address.
+- **Trust**: Verified Email and Ratings from previous jobs.
+
+---
+
+## 3. Employer Matching & Direct Hire Flow
+
+Employers can find and hire talent through two primary paths:
+
+### Path A: AI Recommendation (Proactive)
+1. Employer navigates to **My Jobs**.
+2. Employer clicks the **AI Match** button on a specific job card.
+3. The system scans the worker pool based on skills, experience, and **historical ratings**.
+4. Employer views a ranked list of candidates with **Success Prediction %**.
+
+### Path B: Direct Hire (Reactive)
+1. Employer visits a gig worker's profile.
+2. Employer clicks the **Hire Me** button.
+3. **In-App Chat**: An automated message is sent to the worker containing a link to the employer's posted job.
+4. **Negotiation**: Worker replies in chat. They can skip the bidding stage and propose a price directly in conversation.
+5. **Contract Setup**: Once agreed, the employer can modify the job's price to match the deal and create a **Contract**.
+6. **Notification**: Gig worker receives a platform notification to sign the contract.
+
+---
+
+## 4. Enhanced Matching Process
+- **Employer Side**: Matches workers based on skills, experience, and ratings.
+- **Worker Side**: Recommends jobs based on the worker's skills, experience, and historical project success (ratings).

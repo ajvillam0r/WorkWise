@@ -6,3 +6,7 @@
 {"sessionId":"b0ba4d","hypothesisId":"A","location":"GigWorkerOnboarding.jsx:handleSubmit-onCancelToken","message":"submit request cancel token issued","data":{},"timestamp":1772082352051}
 {"sessionId":"b0ba4d","hypothesisId":"C","location":"GigWorkerOnboarding.jsx:handleSubmit-onSuccess","message":"submit onSuccess fired","data":{},"timestamp":1772082356467}
 {"sessionId":"b0ba4d","hypothesisId":"D","location":"GigWorkerOnboarding.jsx:handleSubmit-onFinish","message":"submit onFinish fired","data":{},"timestamp":1772082356469}
+{"sessionId":"b0ba4d","hypothesisId":"D","location":"GigWorkerOnboarding.jsx:handleSubmit","message":"submit fired","data":{"step":5,"title":"asdasd","bio_len":189,"skills":3},"timestamp":1772110568741}
+{"sessionId":"b0ba4d","hypothesisId":"A","location":"GigWorkerOnboarding.jsx:handleSubmit-onCancelToken","message":"submit request cancel token issued","data":{},"timestamp":1772110568743}
+{"sessionId":"b0ba4d","hypothesisId":"C","location":"GigWorkerOnboarding.jsx:handleSubmit-onSuccess","message":"submit onSuccess fired","data":{},"timestamp":1772110569940}
+{"sessionId":"b0ba4d","hypothesisId":"D","location":"GigWorkerOnboarding.jsx:handleSubmit-onFinish","message":"submit onFinish fired","data":{},"timestamp":1772110569945}

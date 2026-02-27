@@ -290,9 +290,7 @@ export default function JobCreate() {
         budget_min: '',
         budget_max: '',
         experience_level: 'intermediate',
-        job_complexity: '',
         estimated_duration_days: '',
-        deadline: '',
         location: '',
         is_remote: false,
     });
@@ -374,7 +372,7 @@ export default function JobCreate() {
         if (skill && !data.skills_requirements.some(s => s.skill.trim().toLowerCase() === normalizedSkill)) {
             const newSkill = {
                 skill: skill.trim(),
-                experience_level: 'intermediate',
+                experience_level: data.experience_level,
                 importance: 'required'
             };
             setData('skills_requirements', [...data.skills_requirements, newSkill]);
@@ -395,7 +393,7 @@ export default function JobCreate() {
         if (skill && !data.skills_requirements.some(s => s.skill.trim().toLowerCase() === normalizedSkill)) {
             const newSkill = {
                 skill: skill.trim(),
-                experience_level: 'intermediate',
+                experience_level: data.experience_level,
                 importance: 'required'
             };
             setData('skills_requirements', [...data.skills_requirements, newSkill]);
@@ -428,7 +426,7 @@ export default function JobCreate() {
         if (toAdd.length > 0) {
             const newSkills = toAdd.map(skill => ({
                 skill: skill.trim(),
-                experience_level: 'intermediate',
+                experience_level: data.experience_level,
                 importance: 'required'
             }));
             setData('skills_requirements', [...data.skills_requirements, ...newSkills]);
@@ -443,7 +441,7 @@ export default function JobCreate() {
         if (toAdd.length > 0) {
             const newSkills = toAdd.map(skill => ({
                 skill: skill.trim(),
-                experience_level: 'intermediate',
+                experience_level: data.experience_level,
                 importance: 'required'
             }));
             setData('skills_requirements', [...data.skills_requirements, ...newSkills]);
@@ -814,7 +812,13 @@ export default function JobCreate() {
                                         <select
                                             id="experience_level"
                                             value={data.experience_level}
-                                            onChange={(e) => setData('experience_level', e.target.value)}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                setData('experience_level', value);
+                                                if (data.skills_requirements.length > 0) {
+                                                    setData('skills_requirements', data.skills_requirements.map(s => ({ ...s, experience_level: value })));
+                                                }
+                                            }}
                                             className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                             required
                                         >
@@ -843,17 +847,16 @@ export default function JobCreate() {
                                     </div>
                                 </div>
 
-                                {/* Project Category */}
+                                {/* Project Category (Optional) */}
                                 <div>
                                     <label htmlFor="project_category" className="block text-sm font-medium text-gray-700 mb-2">
-                                        Project Category *
+                                        Project Category (Optional)
                                     </label>
                                     <select
                                         id="project_category"
                                         value={data.project_category}
                                         onChange={(e) => setData('project_category', e.target.value)}
                                         className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        required
                                     >
                                         <option value="">Select a category</option>
                                         {PROJECT_CATEGORIES.map((category) => (
@@ -875,26 +878,6 @@ export default function JobCreate() {
                                     {errors.project_category && <p className="mt-2 text-sm text-red-600">{errors.project_category}</p>}
                                 </div>
 
-                                {/* Job Complexity */}
-                                <div>
-                                    <label htmlFor="job_complexity" className="block text-sm font-medium text-gray-700 mb-2">
-                                        Job Complexity *
-                                    </label>
-                                    <select
-                                        id="job_complexity"
-                                        value={data.job_complexity}
-                                        onChange={(e) => setData('job_complexity', e.target.value)}
-                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        required
-                                    >
-                                        <option value="">Select complexity</option>
-                                        <option value="simple">Simple (e.g., basic website)</option>
-                                        <option value="moderate">Moderate (e.g., medium-sized app)</option>
-                                        <option value="complex">Complex (e.g., large-scale enterprise solution)</option>
-                                    </select>
-                                    {errors.job_complexity && <p className="mt-2 text-sm text-red-600">{errors.job_complexity}</p>}
-                                </div>
-
                                 {/* Skills Requirements */}
                                 <div>
                                     <SkillExperienceSelector
@@ -904,6 +887,7 @@ export default function JobCreate() {
                                         onChange={(skills) => setData('skills_requirements', skills)}
                                         type="required"
                                         maxSkills={10}
+                                        defaultExperienceLevel={data.experience_level}
                                     />
                                     {errors.skills_requirements && (
                                         <p className="mt-2 text-sm text-red-600">{errors.skills_requirements}</p>
@@ -968,25 +952,6 @@ export default function JobCreate() {
                                         )}
                                     </div>
                                     {errors.location && <p className="mt-2 text-sm text-red-600">{errors.location}</p>}
-                                </div>
-
-                                {/* Deadline */}
-                                <div>
-                                    <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-2">
-                                        Project Deadline (Optional)
-                                    </label>
-                                    <input
-                                        type="date"
-                                        id="deadline"
-                                        value={data.deadline}
-                                        onChange={(e) => setData('deadline', e.target.value)}
-                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                        min={new Date().toISOString().split('T')[0]}
-                                    />
-                                    <p className="mt-1 text-sm text-gray-500">
-                                        When do you need this project completed?
-                                    </p>
-                                    {errors.deadline && <p className="mt-2 text-sm text-red-600">{errors.deadline}</p>}
                                 </div>
 
                                 {/* Submit Buttons */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     DocumentCheckIcon,
@@ -15,8 +15,12 @@ import {
 import axios from 'axios';
 
 export default function OptimizedSign({ auth, contract, userRole, user, waitingForEmployer, employerName }) {
+    const { props } = usePage();
+    const flashSuccess = props.flash?.success;
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showContractCreatedToast, setShowContractCreatedToast] = useState(!!flashSuccess);
     const [showWaitingModal, setShowWaitingModal] = useState(waitingForEmployer || false);
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -51,6 +55,13 @@ export default function OptimizedSign({ auth, contract, userRole, user, waitingF
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    // Auto-hide "Contract created" toast after 4 seconds
+    useEffect(() => {
+        if (!showContractCreatedToast) return;
+        const t = setTimeout(() => setShowContractCreatedToast(false), 4000);
+        return () => clearTimeout(t);
+    }, [showContractCreatedToast]);
 
     const handleNextStep = () => {
         if (signatureStep < 3) {
@@ -222,6 +233,15 @@ export default function OptimizedSign({ auth, contract, userRole, user, waitingF
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title={`Sign Contract - ${contract.contract_id}`} />
+
+            {showContractCreatedToast && flashSuccess && (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-full mx-4">
+                    <div className="bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                        <CheckCircleIcon className="w-6 h-6 shrink-0" />
+                        <p className="text-sm font-medium">{flashSuccess}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">

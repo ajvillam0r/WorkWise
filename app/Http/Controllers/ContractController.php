@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Services\ContractService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -40,6 +41,141 @@ class ContractController extends Controller
             'contracts' => $contracts,
             'userRole' => $user->user_type
         ]);
+    }
+
+    /**
+     * Show the form for creating a direct contract
+     */
+    public function create(Request $request): Response
+    {
+        $user = auth()->user();
+        
+        if ($user->user_type !== 'employer') {
+            abort(403, 'Only employers can create direct contracts.');
+        }
+
+        $gigWorkerId = $request->query('gig_worker_id');
+        $price = $request->query('price', '');
+
+        $gigWorker = null;
+        if ($gigWorkerId) {
+            $gigWorker = \App\Models\User::where('user_type', 'gig_worker')->find($gigWorkerId);
+        }
+
+        $jobs = \App\Models\GigJob::where('employer_id', $user->id)
+                    ->where('status', 'open')
+                    ->select('id', 'title', 'budget_min', 'budget_max', 'budget_type')
+                    ->get();
+
+        return Inertia::render('Contracts/Create', [
+            'gigWorker' => $gigWorker,
+            'price' => $price,
+            'jobs' => $jobs,
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Store a direct contract
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+        if ($user->user_type !== 'employer') {
+            return redirect()->back()->withErrors(['message' => 'Unauthorized']);
+        }
+
+        $validated = $request->validate([
+            'gig_worker_id' => 'required|exists:users,id',
+            'job_id' => 'required|exists:gig_jobs,id',
+            'agreed_amount' => 'required|numeric|min:0',
+            'estimated_days' => 'required|integer|min:1',
+            'scope_of_work' => 'required|string|min:50'
+        ]);
+
+        $job = \App\Models\GigJob::findOrFail($validated['job_id']);
+        if ($job->employer_id !== $user->id) {
+            return redirect()->back()->withErrors(['message' => 'Unauthorized job']);
+        }
+
+        if ($user->escrow_balance < $validated['agreed_amount']) {
+            return redirect()->back()->withErrors([
+                'error_type' => 'insufficient_escrow',
+                'required_amount' => $validated['agreed_amount'],
+                'current_balance' => $user->escrow_balance,
+                'message' => 'Insufficient escrow balance to create this contract.'
+            ]);
+        }
+
+        try {
+            \DB::beginTransaction();
+
+            $platformFee = $validated['agreed_amount'] * 0.05;
+            $netAmount = $validated['agreed_amount'] - $platformFee;
+
+            $job->update(['status' => 'in_progress']);
+
+            $project = Project::create([
+                'job_id' => $job->id,
+                'employer_id' => $user->id,
+                'gig_worker_id' => $validated['gig_worker_id'],
+                'bid_id' => null,
+                'agreed_amount' => $validated['agreed_amount'],
+                'agreed_duration_days' => $validated['estimated_days'],
+                'deadline' => now()->addDays((int) $validated['estimated_days']),
+                'platform_fee' => $platformFee,
+                'net_amount' => $netAmount,
+                'status' => 'active',
+                'started_at' => now(),
+            ]);
+
+            $user->decrement('escrow_balance', $validated['agreed_amount']);
+
+            \App\Models\Transaction::create([
+                'project_id' => $project->id,
+                'payer_id' => $user->id,
+                'payee_id' => $validated['gig_worker_id'],
+                'amount' => $validated['agreed_amount'],
+                'platform_fee' => $platformFee,
+                'net_amount' => $netAmount,
+                'type' => 'escrow',
+                'status' => 'completed',
+                'stripe_payment_intent_id' => 'escrow_' . time(),
+                'stripe_charge_id' => 'charge_' . time(),
+                'description' => 'Escrow payment for direct hire project #' . $project->id,
+                'processed_at' => now(),
+            ]);
+
+            $contract = $this->contractService->createDirectContract(
+                $project,
+                $validated['scope_of_work'],
+                $validated['agreed_amount']
+            );
+
+            // Send notifications
+            app(\App\Services\NotificationService::class)->createContractSigningNotification(
+                \App\Models\User::find($validated['gig_worker_id']),
+                [
+                    'job_title' => $job->title,
+                    'contract_id' => $contract->id,
+                    'project_id' => $project->id
+                ]
+            );
+
+            \DB::commit();
+
+            return redirect()->route('contracts.sign', $contract->id)
+                ->with('success', 'Contract created! Taking you to sign…');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Direct contract creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->withErrors([
+                'message' => 'Failed to create contract. Please try again.'
+            ]);
+        }
     }
 
     /**

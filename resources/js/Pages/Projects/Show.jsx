@@ -233,7 +233,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
 
     const submitReview = (e) => {
         e.preventDefault();
-        post(`/projects/${project.id}/review`, {
+        post(route('projects.review', project.id), {
             onSuccess: () => {
                 setShowReviewForm(false);
                 reset();
@@ -256,10 +256,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
         e.preventDefault();
         setCompletionError(null);
 
-        postCompletion('/projects/' + project.id + '/complete', {
-            data: {
-                completion_notes: completionData.completion_notes
-            },
+        postCompletion(route('projects.complete', project.id), {
             preserveScroll: true,
             onSuccess: () => {
                 setShowCompletionForm(false);
@@ -298,7 +295,7 @@ export default function ProjectShow({ project, hasPayment, canReview, isEmployer
                             Project with{' '}
                             <Link
                                 href={isEmployer 
-                                    ? route('workers.show', project.gig_worker.id)
+                                    ? route('gig-worker.profile.show', project.gig_worker.id)
                                     : route('employers.show', project.employer.id)
                                 }
                                 className="text-blue-600 hover:text-blue-800 hover:underline font-medium"

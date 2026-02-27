@@ -5,6 +5,14 @@ import { formatDistanceToNow } from 'date-fns';
 import Pagination from '@/Components/Pagination';
 import usePagination from '@/Hooks/usePagination';
 
+function safeRoute(name, fallback = '/') {
+    try {
+        return route(name);
+    } catch {
+        return fallback;
+    }
+}
+
 export default function JobsIndex({ jobs, availableSkills = [] }) {
     const { auth } = usePage().props;
     const [search, setSearch] = useState('');
@@ -550,7 +558,7 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                 {/* AI Recommendations Link */}
                                 <div className="mt-6 pt-6 border-t border-gray-200">
                                     <Link
-                                        href={route('ai.recommendations')}
+                                        href={isEmployer ? safeRoute('ai.recommendations.employer', safeRoute('ai.recommendations', '/ai/recommendations')) : safeRoute('ai.recommendations.gigworker', safeRoute('ai.recommendations', '/ai/recommendations'))}
                                         className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                                     >
                                         <span>🤖</span>
@@ -879,6 +887,15 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                                 >
                                                                     Delete
                                                                 </button>
+                                                                {job.status === 'open' && (
+                                                                    <Link
+                                                                        href={`/aimatch/employer?job_id=${job.id}`}
+                                                                        className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-300 bg-indigo-50 hover:bg-indigo-100 py-2 px-4 rounded-xl transition-all duration-200"
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                                        AI Match
+                                                                    </Link>
+                                                                )}
                                                                 <Link
                                                                     href={`/jobs/${job.id}`}
                                                                     className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"

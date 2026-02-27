@@ -107,22 +107,23 @@ class AIJobMatchingService
         if (!empty($job->skills_requirements)) {
             // Use enhanced matching with per-skill experience levels
             $skillsScore = $this->calculateEnhancedSkillsMatch($job->skills_requirements, $gigWorkerSkillsWithExp);
-            $score += $skillsScore * 0.7;
+            $score += $skillsScore * 0.70; // Increased weight for skills
         } else {
             // Fallback to legacy matching for backward compatibility
             $skillsScore = $this->calculateSkillsMatchWithExperience(
                 $job->required_skills, 
                 $gigWorkerSkillsWithExp
             );
-            $score += $skillsScore * 0.7;
+            $score += $skillsScore * 0.70; // Increased weight for skills
         }
 
-        // Experience level matching (30% weight) - Secondary factor
-        $experienceScore = $this->calculateExperienceMatchFromSkills($job->experience_level, $gigWorkerSkillsWithExp);
-        $score += $experienceScore * 0.3;
+        // Reputation / Rating Match (20% weight) - Using historical ratings
+        $reputationScore = $this->calculateReputationScore($gigWorker);
+        $score += $reputationScore * 0.20;
 
-        // Remove all other factors (budget, location, reputation, availability)
-        // Focus only on skills and experience level
+        // Experience level matching (10% weight) - General experience check
+        $experienceScore = $this->calculateExperienceMatchFromSkills($job->experience_level, $gigWorkerSkillsWithExp);
+        $score += $experienceScore * 0.10;
 
         return min($score, $maxScore);
     }

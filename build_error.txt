@@ -1,0 +1,17 @@
+
+> build
+> vite build
+
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+transforming...
+[32m✓[39m 683 modules transformed.
+[31m✗[39m Build failed in 3.44s
+[31merror during build:
+[31m[vite:load-fallback] Could not load /resources/js/Layouts/AppLayout (imported by resources/js/Pages/Contracts/Create.jsx): ENOENT: no such file or directory, open 'C:\resources\js\Layouts\AppLayout'[31m
+    at async open (node:internal/fs/promises:638:25)
+    at async Object.readFile (node:internal/fs/promises:1242:14)
+    at async Object.handler (file:///C:/Users/Administrator/Desktop/WorkWise4/New%20folder/WorkWise/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:45872:27)
+    at async PluginDriver.hookFirstAndGetPlugin (file:///C:/Users/Administrator/Desktop/WorkWise4/New%20folder/WorkWise/node_modules/rollup/dist/es/shared/node-entry.js:22308:28)
+    at async file:///C:/Users/Administrator/Desktop/WorkWise4/New%20folder/WorkWise/node_modules/rollup/dist/es/shared/node-entry.js:21308:33
+    at async Queue.work (file:///C:/Users/Administrator/Desktop/WorkWise4/New%20folder/WorkWise/node_modules/rollup/dist/es/shared/node-entry.js:22536:32)[39m

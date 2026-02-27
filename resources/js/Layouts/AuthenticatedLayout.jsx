@@ -6,6 +6,33 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import CsrfSync from '@/Components/CsrfSync';
 
+function safeRoute(name, fallback = '/') {
+    try {
+        return route(name);
+    } catch {
+        return fallback;
+    }
+}
+
+// Missing components
+const LoadingSpinner = () => (
+    <div className="flex justify-center items-center p-4">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+);
+
+const NotificationSkeleton = () => (
+    <div className="p-4 border-b border-gray-100 animate-pulse">
+        <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+            <div className="flex-1 space-y-2">
+                <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-2 bg-gray-200 rounded w-1/2"></div>
+            </div>
+        </div>
+    </div>
+);
+
 
 // Simplified notification icons
 const NotificationIcon = ({ type }) => {
@@ -90,16 +117,16 @@ export default function AuthenticatedLayout({ header, children }) {
     const [miniChatTargetUserId, setMiniChatTargetUserId] = useState(null);
 
     // Fetch notifications
-    const fetchNotifications = async () => {
+    const fetchNotifications = async (quiet = false) => {
         try {
-            setLoading(true);
+            if (!quiet) setLoading(true);
             const response = await axios.get('/notifications/api');
             setNotifications(response.data.notifications || []);
             setUnreadCount(response.data.unread_count || 0);
         } catch (error) {
             console.error('Error fetching notifications:', error);
         } finally {
-            setLoading(false);
+            if (!quiet) setLoading(false);
         }
     };
 
@@ -287,10 +314,15 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     };
 
-    // Load notifications on component mount
+    // Initial fetch on mount
     useEffect(() => {
-        fetchNotifications();
-        fetchMessagesUnreadCount();
+        const initFetch = async () => {
+            await Promise.all([
+                fetchNotifications(),
+                fetchMessagesUnreadCount()
+            ]);
+        };
+        initFetch();
     }, []);
 
 
@@ -413,72 +445,67 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [showingNotificationsDropdown, showingMessagesDropdown]);
 
 
-    // Real-time polling for notifications
-    const checkForNewNotifications = async () => {
+    // Real-time polling with consolidated heartbeat
+    const pollHeartbeat = async () => {
         try {
-            const response = await axios.get('/notifications/api');
-            const newUnreadCount = response.data.unread_count || 0;
+            const response = await axios.get('/api/user/heartbeat');
+            const { unread_notifications_count, unread_messages_count } = response.data;
 
-            if (newUnreadCount > unreadCountRef.current) {
-                // New notifications arrived, refresh the list
-                setNotifications(response.data.notifications || []);
-                setUnreadCount(newUnreadCount);
-                setLastNotificationCheck(Date.now());
+            // Handle Notifications
+            if (unread_notifications_count > unreadCountRef.current) {
+                // New notifications arrived, refresh the list quietly
+                fetchNotifications(true);
 
                 // Show browser notification if supported
                 if ('Notification' in window && Notification.permission === 'granted') {
-                    const latestNotification = response.data.notifications?.[0];
-                    if (latestNotification && !latestNotification.is_read) {
-                        new Notification(latestNotification.title, {
-                            body: latestNotification.message,
-                            icon: '/favicon.ico'
-                        });
-                    }
-                }
-            }
-        } catch (error) {
-            // Silently handle 401 errors (user may not have full access yet)
-            if (error.response?.status !== 401) {
-                console.error('Error checking for new notifications:', error);
-            }
-        }
-    };
-
-    // Real-time polling for messages
-    const checkForNewMessages = async () => {
-        try {
-            const response = await axios.get('/messages/unread/count');
-            const newMessageCount = response.data.count || 0;
-
-            if (newMessageCount !== messagesUnreadCountRef.current) {
-                // Update message count
-                setMessagesUnreadCount(newMessageCount);
-                setLastMessageCheck(Date.now());
-
-                // Show browser notification if supported and count increased
-                if (newMessageCount > messagesUnreadCountRef.current && 'Notification' in window && Notification.permission === 'granted') {
-                    new Notification('New Message', {
-                        body: `You have ${newMessageCount} unread messages`,
+                    // We don't have the full notification here yet, so we'll just show a generic one
+                    // or let fetchNotifications handle it if it were doing more
+                    new Notification('New Notification', {
+                        body: 'You have a new notification on WorkWise',
                         icon: '/favicon.ico'
                     });
                 }
             }
+            // Sync count if it decreased (e.g. read in another tab)
+            if (unread_notifications_count !== unreadCountRef.current) {
+                setUnreadCount(unread_notifications_count);
+            }
+
+            // Handle Messages
+            if (unread_messages_count !== messagesUnreadCountRef.current) {
+                // Show browser notification if count increased
+                if (unread_messages_count > messagesUnreadCountRef.current && 'Notification' in window && Notification.permission === 'granted') {
+                    new Notification('New Message', {
+                        body: `You have ${unread_messages_count} unread messages`,
+                        icon: '/favicon.ico'
+                    });
+                }
+                setMessagesUnreadCount(unread_messages_count);
+            }
         } catch (error) {
             // Silently handle 401 errors (user may not have full access yet)
             if (error.response?.status !== 401) {
-                console.error('Error checking for new messages:', error);
+                console.error('Heartbeat poll failed:', error);
             }
         }
     };
 
-    // Set up polling intervals
+    // Set up polling intervals with visibility check
     useEffect(() => {
-        const notificationInterval = setInterval(checkForNewNotifications, 15000); // Check every 15 seconds
-        const messageInterval = setInterval(checkForNewMessages, 15000); // Check every 15 seconds
+        const poll = () => {
+            if (document.visibilityState === 'visible') {
+                pollHeartbeat();
+            }
+        };
+
+        const interval = setInterval(poll, 20000); // Check every 20 seconds (slightly increased from 15s)
+
+        // Also check when tab becomes visible
+        document.addEventListener('visibilitychange', poll);
 
         return () => {
-            clearInterval(notificationInterval);
-            clearInterval(messageInterval);
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', poll);
         };
     }, []);
 
@@ -541,8 +568,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                             My Proposals
                                         </Link>
                                         <Link
-                                            href="/ai/recommendations"
-                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.*')
+                                            href={safeRoute('ai.recommendations.gigworker', safeRoute('ai.recommendations', '/ai/recommendations'))}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.gigworker')
                                                 ? 'text-blue-600'
                                                 : 'text-gray-600 hover:text-gray-900'
                                                 }`}
@@ -583,16 +610,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Browse Freelancers
                                         </Link> */}
-                                        {/* <Link
-                                            href="/ai/recommendations"
-                                            className={`text-sm font-medium transition-colors ${
-                                                window.route.current('ai.*')
+                                        <Link
+                                            href={safeRoute('ai.recommendations.employer', safeRoute('ai.recommendations', '/ai/recommendations'))}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.employer')
                                                     ? 'text-blue-600'
                                                     : 'text-gray-600 hover:text-gray-900'
-                                            }`}
+                                                }`}
                                         >
                                             AI Talent Recommendations
-                                        </Link> */}
+                                        </Link>
                                     </>
                                 )}
 

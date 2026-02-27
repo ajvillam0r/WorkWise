@@ -35,6 +35,7 @@ use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\SimpleTestController;
 use App\Http\Controllers\AISkillController;
+use App\Http\Controllers\UserHeartbeatController;
 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -277,6 +278,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/gig-worker/edit', [ProfileController::class, 'editGigWorker'])->name('gig-worker.profile.edit');
     Route::post('/profile/gig-worker/edit', [ProfileController::class, 'updateGigWorker'])->name('gig-worker.profile.update');
 
+    // View another gig worker's profile (RESTful: /gig-worker/{id}, e.g. from AI Match "View Profile")
+    Route::get('/gig-worker/{user}/view', [ProfileController::class, 'storeGigWorkerProfileContext'])->name('gig-worker.profile.view-with-context');
+    Route::get('/gig-worker/{user}', [ProfileController::class, 'showGigWorker'])->name('gig-worker.profile.show');
+
     Route::get('/employers/{user}', [ProfileController::class, 'showEmployer'])->name('employers.show');
 
     // Employer-own profile and edit routes
@@ -339,6 +344,7 @@ Route::middleware('auth')->group(function () {
 
     // Bid routes (mixed permissions)
     Route::get('/bids', [BidController::class, 'index'])->name('bids.index');
+    Route::post('/bids', [BidController::class, 'store'])->name('bids.store');
 
     // Additional feature routes
 
@@ -373,6 +379,10 @@ Route::middleware('auth')->group(function () {
         Route::patch('/bids/{bid}', [BidController::class, 'update'])->name('bids.update');
     });
 
+    // Gig worker-only bid actions
+    Route::patch('/bids/{bid}/status', [BidController::class, 'updateStatus'])->name('bids.updateStatus');
+    Route::delete('/bids/{bid}', [BidController::class, 'destroy'])->name('bids.destroy');
+
 
     // DEBUG: Test route to check if routing works
     Route::patch('/test-bid/{bid}', function($bid) {
@@ -382,6 +392,8 @@ Route::middleware('auth')->group(function () {
     // Project routes - mixed permissions
     Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    Route::post('/projects/{project}/complete', [ProjectController::class, 'complete'])->name('projects.complete');
+    Route::post('/projects/{project}/review', [ProjectController::class, 'review'])->name('projects.review');
 
     // Employer-only project actions
     Route::middleware(['employer'])->group(function () {
@@ -395,6 +407,8 @@ Route::middleware('auth')->group(function () {
 
     // Contract routes - mixed permissions
     Route::get('/contracts', [ContractController::class, 'index'])->name('contracts.index');
+    Route::get('/contracts/create', [ContractController::class, 'create'])->name('contracts.create');
+    Route::post('/contracts', [ContractController::class, 'store'])->name('contracts.store');
     Route::get('/contracts/{contract}', [ContractController::class, 'show'])->name('contracts.show');
     Route::get('/contracts/{contract}/pdf', [ContractController::class, 'downloadPdf'])->name('contracts.downloadPdf');
 
@@ -420,6 +434,8 @@ Route::middleware('auth')->group(function () {
 
     // AI Recommendation Routes
     Route::get('/ai/recommendations', [AIRecommendationController::class, 'index'])->name('ai.recommendations');
+    Route::get('/aimatch/employer', [AIRecommendationController::class, 'employerMatches'])->name('ai.recommendations.employer');
+    Route::get('/aimatch/gig-worker', [AIRecommendationController::class, 'gigWorkerMatches'])->name('ai.recommendations.gigworker');
 
     // Message attachment download
     Route::get('/messages/{message}/download', [MessageController::class, 'downloadAttachment'])->name('messages.download');
@@ -438,6 +454,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllRead');
     Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unreadCount');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+
+    // Heartbeat for polling
+    Route::get('/api/user/heartbeat', [UserHeartbeatController::class, 'heartbeat'])->name('api.user.heartbeat');
 
     // Role-specific wallet routes with proper middleware
     // Employer wallet (deposits and escrow management)

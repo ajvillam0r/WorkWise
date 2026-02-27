@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -223,11 +224,20 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get freelancer projects (deprecated - use gigWorkerProjects)
-     * 
+     *
      * @deprecated Use gigWorkerProjects() instead. This method is maintained for backward compatibility.
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
      */
     public function freelancerProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'gig_worker_id');
+    }
+
+    /**
+     * Get gig worker projects (projects where this user is the worker)
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Project>
+     */
+    public function gigWorkerProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'gig_worker_id');
     }
@@ -305,6 +315,52 @@ class User extends Authenticatable implements MustVerifyEmail
     public function jobTemplates(): HasMany
     {
         return $this->hasMany(JobTemplate::class, 'employer_id');
+    }
+
+    /**
+     * Skills (for gig workers) - many-to-many via skill_user pivot
+     */
+    public function skills(): BelongsToMany
+    {
+        return $this->belongsToMany(Skill::class, 'skill_user')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get skill names for display (from skills relation or skills_with_experience JSON)
+     */
+    public function getDisplaySkillNamesAttribute(): array
+    {
+        if ($this->relationLoaded('skills') && $this->skills->isNotEmpty()) {
+            return $this->skills->pluck('name')->map(fn ($n) => (string) $n)->values()->all();
+        }
+        $raw = $this->skills_with_experience ?? [];
+        if (!is_array($raw)) {
+            return [];
+        }
+        return array_values(array_filter(array_map(function ($item) {
+            $name = is_array($item) ? ($item['skill'] ?? $item['name'] ?? null) : $item;
+            return $name ? trim((string) $name) : null;
+        }, $raw)));
+    }
+
+    /**
+     * Sync skill_user pivot from skills_with_experience (call after saving gig worker profile)
+     */
+    public function syncSkillsFromExperience(): void
+    {
+        if ($this->user_type !== 'gig_worker') {
+            return;
+        }
+        $names = $this->getDisplaySkillNamesAttribute();
+        if (empty($names)) {
+            $this->skills()->detach();
+            return;
+        }
+        $ids = collect($names)->map(function ($name) {
+            return Skill::firstOrCreate(['name' => trim($name)], ['name' => trim($name)])->id;
+        })->all();
+        $this->skills()->sync(array_unique($ids));
     }
 
     /**

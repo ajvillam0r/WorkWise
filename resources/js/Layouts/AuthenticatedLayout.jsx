@@ -523,26 +523,40 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex h-14 sm:h-16 justify-between items-center gap-4">
-                        {/* Logo - Left */}
-                        <div className="flex-shrink-0">
-                            <Link href="/" className="flex items-center">
-                                <span className="text-2xl font-bold text-blue-600">WorkWise</span>
-                            </Link>
-                        </div>
-
-                        {/* Enhanced Navigation - Center */}
-                        <div className="flex-1 flex justify-center min-w-0">
-                            <div className="hidden md:flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
-                                {/* Dashboard */}
-                                <Link
-                                    href={dashboardHref}
-                                    className={`text-sm font-medium transition-colors ${isDashboardActive
-                                        ? 'text-blue-600'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                >
-                                    Dashboard
+                        {/* Logo + Navigation - Left */}
+                        <div className="flex items-center gap-6 md:gap-8 min-w-0">
+                            {/* Logo (matches HeroUI layout) */}
+                            <div className="flex-shrink-0 flex items-center gap-2">
+                                <Link href="/" className="flex items-center gap-2">
+                                    <div className="w-10 h-10 md:w-12 md:h-12">
+                                        <img
+                                            src="/image/WorkWise_logo.png"
+                                            alt="WorkWise Logo"
+                                            className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]"
+                                        />
+                                    </div>
+                                    <div className="flex items-baseline">
+                                        <span className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter">
+                                            <span className="text-blue-500">W</span>orkWise
+                                        </span>
+                                    </div>
                                 </Link>
+                            </div>
+
+                            {/* Navigation links - next to logo */}
+                            <div className="hidden md:flex flex-wrap items-center gap-x-6 gap-y-1">
+                                {/* Dashboard - shown for employers/admin, not for gig workers */}
+                                {!isGigWorker && (
+                                    <Link
+                                        href={dashboardHref}
+                                        className={`text-sm font-medium transition-colors ${isDashboardActive
+                                            ? 'text-blue-600'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                    >
+                                        Dashboard
+                                    </Link>
+                                )}
 
                                 {/* Jobs/Work - Role-specific labels */}
                                 <Link
@@ -552,7 +566,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         : 'text-gray-600 hover:text-gray-900'
                                         }`}
                                 >
-                                    {isGigWorker ? 'Browse Jobs' : 'My Jobs'}
+                                    {isGigWorker ? 'Dashboard' : 'My Jobs'}
                                 </Link>
 
                                 {/* Gig Worker-only navigation */}
@@ -575,15 +589,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 }`}
                                         >
                                             AI Recommendations
-                                        </Link>
-                                        <Link
-                                            href="/profile/gig-worker"
-                                            className={`text-sm font-medium transition-colors ${window.route.current('gig-worker.profile')
-                                                ? 'text-blue-600'
-                                                : 'text-gray-600 hover:text-gray-900'
-                                                }`}
-                                        >
-                                            Profile
                                         </Link>
                                     </>
                                 )}
@@ -1066,16 +1071,18 @@ export default function AuthenticatedLayout({ header, children }) {
                 {/* Mobile Navigation */}
                 <div className={`${showingNavigationDropdown ? 'block' : 'hidden'} md:hidden border-t border-gray-200`}>
                     <div className="px-4 py-2 space-y-1">
-                        {/* Dashboard (role-aware) */}
-                        <Link
-                            href={dashboardHref}
-                            className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${isDashboardActive
-                                ? 'text-blue-600 bg-blue-50'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                }`}
-                        >
-                            Dashboard
-                        </Link>
+                        {/* Dashboard - shown for employers/admin, not for gig workers */}
+                        {!isGigWorker && (
+                            <Link
+                                href={dashboardHref}
+                                className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${isDashboardActive
+                                    ? 'text-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
+                            >
+                                Dashboard
+                            </Link>
+                        )}
                         {/* Jobs/Work - Role-specific */}
                         <Link
                             href="/jobs"
@@ -1084,9 +1091,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                 }`}
                         >
-                            {isGigWorker ? 'Find Work' : 'My Jobs'}
-                        </Link
-                        >
+                            {isGigWorker ? 'Dashboard' : 'My Jobs'}
+                        </Link>
 
                         {/* Gig Worker-only mobile navigation */}
                         {isGigWorker && (

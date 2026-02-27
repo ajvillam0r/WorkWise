@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { formatDistanceToNow } from 'date-fns';
 import Pagination from '@/Components/Pagination';
 import usePagination from '@/Hooks/usePagination';
+import { MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 function safeRoute(name, fallback = '/') {
     try {
@@ -358,56 +359,40 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
             <Head title={isEmployer ? 'My Jobs' : 'Browse Jobs'} />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet" />
 
-            <div className="relative py-12 bg-white overflow-hidden">
+            <div className="relative py-12 bg-white overflow-x-hidden">
                 {/* Animated Background Shapes */}
                 <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
                 <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    {/* Search and Filters with Sidebar Layout for Gig Workers */}
+                    {/* Gig Worker View: search bar + filters (same style as employer dashboard), no sidebar */}
                     {!isEmployer ? (
-                        <div className="grid gap-6 lg:grid-cols-[320px_1fr] mb-8">
-                            {/* Sidebar Filters - Enhanced Elevation */}
-                            <aside className="bg-white/90 backdrop-blur-md border-2 border-blue-200 rounded-xl shadow-2xl p-6 lg:sticky h-max ring-1 ring-blue-100">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-lg font-semibold text-gray-900">
-                                        Filter Jobs
-                                    </h3>
-                                    {hasActiveFilters && (
-                                        <button
-                                            type="button"
-                                            onClick={clearFilters}
-                                            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-                                        >
-                                            Reset
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="space-y-6">
-                                    {/* Search Input */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Search
-                                        </label>
+                        <>
+                            {/* Search and filters bar - one line next to search */}
+                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6 w-full box-border overflow-visible">
+                                <form
+                                    onSubmit={(e) => e.preventDefault()}
+                                    className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center"
+                                >
+                                    {/* Search + filters on one line */}
+                                    <div className="flex-1 min-w-0 relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                            <MagnifyingGlassIcon className="h-5 w-5 flex-shrink-0" />
+                                        </div>
                                         <input
                                             type="text"
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
                                             placeholder="Title, skills, description..."
-                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="block w-full min-w-0 pl-10 pr-3 py-2.5 h-11 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                     </div>
-
-                                    {/* Experience Level */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Experience Level
-                                        </label>
+                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
+                                        {/* Experience Level */}
                                         <select
                                             value={filters.experience}
-                                            onChange={(e) => setFilters(current => ({ ...current, experience: e.target.value }))}
-                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            onChange={(e) => setFilters((current) => ({ ...current, experience: e.target.value }))}
+                                            className="h-11 rounded-lg border border-gray-300 pl-3 pr-8 py-2 text-sm text-gray-700 bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[13rem]"
                                         >
                                             {experienceOptions.map((option) => (
                                                 <option key={option.value} value={option.value}>
@@ -415,159 +400,81 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                                 </option>
                                             ))}
                                         </select>
-                                    </div>
-
-                                    {/* Budget Range */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Budget Range (₱)
-                                        </label>
-                                        <div className="flex items-center gap-3">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                placeholder="Min"
-                                                value={filters.budgetMin}
-                                                onChange={handleBudgetChange('budgetMin')}
-                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-gray-500">-</span>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                placeholder="Max"
-                                                value={filters.budgetMax}
-                                                onChange={handleBudgetChange('budgetMax')}
-                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                        </div>
-                                        <p className="mt-2 text-xs text-gray-500">
-                                            Set either value to narrow results by budget.
-                                        </p>
-                                    </div>
-
-                                    {/* Skills Filter - Dynamic from Job Posts */}
-                                    <div className="relative">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Required Skills
-                                            </label>
-                                            {availableSkills.length > 0 && (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    {availableSkills.length} available
-                                                </span>
+                                        {/* Skills dropdown */}
+                                        <div className="relative z-[60]">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsSkillDropdownOpen((open) => !open)}
+                                                className="inline-flex items-center h-11 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 whitespace-nowrap"
+                                            >
+                                                <FunnelIcon className="h-5 w-5 mr-2 text-gray-500 flex-shrink-0" />
+                                                Skills
+                                                {filters.skills.length > 0 && (
+                                                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                                                        {filters.skills.length}
+                                                    </span>
+                                                )}
+                                                <ChevronDownIcon className="h-4 w-4 ml-2 text-gray-400 flex-shrink-0" />
+                                            </button>
+                                            {isSkillDropdownOpen && (
+                                                <>
+                                                    <div className="fixed inset-0 z-[55]" onClick={() => setIsSkillDropdownOpen(false)} aria-hidden="true" />
+                                                    <div className="absolute left-0 top-full mt-1 w-64 max-h-72 overflow-auto bg-white rounded-lg border border-gray-200 shadow-lg z-[60] py-2">
+                                                        {filters.skills.length > 0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setFilters((current) => ({ ...current, skills: [] }))}
+                                                                className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                                                            >
+                                                                Clear skills
+                                                            </button>
+                                                        )}
+                                                        {availableSkills.length === 0 ? (
+                                                            <p className="px-4 py-2 text-sm text-gray-500">No skills available yet</p>
+                                                        ) : (
+                                                            availableSkills.map((skill) => {
+                                                                const isSelected = filters.skills.some(
+                                                                    (s) => s.toLowerCase() === skill.toLowerCase()
+                                                                );
+                                                                return (
+                                                                    <button
+                                                                        key={skill}
+                                                                        type="button"
+                                                                        onClick={() => toggleSkillSelection(skill)}
+                                                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center truncate ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                                                                    >
+                                                                        {isSelected && (
+                                                                            <span className="mr-2 text-blue-600 flex-shrink-0">✓</span>
+                                                                        )}
+                                                                        <span className="truncate">{skill}</span>
+                                                                    </button>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </>
                                             )}
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsSkillDropdownOpen((open) => !open)}
-                                            className="flex w-full items-center justify-between rounded-lg border-2 border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-blue-400 hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                        {hasActiveFilters && (
+                                            <button
+                                                type="button"
+                                                onClick={clearFilters}
+                                                className="inline-flex items-center h-11 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                            >
+                                                Reset
+                                            </button>
+                                        )}
+                                        <Link
+                                            href={safeRoute('ai.recommendations.gigworker', safeRoute('ai.recommendations', '/ai/recommendations'))}
+                                            className="inline-flex items-center h-11 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                                         >
-                                            <span>
-                                                {filters.skills.length
-                                                    ? `${filters.skills.length} skill${filters.skills.length > 1 ? 's' : ''} selected`
-                                                    : 'Select skills'}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {isSkillDropdownOpen ? '▲' : '▼'}
-                                            </span>
-                                        </button>
-
-                                        {isSkillDropdownOpen && (
-                                            <div className="absolute left-0 right-0 z-20 mt-2 max-h-60 overflow-y-auto rounded-xl border-2 border-blue-200 bg-white p-3 shadow-2xl ring-1 ring-blue-100">
-                                                {availableSkills.length > 0 ? (
-                                                    <>
-                                                        <div className="mb-2 pb-2 border-b border-gray-200">
-                                                            <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                                <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                                </svg>
-                                                                Skills from posted jobs
-                                                            </p>
-                                                        </div>
-                                                        {availableSkills.map((skill) => {
-                                                            const isSelected = filters.skills.some(
-                                                                (selectedSkill) => selectedSkill.toLowerCase() === skill.toLowerCase()
-                                                            );
-                                                            return (
-                                                                <label
-                                                                    key={skill}
-                                                                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer transition-colors duration-150"
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                                        checked={isSelected}
-                                                                        onChange={() => toggleSkillSelection(skill)}
-                                                                    />
-                                                                    <span className="flex-1">{skill}</span>
-                                                                    {isSelected && (
-                                                                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                                        </svg>
-                                                                    )}
-                                                                </label>
-                                                            );
-                                                        })}
-                                                    </>
-                                                ) : (
-                                                    <div className="text-center py-4">
-                                                        <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                                        </svg>
-                                                        <p className="mt-2 text-sm text-gray-500">
-                                                            No skills available yet
-                                                        </p>
-                                                        <p className="mt-1 text-xs text-gray-400">
-                                                            Skills will appear when employers post jobs
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <p className="mt-2 text-xs text-gray-500 flex items-center gap-1">
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                            </svg>
-                                            Auto-updated from employer job posts
-                                        </p>
-
-                                        {filters.skills.length > 0 && (
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                {filters.skills.map((skill) => (
-                                                    <span
-                                                        key={skill}
-                                                        className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
-                                                    >
-                                                        {skill}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleSkillSelection(skill)}
-                                                            className="text-blue-500 hover:text-blue-700"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                            AI Recommendations
+                                        </Link>
                                     </div>
-                                </div>
+                                </form>
+                            </div>
 
-                                {/* AI Recommendations Link */}
-                                <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <Link
-                                        href={isEmployer ? safeRoute('ai.recommendations.employer', safeRoute('ai.recommendations', '/ai/recommendations')) : safeRoute('ai.recommendations.gigworker', safeRoute('ai.recommendations', '/ai/recommendations'))}
-                                        className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-                                    >
-                                        <span>🤖</span>
-                                        <span>AI Recommendations</span>
-                                    </Link>
-                                </div>
-                            </aside>
-
-                            {/* Main Content Area */}
+                            {/* Main content: jobs list (no sidebar) */}
                             <div>
                                 {/* Jobs List */}
                                 {filteredJobs.length === 0 ? (
@@ -729,7 +636,7 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </>
                     ) : (
                         /* Employer View - No Sidebar, just jobs list */
                         <div className="mb-8">
@@ -983,6 +890,57 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                                     <div className="text-3xl font-bold text-purple-600">
                                         {Math.round((filteredJobs.filter(job => job.is_remote).length / filteredJobs.length) * 100) || 0}%
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer for Gig Worker Dashboard (same as Welcome page) */}
+                    {!isEmployer && (
+                        <div className="mt-10 -mx-4 sm:-mx-6 lg:-mx-8">
+                            <div className="bg-[#05070A] px-4 sm:px-6 lg:px-8 py-8">
+                                <div className="max-w-7xl mx-auto">
+                                    <footer className="border-t border-white/5 pt-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                                            <div>
+                                                <h3 className="text-xl font-black text-white mb-3">WorkWise</h3>
+                                                <p className="text-white/40 text-sm leading-relaxed">
+                                                    The future of work, powered by elite intelligence and seamless collaboration.
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-bold text-white mb-3 uppercase tracking-widest text-xs">For Talent</h4>
+                                                <ul className="space-y-2 text-white/40 text-sm">
+                                                    <li><Link href="/jobs" className="hover:text-blue-500 transition-colors">Browse Gigs</Link></li>
+                                                    <li><Link href="/ai/recommendations" className="hover:text-blue-500 transition-colors">AI Recommendations</Link></li>
+                                                    <li><Link href={safeRoute('role.selection')} className="hover:text-blue-500 transition-colors">Join as Expert</Link></li>
+                                                </ul>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-bold text-white mb-3 uppercase tracking-widest text-xs">For Companies</h4>
+                                                <ul className="space-y-2 text-white/40 text-sm">
+                                                    <li><Link href="/freelancers" className="hover:text-blue-500 transition-colors">Find Experts</Link></li>
+                                                    <li><Link href="/jobs/create" className="hover:text-blue-500 transition-colors">Post a Project</Link></li>
+                                                    <li><Link href={safeRoute('role.selection')} className="hover:text-blue-500 transition-colors">Scale Your Team</Link></li>
+                                                </ul>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-bold text-white mb-3 uppercase tracking-widest text-xs">Platform</h4>
+                                                <ul className="space-y-2 text-white/40 text-sm">
+                                                    <li><Link href="/help" className="hover:text-blue-500 transition-colors">Help Center</Link></li>
+                                                    <li><Link href="/about" className="hover:text-blue-500 transition-colors">Our Vision</Link></li>
+                                                    <li><Link href="/privacy" className="hover:text-blue-500 transition-colors">Privacy</Link></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <div className="border-t border-white/5 py-5 text-center text-white/20 text-sm font-medium">
+                                            <p>&copy; 2024 WorkWise. Built for the Next Generation.</p>
+                                        </div>
+                                    </footer>
                                 </div>
                             </div>
                         </div>

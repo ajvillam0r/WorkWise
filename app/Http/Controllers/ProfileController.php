@@ -440,6 +440,8 @@ class ProfileController extends Controller
         $user->portfolio_link     = $validated['portfolio_link'] ?? null;
         $user->save();
 
+        $user->syncSkillsFromExperience();
+
         return redirect()->route('gig-worker.profile')->with('status', 'profile-updated');
     }
 

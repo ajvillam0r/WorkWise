@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 // ─── Skill color palette ───────────────────────────────────────────────────────
 const SKILL_COLORS = [
@@ -148,6 +149,19 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
             <Head title={`${user.name} – Profile`} />
 
             <div className="bg-slate-50 min-h-screen pb-16">
+                {/* Back to Browse Gig Workers (when employer is viewing) */}
+                {isEmployerViewing && (
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                        <Link
+                            href={route('employer.dashboard')}
+                            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                        >
+                            <ArrowLeftIcon className="w-5 h-5" />
+                            Back to Browse Gig Workers
+                        </Link>
+                    </div>
+                )}
+
                 {/* ─── Cover + Profile Hero ──────────────────────────────── */}
                 <div className="bg-white border-b border-gray-100 shadow-sm mb-6">
                     {/* Cover banner */}

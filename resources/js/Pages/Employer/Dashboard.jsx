@@ -1,1213 +1,384 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { ToastContainer } from '@/Components/Toast';
-import useToast from '@/Hooks/useToast';
-import IDVerificationBanner from '@/Components/IDVerificationBanner';
+import { Head, Link, router } from '@inertiajs/react';
 import {
-    BriefcaseIcon,
-    UserGroupIcon,
-    DocumentTextIcon,
-    CheckCircleIcon,
-    ClockIcon,
-    CurrencyDollarIcon,
-    ArrowUpIcon,
-    ArrowDownIcon,
-    EyeIcon,
-    PencilIcon,
-    TrashIcon,
-    PlusIcon,
-    XMarkIcon,
-    CalendarIcon,
     MagnifyingGlassIcon,
     FunnelIcon,
-    ChartBarIcon,
-    Squares2X2Icon,
-    BellIcon,
-    DocumentCheckIcon,
-    ChatBubbleLeftIcon,
-    ArrowTrendingUpIcon,
+    UserCircleIcon,
     ChevronDownIcon,
-    ArrowDownTrayIcon
+    SparklesIcon,
+    ClockIcon,
+    ChartBarIcon,
+    LinkIcon,
+    CurrencyDollarIcon,
+    GlobeAltIcon,
+    InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 
-export default function EmployerDashboard({
-    jobsSummary,
-    proposalsReceived,
-    activeContracts,
-    notifications,
-    analytics,
-    activities,
-    activityStats,
-    stats
-}) {
-    const { auth, flash } = usePage().props;
-    const user = auth.user;
-    const { toasts, removeToast, success, error, info } = useToast();
+const SORT_OPTIONS = [
+    {
+        value: 'best_match',
+        label: 'Best for Me',
+        icon: SparklesIcon,
+        description: 'Workers who match skills from your posted jobs',
+        detail: 'Ranked by how many of your job’s required skills they have in their profile.',
+    },
+    {
+        value: 'latest_registered',
+        label: 'Latest Registered',
+        icon: ClockIcon,
+        description: 'Newest gig workers first',
+        detail: 'Sorted by registration date from the database.',
+    },
+    {
+        value: 'most_relevant',
+        label: 'Most Relevant',
+        icon: ChartBarIcon,
+        description: 'Top rated & most experienced',
+        detail: 'Ranked by average review rating and completed projects.',
+    },
+];
 
-    // Handle flash messages
+export default function EmployerDashboard({ auth, workers, filterOptions = {}, filters = {}, bestMatchHasSkills = false }) {
+    const skillOptions = filterOptions?.skills ?? [];
+    const [search, setSearch] = useState(filters?.search ?? '');
+    const [selectedSkills, setSelectedSkills] = useState(Array.isArray(filters?.skills) ? filters.skills : []);
+    const [sort, setSort] = useState(filters?.sort ?? 'latest_registered');
+    const [showSkillDropdown, setShowSkillDropdown] = useState(false);
+
     useEffect(() => {
-        if (flash?.success) {
-            success(flash.success, 8000);
-        }
-        if (flash?.error) {
-            error(flash.error, 8000);
-        }
-        if (flash?.info) {
-            info(flash.info, 8000);
-        }
-    }, [flash]);
+        setSearch(filters?.search ?? '');
+        setSelectedSkills(Array.isArray(filters?.skills) ? filters.skills : []);
+        setSort(filters?.sort ?? 'latest_registered');
+    }, [filters?.search, filters?.skills, filters?.sort]);
 
-    useEffect(() => {
-        // Intersection Observer for animations
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
-                }
-            });
-        }, { threshold: 0.1 });
-
-        document.querySelectorAll('[data-observer-target]').forEach(el => {
-            observer.observe(el);
-        });
-
-        return () => {
-            observer.disconnect();
+    const applyFilters = (overrides = {}) => {
+        const params = {
+            search: overrides.search !== undefined ? overrides.search : search,
+            skills: overrides.skills !== undefined ? overrides.skills : selectedSkills,
+            sort: overrides.sort !== undefined ? overrides.sort : sort,
         };
-    }, []);
-
-    const formatAmount = (value) => {
-        const number = Number(value ?? 0);
-        return number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        router.get(route('employer.dashboard'), {
+            search: params.search || undefined,
+            'skills[]': params.skills?.length ? params.skills : undefined,
+            sort: params.sort,
+        }, { preserveState: true });
     };
 
-    const StatCard = ({ title, value, icon: Icon, color = 'blue', subtitle = null }) => {
-        const colorClasses = {
-            blue: 'bg-blue-500',
-            green: 'bg-green-500',
-            yellow: 'bg-yellow-500',
-            purple: 'bg-purple-500',
-            teal: 'bg-teal-500'
-        };
-
-        return (
-            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200 h-full">
-                <div className="p-4 lg:p-6">
-                    <div className="flex items-start h-full">
-                        <div className="flex-shrink-0">
-                            <div className={`w-10 h-10 ${colorClasses[color]} rounded-full flex items-center justify-center`}>
-                                <Icon className="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                        <div className="ml-3 lg:ml-4 flex-1 min-w-0">
-                            <div className="text-xs lg:text-sm font-medium text-gray-500 break-words leading-tight">{title}</div>
-                            <div className="text-lg lg:text-xl font-bold text-gray-900 break-words leading-tight mt-1">{value}</div>
-                            {subtitle && (
-                                <div className="text-xs text-gray-500 mt-2 break-words leading-relaxed">{subtitle}</div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+    const handleSearchSubmit = (e) => {
+        e?.preventDefault();
+        applyFilters({ search });
     };
 
-    const JobCard = ({ job }) => (
-        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-            <div className="p-4">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 break-words">{job.title}</h4>
-                        <div className="flex items-center mt-2 space-x-4 text-sm text-gray-500">
-                            <span className="flex items-center">
-                                <EyeIcon className="w-4 h-4 mr-1" />
-                                {job.bids_count} bids
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                job.status === 'open' ? 'bg-green-100 text-green-800' :
-                                job.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                'bg-gray-100 text-gray-800'
-                            }`}>
-                                {job.status}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-sm font-medium text-gray-900">
-                            {job.budget_type === 'fixed' ?
-                                `₱${formatAmount(job.budget_min)}` :
-                                `₱${formatAmount(job.budget_min)} - ₱${formatAmount(job.budget_max)}`
-                            }
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                            {new Date(job.created_at).toLocaleDateString()}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const ProposalCard = ({ proposal }) => (
-        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-            <div className="p-4">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 break-words">{proposal.gig_worker_name}</h4>
-                        <p className="text-sm text-gray-600 mt-1 break-words">for "{proposal.job_title}"</p>
-                        <p className="text-sm text-gray-500 mt-2 break-words">{proposal.proposal_message}</p>
-                        <div className="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                            <span className="flex items-center">
-                                <CurrencyDollarIcon className="w-4 h-4 mr-1" />
-                                ₱{formatAmount(proposal.bid_amount)}
-                            </span>
-                            <span className="flex items-center">
-                                <ClockIcon className="w-4 h-4 mr-1" />
-                                {proposal.estimated_days} days
-                            </span>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-sm font-medium text-gray-900">
-                            {new Date(proposal.submitted_at).toLocaleDateString()}
-                        </div>
-                        <div className="mt-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                proposal.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                                'bg-red-100 text-red-800'
-                            }`}>
-                                {proposal.status}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const ContractCard = ({ contract }) => (
-        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-            <div className="p-4">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 break-words">{contract.job_title}</h4>
-                        <p className="text-sm text-gray-600 mt-1 break-words">with {contract.gig_worker_name}</p>
-                        <div className="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                            <span className="flex items-center">
-                                <CurrencyDollarIcon className="w-4 h-4 mr-1" />
-                                ₱{formatAmount(contract.agreed_amount)}
-                            </span>
-                            <span className="flex items-center">
-                                <CheckCircleIcon className="w-4 h-4 mr-1" />
-                                {contract.progress_percentage}% complete
-                            </span>
-                        </div>
-                        <div className="mt-3">
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div
-                                    className="bg-teal-500 h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${contract.progress_percentage}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-sm font-medium text-gray-900">
-                            {new Date(contract.started_at).toLocaleDateString()}
-                        </div>
-                        <div className="mt-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                contract.status === 'active' ? 'bg-green-100 text-green-800' :
-                                'bg-blue-100 text-blue-800'
-                            }`}>
-                                {contract.status}
-                            </span>
-                        </div>
-                        <div className="mt-3 space-x-2">
-                            <Link
-                                href={`/contracts/${contract.id}`}
-                                className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                            >
-                                <DocumentCheckIcon className="w-3 h-3 mr-1" />
-                                View
-                            </Link>
-                            <Link
-                                href={`/messages/${contract.gig_worker_id}`}
-                                className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
-                            >
-                                <ChatBubbleLeftIcon className="w-3 h-3 mr-1" />
-                                Message
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const NotificationCard = ({ notification }) => (
-        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-            <div className="p-4">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                        <div className="flex items-center">
-                            <h4 className="font-medium text-gray-900 break-words">{notification.title}</h4>
-                            {!notification.is_read && (
-                                <div className="w-2 h-2 bg-red-500 rounded-full ml-2 flex-shrink-0"></div>
-                            )}
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1 break-words">{notification.message}</p>
-                        <div className="text-xs text-gray-500 mt-2">
-                            {new Date(notification.created_at).toLocaleDateString()}
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <Link
-                            href={notification.action_url}
-                            className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                        >
-                            View
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const EscrowAlertCard = ({ alert }) => (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start">
-                <div className="flex-shrink-0">
-                    <CurrencyDollarIcon className="w-5 h-5 text-yellow-600" />
-                </div>
-                <div className="ml-3 flex-1">
-                    <h4 className="text-sm font-medium text-yellow-800">{alert.title}</h4>
-                    <p className="text-sm text-yellow-700 mt-1">{alert.message}</p>
-                    <div className="mt-2">
-                        <Link
-                            href={alert.action_url}
-                            className="text-xs text-yellow-800 underline hover:text-yellow-900"
-                        >
-                            View Details
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const DeadlineCard = ({ deadline }) => (
-        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-            <div className="p-4">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 break-words">{deadline.milestone_name}</h4>
-                        <p className="text-sm text-gray-600 mt-1 break-words">Due: {new Date(deadline.due_date).toLocaleDateString()}</p>
-                        <div className="mt-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                deadline.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                                deadline.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
-                            }`}>
-                                {deadline.status}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <Link
-                            href={`/projects/${deadline.contract_id}`}
-                            className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                        >
-                            View
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const EnhancedStatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', trend, trendValue }) => {
-        const colorClasses = {
-            blue: 'bg-blue-500',
-            green: 'bg-green-500',
-            yellow: 'bg-yellow-500',
-            purple: 'bg-purple-500',
-            teal: 'bg-teal-500',
-            red: 'bg-red-500',
-            indigo: 'bg-indigo-500'
-        };
-
-        const trendColors = {
-            up: 'text-green-600',
-            down: 'text-red-600',
-            stable: 'text-gray-600'
-        };
-
-        const trendIcons = {
-            up: ArrowTrendingUpIcon,
-            down: '↓',
-            stable: '→'
-        };
-
-        return (
-            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200 h-full">
-                <div className="p-4 lg:p-6">
-                    <div className="flex items-start h-full">
-                        <div className="flex-shrink-0">
-                            <div className={`w-10 h-10 ${colorClasses[color]} rounded-full flex items-center justify-center`}>
-                                <Icon className="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                        <div className="ml-3 lg:ml-4 flex-1 min-w-0">
-                            <div className="text-xs lg:text-sm font-medium text-gray-500 break-words leading-tight">{title}</div>
-                            <div className="text-lg lg:text-xl font-bold text-gray-900 break-words leading-tight mt-1">{value}</div>
-                            <div className="flex items-start mt-2">
-                                {subtitle && (
-                                    <div className="text-xs text-gray-500 break-words flex-1 leading-relaxed">{subtitle}</div>
-                                )}
-                                {trend && trendValue && (
-                                    <div className={`ml-2 flex items-center text-xs ${trendColors[trend]} flex-shrink-0`}>
-                                        {trend === 'up' && <ArrowTrendingUpIcon className="w-3 h-3 mr-1" />}
-                                        {trend === 'down' && <span className="mr-1">↓</span>}
-                                        {trend === 'stable' && <span className="mr-1">→</span>}
-                                        {trendValue}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+    const toggleSkill = (skillName) => {
+        const next = selectedSkills.includes(skillName)
+            ? selectedSkills.filter((s) => s !== skillName)
+            : [...selectedSkills, skillName];
+        setSelectedSkills(next);
+        applyFilters({ skills: next });
     };
 
-    const ActivityCard = ({ activity }) => (
-        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-            <div className="p-4">
-                <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            activity.type === 'job_posted' ? 'bg-blue-100' :
-                            activity.type === 'proposal_received' ? 'bg-green-100' :
-                            activity.type === 'contract_signed' ? 'bg-purple-100' :
-                            activity.type === 'payment_made' ? 'bg-yellow-100' :
-                            activity.type === 'deadline_met' ? 'bg-indigo-100' :
-                            'bg-gray-100'
-                        }`}>
-                            {activity.type === 'job_posted' && <BriefcaseIcon className="w-4 h-4 text-blue-600" />}
-                            {activity.type === 'proposal_received' && <DocumentTextIcon className="w-4 h-4 text-green-600" />}
-                            {activity.type === 'contract_signed' && <CheckCircleIcon className="w-4 h-4 text-purple-600" />}
-                            {activity.type === 'payment_made' && <CurrencyDollarIcon className="w-4 h-4 text-yellow-600" />}
-                            {activity.type === 'deadline_met' && <ClockIcon className="w-4 h-4 text-indigo-600" />}
-                            {activity.type === 'notification' && <BellIcon className="w-4 h-4 text-gray-600" />}
-                        </div>
-                    </div>
-                    <div className="ml-3 flex-1">
-                        <p className="text-sm font-medium text-gray-900 break-words">{activity.title}</p>
-                        <p className="text-sm text-gray-600 break-words">{activity.description}</p>
-                        <p className="text-xs text-gray-500 mt-1 break-words">{activity.time}</p>
-                    </div>
-                    {activity.action_url && (
-                        <div className="ml-3">
-                            <Link
-                                href={activity.action_url}
-                                className="text-xs text-blue-600 hover:text-blue-800 underline"
-                            >
-                                View
-                            </Link>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-
-    const SearchAndFilterBar = ({ onSearch, onFilter, searchTerm, activeFilter }) => {
-        const [isFilterOpen, setIsFilterOpen] = React.useState(false);
-        const [isExportOpen, setIsExportOpen] = React.useState(false);
-
-        const closeAllDropdowns = () => {
-            setIsFilterOpen(false);
-            setIsExportOpen(false);
-        };
-
-        const toggleFilter = () => {
-            closeAllDropdowns();
-            setIsFilterOpen(!isFilterOpen);
-        };
-
-        const toggleExport = () => {
-            closeAllDropdowns();
-            setIsExportOpen(!isExportOpen);
-        };
-        const [suggestions, setSuggestions] = React.useState([]);
-        const [isLoading, setIsLoading] = React.useState(false);
-        const [isExporting, setIsExporting] = React.useState(false);
-        const [exportFormats, setExportFormats] = React.useState([]);
-        const [exportTypes, setExportTypes] = React.useState([]);
-
-        const filterOptions = [
-            { value: 'all', label: 'All Items', icon: Squares2X2Icon },
-            { value: 'jobs', label: 'Jobs Only', icon: BriefcaseIcon },
-            { value: 'proposals', label: 'Proposals Only', icon: DocumentTextIcon },
-            { value: 'contracts', label: 'Contracts Only', icon: CheckCircleIcon },
-            { value: 'notifications', label: 'Notifications Only', icon: BellIcon },
-        ];
-
-        const exportOptions = [
-            { value: 'all', label: 'All Data', icon: Squares2X2Icon },
-            { value: 'jobs', label: 'Jobs Only', icon: BriefcaseIcon },
-            { value: 'proposals', label: 'Proposals Only', icon: DocumentTextIcon },
-            { value: 'contracts', label: 'Contracts Only', icon: CheckCircleIcon },
-            { value: 'notifications', label: 'Notifications Only', icon: BellIcon },
-            { value: 'deadlines', label: 'Deadlines Only', icon: ClockIcon },
-            { value: 'analytics', label: 'Analytics Report', icon: ChartBarIcon },
-        ];
-
-        // Load export formats and types on component mount
-        React.useEffect(() => {
-            loadExportOptions();
-        }, []);
-
-        const loadExportOptions = async () => {
-            try {
-                const response = await fetch('/api/export/formats', {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                });
-                const data = await response.json();
-                setExportFormats(data.formats || []);
-                setExportTypes(data.types || []);
-            } catch (error) {
-                console.error('Failed to load export options:', error);
-            }
-        };
-
-        const handleSearch = async (query) => {
-            onSearch(query);
-            if (query.length > 2) {
-                setIsLoading(true);
-                try {
-                    const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                        },
-                    });
-                    const data = await response.json();
-                    setSuggestions(data.suggestions || []);
-                } catch (error) {
-                    console.error('Search error:', error);
-                    setSuggestions([]);
-                } finally {
-                    setIsLoading(false);
-                }
-            } else {
-                setSuggestions([]);
-            }
-        };
-
-        const handleExport = async (type, format = 'csv') => {
-            setIsExporting(true);
-            closeAllDropdowns();
-
-            try {
-                const response = await fetch('/api/export', {
-                    method: 'GET',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Export failed');
-                }
-
-                // Create blob and download
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-
-                // Set filename based on type and format
-                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-                a.download = `export_${type}_${timestamp}.${format}`;
-
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-
-            } catch (error) {
-                console.error('Export error:', error);
-                alert('Export failed. Please try again.');
-            } finally {
-                setIsExporting(false);
-            }
-        };
-
-        const getExportPreview = async (type) => {
-            try {
-                const response = await fetch(`/api/export/preview?type=${type}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                });
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('Preview error:', error);
-                return null;
-            }
-        };
-
-        // Close dropdowns when clicking outside
-        React.useEffect(() => {
-            const handleClickOutside = (event) => {
-                if (!event.target.closest('.export-dropdown') && !event.target.closest('.filter-dropdown')) {
-                    closeAllDropdowns();
-                }
-            };
-
-            document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }, []);
-
-        return (
-            <div className="bg-white/70 backdrop-blur-sm shadow-lg border border-gray-200 rounded-lg p-4 mb-6 relative z-30 overflow-visible">
-                <div className="flex flex-col md:flex-row gap-4 items-center">
-                    {/* Search Input */}
-                    <div className="flex-1 relative z-10" style={{ position: 'relative' }}>
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            {isLoading ? (
-                                <div className="animate-spin h-5 w-5 text-gray-400">
-                                    <svg fill="none" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                                        <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                </div>
-                            ) : (
-                                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                            )}
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Search jobs, proposals, contracts..."
-                            value={searchTerm}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
-                        />
-
-                        {/* Search Suggestions */}
-                        {suggestions.length > 0 && (
-                            <div className="absolute z-[100] mt-1 w-full bg-white shadow-xl max-h-60 rounded-md py-1 text-sm overflow-auto focus:outline-none border border-gray-300" style={{ position: 'absolute' }}>
-                                {suggestions.map((suggestion, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => {
-                                            handleSearch(suggestion);
-                                            setSuggestions([]);
-                                        }}
-                                        className="block w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100"
-                                    >
-                                        {suggestion}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Filter Dropdown */}
-                    <div className="relative filter-dropdown z-10" style={{ position: 'relative' }}>
-                        <button
-                            onClick={toggleFilter}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-                        >
-                            <FunnelIcon className="h-5 w-5 mr-2" />
-                            {filterOptions.find(opt => opt.value === activeFilter)?.label || 'Filter'}
-                            <ChevronDownIcon className="h-5 w-5 ml-2" />
-                        </button>
-
-                        {isFilterOpen && (
-                            <div className="absolute right-0 z-[100] mt-2 w-56 rounded-md shadow-xl bg-white ring-1 ring-black ring-opacity-5" style={{ position: 'absolute' }}>
-                                <div className="py-1">
-                                    {filterOptions.map((option) => (
-                                        <button
-                                            key={option.value}
-                                            onClick={() => {
-                                                onFilter(option.value);
-                                                closeAllDropdowns();
-                                            }}
-                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        >
-                                            <option.icon className="h-4 w-4 mr-3" />
-                                            {option.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Export Dropdown */}
-                    <div className="relative export-dropdown z-10" style={{ position: 'relative' }}>
-                        <button
-                            onClick={toggleExport}
-                            disabled={isExporting}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isExporting ? (
-                                <div className="animate-spin h-5 w-5 mr-2">
-                                    <svg fill="none" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                                        <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                </div>
-                            ) : (
-                                <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-                            )}
-                            Export
-                            <ChevronDownIcon className="h-5 w-5 ml-2" />
-                        </button>
-
-                        {isExportOpen && (
-                            <div className="absolute right-0 z-[100] mt-2 w-64 rounded-md shadow-xl bg-white ring-1 ring-black ring-opacity-5" style={{ position: 'absolute' }}>
-                                <div className="py-1">
-                                    <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                        Export Data
-                                    </div>
-                                    {exportOptions.map((option) => (
-                                        <div key={option.value} className="px-2 py-1">
-                                            <button
-                                                onClick={() => {
-                                                    handleExport(option.value, 'csv');
-                                                    closeAllDropdowns();
-                                                }}
-                                                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
-                                            >
-                                                <option.icon className="h-4 w-4 mr-3" />
-                                                {option.label}
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <div className="border-t border-gray-100 my-1"></div>
-                                    <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                        Format Options
-                                    </div>
-                                    <div className="px-2 py-1">
-                                        <button
-                                            onClick={() => {
-                                                handleExport('all', 'json');
-                                                closeAllDropdowns();
-                                            }}
-                                            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
-                                        >
-                                            <DocumentTextIcon className="h-4 w-4 mr-3" />
-                                            Export as JSON
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                handleExport('analytics', 'pdf');
-                                                closeAllDropdowns();
-                                            }}
-                                            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
-                                        >
-                                            <DocumentTextIcon className="h-4 w-4 mr-3" />
-                                            Export Report as PDF
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="flex space-x-2">
-                        <Link
-                            href={route('jobs.create')}
-                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-                        >
-                            <PlusIcon className="h-4 w-4 mr-1" />
-                            New Job
-                        </Link>
-                        <Link
-                            href={route('analytics.index')}
-                            className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-                        >
-                            <ChartBarIcon className="h-4 w-4 mr-1" />
-                            Analytics
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        );
+    const clearSkillFilter = () => {
+        setSelectedSkills([]);
+        applyFilters({ skills: [] });
     };
+
+    const currentSort = filters?.sort ?? 'latest_registered';
+    const activeOption = SORT_OPTIONS.find((o) => o.value === currentSort) ?? SORT_OPTIONS[1];
+    const showBestMatchHint = currentSort === 'best_match' && !bestMatchHasSkills;
 
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center flex-wrap gap-4">
                     <div>
                         <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                            Employer Dashboard
+                            Browse Gig Workers
                         </h2>
                         <p className="text-sm text-gray-600 mt-1">
-                            Manage your projects and find the best talent
+                            Find talent by name, title, or skills
                         </p>
                     </div>
-                    <div className="flex space-x-3">
-                        <Link
-                            href={route('jobs.create')}
-                            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 inline-flex items-center"
-                        >
-                            <PlusIcon className="w-4 h-4 mr-2" />
-                            Post a Job
-                        </Link>
-                        <Link
-                            href="/analytics/employer"
-                            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 inline-flex items-center"
-                        >
-                            <ChartBarIcon className="w-4 h-4 mr-2" />
-                            Analytics
-                        </Link>
-                    </div>
+                    <Link
+                        href={route('jobs.create')}
+                        className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                    >
+                        Post a Job
+                    </Link>
                 </div>
             }
         >
-            <Head title="Employer Dashboard" />
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet" />
+            <Head title="Browse Gig Workers - Employer Dashboard" />
 
-            {/* Toast Notifications */}
-            <ToastContainer toasts={toasts} removeToast={removeToast} />
-
-            <div className="relative py-8 bg-white overflow-hidden">
-                {/* Animated Background Shapes */}
-                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-                
-                <div className="relative z-20 mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-8">
-                    
-                    {/* Welcome Banner */}
-                    <div className="overflow-hidden bg-gradient-to-r from-blue-600 to-purple-700 shadow-lg sm:rounded-xl">
-                        <div className="p-8 text-white">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-2xl font-bold mb-2">
-                                        Welcome back, {user.first_name}!
-                                    </h3>
-                                    <p className="text-blue-100 text-lg">
-                                        You have {jobsSummary?.active_jobs || stats.activeJobs || 0} active jobs and {proposalsReceived?.length || 0} new proposals
-                                    </p>
-                                </div>
-                                <div className="hidden md:block">
-                                    <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
-                                        <BriefcaseIcon className="w-12 h-12 text-white" />
-                                    </div>
-                                </div>
+            <div className="py-6 sm:py-8 bg-gray-50/50">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
+                    {/* Global navigation: fixed-height container, content width */}
+                    <div className="mb-6 w-full">
+                        <nav
+                            className="inline-flex flex-nowrap gap-1 p-1.5 bg-white rounded-lg border border-gray-200 shadow-sm min-h-[3.25rem] box-border"
+                            aria-label="Sort gig workers"
+                        >
+                            {SORT_OPTIONS.map((opt) => {
+                                const isActive = currentSort === opt.value;
+                                const Icon = opt.icon;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => router.get(route('employer.dashboard'), {
+                                            search: filters?.search || undefined,
+                                            'skills[]': (filters?.skills?.length && filters.skills) || undefined,
+                                            sort: opt.value,
+                                        }, { preserveState: true })}
+                                        className={`flex items-center justify-center gap-2 min-h-[2.5rem] px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
+                                            isActive
+                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                        <Icon className="h-4 w-4 flex-shrink-0" />
+                                        <span>{opt.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                        <p className="mt-2 text-sm text-gray-600 min-h-[1.25rem]">
+                            {activeOption.detail}
+                        </p>
+                        {showBestMatchHint && (
+                            <div className="mt-2 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 min-h-0 box-border w-full">
+                                <InformationCircleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                                <p className="min-w-0">
+                                    Post a job and add required skills to see workers ranked by how well they match your needs.
+                                    <Link href={route('jobs.create')} className="ml-1 font-medium underline hover:no-underline">
+                                        Post a job
+                                    </Link>
+                                </p>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                                <div className="bg-white/20 rounded-lg p-4">
-                                    <div className="text-2xl font-bold">{jobsSummary?.total_jobs || stats.totalJobs || 0}</div>
-                                    <div className="text-blue-100">Total Jobs Posted</div>
-                                </div>
-                                <div className="bg-white/20 rounded-lg p-4">
-                                    <div className="text-2xl font-bold">{activeContracts?.length || stats.activeContracts || 0}</div>
-                                    <div className="text-blue-100">Active Contracts</div>
-                                </div>
-                                <div className="bg-white/20 rounded-lg p-4">
-                                    <div className="text-2xl font-bold">₱{formatAmount(stats?.monthlySpent || 0)}</div>
-                                    <div className="text-blue-100">Monthly Spending</div>
-                                </div>
-                            </div>
-                        </div>
+                        )}
                     </div>
 
-                    {/* ID Verification Banner */}
-                    {user.id_verification_status && !user.id_verification_status.is_verified && !user.id_verification_status.has_id_front && (
-                        <IDVerificationBanner
-                            message="Verify your identity to build trust with gig workers."
-                            buttonText="Verify Your Identity"
-                            linkUrl="/id-verification"
-                            variant="info"
-                            dismissible={true}
-                        />
-                    )}
-
-                    {/* Search and Filter Bar */}
-                    <SearchAndFilterBar
-                        onSearch={(term) => console.log('Search:', term)}
-                        onFilter={(filter) => console.log('Filter:', filter)}
-                        searchTerm=""
-                        activeFilter="all"
-                    />
-
-                    {/* Enhanced Stats Overview */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 lg:gap-4 mb-8 auto-rows-fr" data-observer-target>
-                        <EnhancedStatCard
-                            title="Total Jobs Posted"
-                            value={stats.totalJobs}
-                            subtitle="All time"
-                            icon={BriefcaseIcon}
-                            color="blue"
-                            trend={analytics?.trends?.growth_rate?.direction}
-                            trendValue={`${analytics?.trends?.growth_rate?.jobs || 0}%`}
-                        />
-                        <EnhancedStatCard
-                            title="Active Job Postings"
-                            value={stats.activeJobs}
-                            subtitle="Currently open"
-                            icon={ClockIcon}
-                            color="green"
-                        />
-                        <EnhancedStatCard
-                            title="Job Success Rate"
-                            value={`${stats.successRate}%`}
-                            subtitle="Jobs to contracts"
-                            icon={CheckCircleIcon}
-                            color="teal"
-                        />
-                        <EnhancedStatCard
-                            title="Average Response Time"
-                            value={`${stats.avgResponseTime}h`}
-                            subtitle="Time to respond"
-                            icon={ArrowTrendingUpIcon}
-                            color="purple"
-                        />
-                        <EnhancedStatCard
-                            title="Project Completion Rate"
-                            value={`${stats.completionRate}%`}
-                            subtitle="Projects finished"
-                            icon={DocumentCheckIcon}
-                            color="indigo"
-                        />
-                        <EnhancedStatCard
-                            title="Monthly Spending"
-                            value={`₱${formatAmount(stats.monthlySpent)}`}
-                            subtitle="Current month"
-                            icon={CurrencyDollarIcon}
-                            color="yellow"
-                            trend={analytics?.spending_analysis?.cost_trend}
-                            trendValue="vs previous month"
-                        />
-                    </div>
-
-                    {/* Performance Metrics */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8" data-observer-target>
-                        {/* Proposals Quality */}
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                            <div className="p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Proposal Quality</h3>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Avg Experience</span>
-                                        <span className="text-sm font-medium">{analytics?.proposals_received?.quality_score || 0}/100</span>
+                    {/* Search and filters bar: fixed-height container */}
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6 w-full box-border min-h-[4.5rem]">
+                        <form onSubmit={handleSearchSubmit} className="flex flex-col lg:flex-row gap-4 lg:items-center lg:min-h-[2.75rem]">
+                            <div className="flex-1 min-w-0 w-full lg:max-w-xl">
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                        <MagnifyingGlassIcon className="h-5 w-5 flex-shrink-0" />
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Avg Rating</span>
-                                        <span className="text-sm font-medium">{analytics?.proposals_received?.avg_per_job || 0} per job</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Response Rate</span>
-                                        <span className="text-sm font-medium">{analytics?.response_times?.within_24h || 0} within 24h</span>
-                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, job title, or skills..."
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        onBlur={() => search && applyFilters({ search })}
+                                        className="block w-full min-w-0 pl-10 pr-3 py-2.5 h-11 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Contract Performance */}
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                            <div className="p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Contract Performance</h3>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Avg Duration</span>
-                                        <span className="text-sm font-medium">{analytics?.contracts_active?.avg_duration || 0} days</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Completion Rate</span>
-                                        <span className="text-sm font-medium">{analytics?.contracts_active?.completion_rate || 0}%</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Active Contracts</span>
-                                        <span className="text-sm font-medium">{stats.activeContracts}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Spending Analysis */}
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                            <div className="p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Spending Analysis</h3>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Total Spent</span>
-                                        <span className="text-sm font-medium">₱{formatAmount(analytics?.spending_analysis?.total)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Avg per Project</span>
-                                        <span className="text-sm font-medium">₱{formatAmount(analytics?.spending_analysis?.avg_per_project)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-600">Platform Fees</span>
-                                        <span className="text-sm font-medium">₱{formatAmount(analytics?.spending_analysis?.platform_fees)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Main Content Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" data-observer-target>
-                        {/* Left Column - Jobs Summary */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                                <div className="p-6">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">Posted Jobs</h3>
-                                        <Link
-                                            href={route('jobs.index')}
-                                            className="text-teal-600 hover:text-teal-800 text-sm font-medium"
-                                        >
-                                            View All
-                                        </Link>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {jobsSummary.jobs?.length > 0 ? (
-                                            jobsSummary.jobs.map((job) => (
-                                                <JobCard key={job.id} job={job} />
-                                            ))
-                                        ) : (
-                                            <p className="text-gray-500 text-center py-4">No jobs posted yet</p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Middle Column - Proposals */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                                <div className="p-6">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">Recent Proposals</h3>
-                                        <Link
-                                            href={route('bids.index')}
-                                            className="text-teal-600 hover:text-teal-800 text-sm font-medium"
-                                        >
-                                            View All
-                                        </Link>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {proposalsReceived?.length > 0 ? (
-                                            proposalsReceived.map((proposal) => (
-                                                <ProposalCard key={proposal.id} proposal={proposal} />
-                                            ))
-                                        ) : (
-                                            <p className="text-gray-500 text-center py-4">No proposals received yet</p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right Column - Notifications */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                                <div className="p-6">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                                        {notifications?.unreadCount > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                                                {notifications.unreadCount}
+                            <div className="flex flex-wrap items-center gap-2 min-h-[2.75rem]">
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowSkillDropdown(!showSkillDropdown)}
+                                        className="inline-flex items-center h-11 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap"
+                                    >
+                                        <FunnelIcon className="h-5 w-5 mr-2 text-gray-500 flex-shrink-0" />
+                                        <span className="truncate">Skills</span>
+                                        {selectedSkills.length > 0 && (
+                                            <span className="ml-2 bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                                                {selectedSkills.length}
                                             </span>
                                         )}
-                                        <Link
-                                            href={route('notifications.index')}
-                                            className="text-teal-600 hover:text-teal-800 text-sm font-medium"
-                                        >
-                                            View All
-                                        </Link>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {notifications?.recent?.length > 0 ? (
-                                            notifications.recent.slice(0, 3).map((notification) => (
-                                                <NotificationCard key={notification.id} notification={notification} />
-                                            ))
+                                        <ChevronDownIcon className="h-4 w-4 ml-2 text-gray-400 flex-shrink-0" />
+                                    </button>
+                                    {showSkillDropdown && (
+                                        <>
+                                            <div className="fixed inset-0 z-10" onClick={() => setShowSkillDropdown(false)} />
+                                            <div className="absolute left-0 mt-1 w-64 max-h-72 overflow-auto bg-white rounded-lg border border-gray-200 shadow-lg z-20 py-2">
+                                                {selectedSkills.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={clearSkillFilter}
+                                                        className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
+                                                    >
+                                                        Clear skills filter
+                                                    </button>
+                                                )}
+                                                {skillOptions.length === 0 ? (
+                                                    <p className="px-4 py-2 text-sm text-gray-500">No skills in database yet</p>
+                                                ) : (
+                                                    skillOptions.map((name) => (
+                                                        <button
+                                                            key={name}
+                                                            type="button"
+                                                            onClick={() => toggleSkill(name)}
+                                                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center truncate ${selectedSkills.includes(name) ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700'}`}
+                                                        >
+                                                            {selectedSkills.includes(name) && (
+                                                                <span className="mr-2 text-indigo-600 flex-shrink-0">✓</span>
+                                                            )}
+                                                            <span className="truncate">{name}</span>
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center justify-center h-11 px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap min-w-[5rem]"
+                                >
+                                    Search
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Results count: single line */}
+                    <div className="mb-4 h-5 flex items-center text-sm text-gray-600">
+                        {workers.total > 0
+                            ? `Showing ${workers.data?.length ?? 0} of ${workers.total} gig workers`
+                            : 'No gig workers found. Try adjusting search or filters.'}
+                    </div>
+
+                    {/* Worker cards grid: fixed card dimensions */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
+                        {(workers.data ?? []).map((worker) => (
+                            <div
+                                key={worker.id}
+                                className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col w-full h-[420px] min-h-[420px] max-h-[420px] hover:shadow-md hover:border-gray-300 transition-all duration-200"
+                            >
+                                <div className="p-5 flex flex-col flex-1 min-h-0 overflow-hidden">
+                                    {/* Avatar + name: fixed height */}
+                                    <div className="flex items-center gap-3 flex-shrink-0 h-16 min-h-[4rem]">
+                                        {worker.profile_picture ? (
+                                            <img
+                                                src={worker.profile_picture}
+                                                alt=""
+                                                className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-gray-200"
+                                            />
                                         ) : (
-                                            <p className="text-gray-500 text-center py-4">No notifications</p>
+                                            <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                                <UserCircleIcon className="w-7 h-7 text-gray-400" />
+                                            </div>
+                                        )}
+                                        <div className="min-w-0 flex-1 overflow-hidden">
+                                            <h3 className="text-base font-semibold text-gray-900 truncate">
+                                                {worker.full_name}
+                                            </h3>
+                                            {worker.professional_title ? (
+                                                <p className="text-sm font-medium text-indigo-600 truncate mt-0.5">
+                                                    {worker.professional_title}
+                                                </p>
+                                            ) : (
+                                                <div className="h-5" />
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* Bio: fixed height, clamped */}
+                                    <div className="mt-3 flex-shrink-0 h-[4rem] overflow-hidden">
+                                        {worker.bio ? (
+                                            <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                                                {worker.bio}
+                                            </p>
+                                        ) : (
+                                            <p className="text-sm text-gray-400 italic">No bio</p>
                                         )}
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Escrow Alerts */}
-                    {notifications?.escrow?.length > 0 && (
-                        <div className="mt-8">
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                                <div className="p-6">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Escrow Alerts</h3>
-                                    <div className="space-y-3">
-                                        {notifications.escrow.map((alert) => (
-                                            <EscrowAlertCard key={alert.id} alert={alert} />
-                                        ))}
+                                    {/* Hourly + portfolio: fixed height */}
+                                    <div className="mt-2 flex-shrink-0 h-6 overflow-hidden flex items-center">
+                                        {(worker.hourly_rate != null && worker.hourly_rate !== '') || worker.portfolio_link ? (
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-0 text-sm text-gray-600 min-w-0 overflow-hidden">
+                                                {worker.hourly_rate != null && worker.hourly_rate !== '' && (
+                                                    <span className="inline-flex items-center gap-1 flex-shrink-0">
+                                                        <CurrencyDollarIcon className="h-4 w-4 text-indigo-500" />
+                                                        <span>${Number(worker.hourly_rate).toLocaleString()}/hr</span>
+                                                    </span>
+                                                )}
+                                                {worker.portfolio_link && (
+                                                    <a
+                                                        href={worker.portfolio_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 truncate max-w-[10rem]"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <GlobeAltIcon className="h-4 w-4 flex-shrink-0" />
+                                                        <span className="truncate">Portfolio</span>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm text-gray-400">—</span>
+                                        )}
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Upcoming Deadlines */}
-                    {notifications?.deadlines?.length > 0 && (
-                        <div className="mt-8">
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                                <div className="p-6">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">Upcoming Deadlines</h3>
+                                    {/* Skills: fixed height, wrap with overflow hidden */}
+                                    <div className="mt-3 flex-shrink-0 min-h-[2.5rem] max-h-[3rem] flex flex-wrap gap-1.5 items-center overflow-hidden">
+                                        {worker.skills?.length > 0 ? (
+                                            <>
+                                                {worker.skills.slice(0, 6).map((skill) => (
+                                                    <span
+                                                        key={skill}
+                                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 truncate max-w-[8rem]"
+                                                    >
+                                                        {skill}
+                                                    </span>
+                                                ))}
+                                                {worker.skills.length > 6 && (
+                                                    <span className="text-xs text-gray-400 flex-shrink-0">+{worker.skills.length - 6}</span>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">No skills listed</span>
+                                        )}
+                                    </div>
+                                    {/* Spacer to push button down */}
+                                    <div className="flex-1 min-h-2" />
+                                    {/* Button: fixed at bottom, no overlap */}
+                                    <div className="flex-shrink-0 pt-4 mt-auto border-t border-gray-100">
                                         <Link
-                                            href={route('contracts.index')}
-                                            className="text-teal-600 hover:text-teal-800 text-sm font-medium"
+                                            href={worker.profile_url}
+                                            className="inline-flex items-center justify-center w-full h-11 px-4 py-2.5 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                         >
-                                            View All
+                                            <LinkIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                                            <span>View Profile</span>
                                         </Link>
                                     </div>
-                                    <div className="space-y-3">
-                                        {notifications.deadlines.map((deadline) => (
-                                            <DeadlineCard key={deadline.id} deadline={deadline} />
-                                        ))}
-                                    </div>
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Pagination: fixed height row */}
+                    {workers.data?.length > 0 && (workers.prev_page_url || workers.next_page_url) && (
+                        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 min-h-[2.75rem] py-2">
+                            <p className="text-sm text-gray-600">
+                                Page {workers.current_page} of {workers.last_page}
+                            </p>
+                            <div className="flex gap-2">
+                                {workers.prev_page_url && (
+                                    <Link
+                                        href={workers.prev_page_url}
+                                        className="inline-flex items-center justify-center px-4 py-2 h-10 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 min-w-[5rem]"
+                                    >
+                                        Previous
+                                    </Link>
+                                )}
+                                {workers.next_page_url && (
+                                    <Link
+                                        href={workers.next_page_url}
+                                        className="inline-flex items-center justify-center px-4 py-2 h-10 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 min-w-[5rem]"
+                                    >
+                                        Next
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     )}
-
-                    {/* Recent Activity Feed */}
-                    <div className="mt-8">
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                            <div className="p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
-                                    <Link
-                                        href={route('analytics.index')}
-                                        className="text-teal-600 hover:text-teal-800 text-sm font-medium"
-                                    >
-                                        View Analytics
-                                    </Link>
-                                </div>
-                                <div className="space-y-3">
-                                    {activities?.length > 0 ? (
-                                        activities.map((activity, index) => (
-                                            <ActivityCard key={index} activity={activity} />
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-8">
-                                            <ClockIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                            <p className="text-gray-500">No recent activity</p>
-                                            <p className="text-sm text-gray-400">Activity will appear here as you post jobs and manage contracts</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Active Contracts */}
-                    <div className="mt-8">
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                            <div className="p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-semibold text-gray-900">Active Contracts</h3>
-                                    <Link
-                                        href={route('contracts.index')}
-                                        className="text-teal-600 hover:text-teal-800 text-sm font-medium"
-                                    >
-                                        View All
-                                    </Link>
-                                </div>
-                                <div className="space-y-3">
-                                    {activeContracts?.length > 0 ? (
-                                        activeContracts.map((contract) => (
-                                            <ContractCard key={contract.id} contract={contract} />
-                                        ))
-                                    ) : (
-                                        <p className="text-gray-500 text-center py-4">No active contracts</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="mt-8">
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-lg border border-gray-200">
-                            <div className="p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <Link
-                                        href={route('jobs.create')}
-                                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                                    >
-                                        <BriefcaseIcon className="w-8 h-8 text-teal-500 mr-3" />
-                                        <div>
-                                            <p className="font-medium text-gray-900">Post New Job</p>
-                                            <p className="text-sm text-gray-600">Find gig workers</p>
-                                        </div>
-                                    </Link>
-
-                                    <Link
-                                        href={route('jobs.index')}
-                                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                                    >
-                                        <DocumentTextIcon className="w-8 h-8 text-blue-500 mr-3" />
-                                        <div>
-                                            <p className="font-medium text-gray-900">Manage Jobs</p>
-                                            <p className="text-sm text-gray-600">View all postings</p>
-                                        </div>
-                                    </Link>
-
-                                    <Link
-                                        href={route('contracts.index')}
-                                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                                    >
-                                        <CheckCircleIcon className="w-8 h-8 text-green-500 mr-3" />
-                                        <div>
-                                            <p className="font-medium text-gray-900">Active Projects</p>
-                                            <p className="text-sm text-gray-600">Track progress</p>
-                                        </div>
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
-
-            <style>{`
-                body {
-                    background: white;
-                    color: #333;
-                    font-family: 'Inter', sans-serif;
-                }
-
-                [data-observer-target] {
-                    opacity: 0;
-                    transform: translateY(20px);
-                    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-                }
-                [data-observer-target].is-visible {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            `}</style>
         </AuthenticatedLayout>
     );
 }

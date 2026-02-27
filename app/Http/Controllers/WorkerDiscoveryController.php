@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\AIJobMatchingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,10 +30,15 @@ class WorkerDiscoveryController extends Controller
         // Search by name or bio
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                  ->orWhere('professional_title', 'LIKE', "%{$search}%")
-                  ->orWhere('bio', 'LIKE', "%{$search}%");
+            $term = '%' . $search . '%';
+            $query->where(function ($q) use ($term) {
+                $driver = DB::connection()->getDriverName();
+                $nameExpr = $driver === 'mysql'
+                    ? "CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))"
+                    : "(COALESCE(first_name,'') || ' ' || COALESCE(last_name,''))";
+                $q->whereRaw("{$nameExpr} LIKE ?", [$term])
+                  ->orWhere('professional_title', 'LIKE', $term)
+                  ->orWhere('bio', 'LIKE', $term);
             });
         }
 

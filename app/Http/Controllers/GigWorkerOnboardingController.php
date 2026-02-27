@@ -86,6 +86,7 @@ class GigWorkerOnboardingController extends Controller
                 $user->profile_completed = true;
                 $user->onboarding_step = 5;
                 $user->save();
+                $user->syncSkillsFromExperience();
 
                 // #region agent log
                 $__dbg3 = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'C','location'=>'GigWorkerOnboardingController.php:step5-redirect','message'=>'redirecting to jobs.index','data'=>['user_id'=>$user->id,'profile_completed'=>$user->profile_completed],'timestamp'=>round(microtime(true)*1000)])."\n";
@@ -195,10 +196,12 @@ class GigWorkerOnboardingController extends Controller
             if (is_array($skills) && count($skills) > 0) {
                 $user->skills_with_experience = $skills;
                 $user->save();
+                $user->syncSkillsFromExperience();
             }
         } elseif (is_array($skillsRaw) && count($skillsRaw) > 0) {
             $user->skills_with_experience = $skillsRaw;
             $user->save();
+            $user->syncSkillsFromExperience();
         }
     }
 
@@ -257,6 +260,7 @@ class GigWorkerOnboardingController extends Controller
 
         $user->portfolio_link = $validated['portfolio_link'] ?? null;
         $user->save();
+        $user->syncSkillsFromExperience();
     }
 
     /**
@@ -303,6 +307,8 @@ class GigWorkerOnboardingController extends Controller
             'title'   => $user->professional_title,
             'skills'  => count($user->skills_with_experience ?? []),
         ]);
+
+        $user->syncSkillsFromExperience();
     }
 }
 

@@ -11,8 +11,16 @@ export default function Recommendations({
     userType,
     hasError,
     skills = [],
+    pageTitle = "AI Recommendations",
+    bannerTitle,
+    bannerDescription,
 }) {
     const isGigWorker = userType === "gig_worker";
+
+    const effectiveBannerTitle = bannerTitle ?? (isGigWorker ? "AI-Powered Job Recommendations" : "AI-Matched Gig Workers");
+    const effectiveBannerDescription = bannerDescription ?? (isGigWorker
+        ? "Our AI analyzes your skills, experience, and professional background to find the best job opportunities for you. Match scores are based on skill compatibility and experience alignment."
+        : "Our AI evaluates gig worker profiles against your job requirements, focusing on skills match and experience level to find the best candidates for your projects.");
 
     const experienceOptions = [
         { label: "All experience levels", value: "all" },
@@ -1047,11 +1055,11 @@ export default function Recommendations({
         <AuthenticatedLayout
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    🤖 AI-Powered Matches
+                    🤖 {pageTitle}
                 </h2>
             }
         >
-            <Head title="AI Recommendations" />
+            <Head title={pageTitle} />
 
             <link
                 href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap"
@@ -1075,9 +1083,7 @@ export default function Recommendations({
                                 <span className="text-3xl">🤖</span>
 
                                 <h3 className="text-xl font-bold">
-                                    {isGigWorker
-                                        ? "AI-Powered Job Recommendations"
-                                        : "AI-Matched Gig Workers"}
+                                    {effectiveBannerTitle}
                                 </h3>
 
                                 <button
@@ -1093,9 +1099,7 @@ export default function Recommendations({
                             </div>
 
                             <p className="text-blue-100">
-                                {isGigWorker
-                                    ? "Our AI analyzes your skills, experience, and professional background to find the best job opportunities for you. Match scores are based on skill compatibility and experience alignment."
-                                    : "Our AI evaluates gig worker profiles against your job requirements, focusing on skills match and experience level to find the best candidates for your projects."}
+                                {effectiveBannerDescription}
                             </p>
 
                             <div className="mt-4 flex items-center gap-4 text-sm text-blue-100">

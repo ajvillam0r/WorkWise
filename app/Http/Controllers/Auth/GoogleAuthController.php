@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Exceptions\GoogleOAuthException;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -111,6 +112,20 @@ class GoogleAuthController extends Controller
     }
 
     /**
+     * Return the appropriate redirect for the authenticated user (aligned with AuthenticatedSessionController).
+     */
+    private function redirectForUser(User $user, string $defaultUrl): RedirectResponse
+    {
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+        if ($user->isGigWorker()) {
+            return redirect()->route('jobs.index');
+        }
+        return redirect()->to($defaultUrl);
+    }
+
+    /**
      * Handle user registration via Google OAuth
      */
     private function handleRegistration($googleUser, $intendedUrl = '/dashboard')
@@ -136,10 +151,11 @@ class GoogleAuthController extends Controller
                 
                 // Log the user in
                 Auth::login($existingUser, true);
-                
-                return redirect()->intended($intendedUrl)->with('success', 'Welcome back! Your Google account has been linked.');
+
+                return $this->redirectForUser($existingUser, $intendedUrl)
+                    ->with('success', 'Welcome back! Your Google account has been linked.');
             }
-            
+
             // Create new user
             $user = User::create([
                 'name' => $googleUser->getName(),
@@ -158,9 +174,10 @@ class GoogleAuthController extends Controller
             
             // Log the user in
             Auth::login($user, true);
-            
-            return redirect()->intended($intendedUrl)->with('success', 'Account created successfully! Welcome to WorkWise.');
-            
+
+            return $this->redirectForUser($user, $intendedUrl)
+                ->with('success', 'Account created successfully! Welcome to WorkWise.');
+
         } catch (\Exception $e) {
             Log::error('Google OAuth registration failed', [
                 'error' => $e->getMessage(),
@@ -225,9 +242,9 @@ class GoogleAuthController extends Controller
             
             // Log the user in with remember me
             Auth::login($user, true);
-            
-            return redirect()->intended($intendedUrl)->with('success', 'Welcome back!');
-            
+
+            return $this->redirectForUser($user, $intendedUrl)->with('success', 'Welcome back!');
+
         } catch (\Exception $e) {
             Log::error('Google OAuth login failed', [
                 'error' => $e->getMessage(),

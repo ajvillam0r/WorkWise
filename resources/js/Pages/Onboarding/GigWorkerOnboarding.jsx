@@ -1,11 +1,14 @@
 import { useState, useRef } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Step1Welcome, Step2ProfessionalInfo } from './Steps12';
 import { Step3Skills, Step4Portfolio, Step5Review } from './Steps345';
 
 const PROGRESS = { 1: 20, 2: 40, 3: 60, 4: 80, 5: 100 };
 
 export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
+    const { props } = usePage();
+    const csrfToken = props?.csrf_token ?? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
     const [step, setStep] = useState(currentStep > 1 ? currentStep : 1);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -33,6 +36,8 @@ export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
         const fd = new FormData();
         fd.append('step', stepNum);
         fd.append('is_draft', isDraft ? '1' : '0');
+
+        if (csrfToken) fd.append('_token', csrfToken);
 
         // Text fields — always send all of them so any step is a complete snapshot
         fd.append('professional_title', data.professional_title || '');
@@ -91,13 +96,11 @@ export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
             forceFormData: true,
             preserveState: true,
             preserveScroll: true,
+            ...(csrfToken && { headers: { 'X-CSRF-TOKEN': csrfToken } }),
             onSuccess: () => { setSaveError(null); },
             onError: (e) => {
                 // Show non-blocking warning — step already advanced
                 setSaveError('Some data may not have saved. Please check your profile later.');
-                // #region agent log
-                fetch('http://127.0.0.1:7501/ingest/c1ee8a40-5240-4871-b19a-db022ef79a5e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0ba4d'},body:JSON.stringify({sessionId:'b0ba4d',hypothesisId:'A',location:'GigWorkerOnboarding.jsx:handleNext-onError',message:'background save error',data:{step:currentStep,errors:e},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 console.error('Background save error:', e);
             },
         });
@@ -111,6 +114,7 @@ export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
             forceFormData: true,
             preserveState: true,
             preserveScroll: true,
+            ...(csrfToken && { headers: { 'X-CSRF-TOKEN': csrfToken } }),
             onSuccess: () => setSaving(false),
             onError: () => setSaving(false),
         });
@@ -118,31 +122,11 @@ export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
 
     const handleSubmit = () => {
         setSubmitting(true);
-        // #region agent log
-        fetch('http://127.0.0.1:7501/ingest/c1ee8a40-5240-4871-b19a-db022ef79a5e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0ba4d'},body:JSON.stringify({sessionId:'b0ba4d',hypothesisId:'D',location:'GigWorkerOnboarding.jsx:handleSubmit',message:'submit fired',data:{step:5,title:data.professional_title,bio_len:(data.bio||'').length,skills:(data.skills_with_experience||[]).length},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         router.post(route('gig-worker.onboarding.store'), buildFormData(5), {
             forceFormData: true,
+            ...(csrfToken && { headers: { 'X-CSRF-TOKEN': csrfToken } }),
             onError: (e) => {
-                // #region agent log
-                fetch('http://127.0.0.1:7501/ingest/c1ee8a40-5240-4871-b19a-db022ef79a5e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0ba4d'},body:JSON.stringify({sessionId:'b0ba4d',hypothesisId:'B',location:'GigWorkerOnboarding.jsx:handleSubmit-onError',message:'submit onError fired',data:{errors:e},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 setErrors(e); setSubmitting(false);
-            },
-            onSuccess: () => {
-                // #region agent log
-                fetch('http://127.0.0.1:7501/ingest/c1ee8a40-5240-4871-b19a-db022ef79a5e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0ba4d'},body:JSON.stringify({sessionId:'b0ba4d',hypothesisId:'C',location:'GigWorkerOnboarding.jsx:handleSubmit-onSuccess',message:'submit onSuccess fired',data:{},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
-            },
-            onFinish: () => {
-                // #region agent log
-                fetch('http://127.0.0.1:7501/ingest/c1ee8a40-5240-4871-b19a-db022ef79a5e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0ba4d'},body:JSON.stringify({sessionId:'b0ba4d',hypothesisId:'D',location:'GigWorkerOnboarding.jsx:handleSubmit-onFinish',message:'submit onFinish fired',data:{},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
-            },
-            onCancelToken: (token) => {
-                // #region agent log
-                fetch('http://127.0.0.1:7501/ingest/c1ee8a40-5240-4871-b19a-db022ef79a5e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0ba4d'},body:JSON.stringify({sessionId:'b0ba4d',hypothesisId:'A',location:'GigWorkerOnboarding.jsx:handleSubmit-onCancelToken',message:'submit request cancel token issued',data:{},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
             },
         });
     };

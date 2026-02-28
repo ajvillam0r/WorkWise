@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GigJob;
+use App\Services\SkillService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -161,6 +162,8 @@ class GigJobController extends Controller
 
         $job = GigJob::create($validated);
 
+        $this->ensureJobSkillsForPromotion($job);
+
         return redirect()->route('jobs.show', $job)
             ->with('success', 'Job posted successfully! Your job is now live and gig workers can start submitting proposals.');
     }
@@ -258,8 +261,28 @@ class GigJobController extends Controller
 
         $job->update($validated);
 
+        $this->ensureJobSkillsForPromotion($job);
+
         return redirect()->route('jobs.show', $job)
             ->with('success', 'Job updated successfully!');
+    }
+
+    /**
+     * Ensure all skills from a job's skills_requirements exist in the skills table
+     * with source='user' and check each for promotion.
+     */
+    private function ensureJobSkillsForPromotion(GigJob $job): void
+    {
+        $reqs = $job->skills_requirements;
+        if (!is_array($reqs)) return;
+
+        $skillService = app(SkillService::class);
+        foreach ($reqs as $req) {
+            $name = trim($req['skill'] ?? '');
+            if ($name === '') continue;
+            $skill = $skillService->ensureSkill($name);
+            $skillService->checkPromotion($skill);
+        }
     }
 
     /**

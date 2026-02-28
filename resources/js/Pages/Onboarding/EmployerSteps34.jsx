@@ -1,104 +1,97 @@
-import { useState } from 'react';
-
-// ─── Glass Card Component ─────────────────────────────────────────────────────
-function GlassCard({ children, className = '' }) {
-    return (
-        <div className={`bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/80 dark:border-white/5 rounded-3xl shadow-soft ${className}`}>
-            {children}
-        </div>
-    );
-}
+import { useState, useCallback, useEffect, useRef } from 'react';
+import useSkillPipeline from '@/hooks/useSkillPipeline';
+import FuzzySkillPrompt from '@/Components/FuzzySkillPrompt';
 
 // ─── Step 3: Company Bio & Website ───────────────────────────────────────────
 function EmployerStep3Bio({ data, setData, errors, onNext, onBack }) {
     const [charCount, setCharCount] = useState((data.company_description || '').length);
 
     return (
-        <main className="flex-grow container mx-auto px-4 py-10 max-w-5xl relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary/5 rounded-full blur-[100px] -z-10" />
-
-            <div className="mb-10 max-w-3xl mx-auto text-center">
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Company Bio</h1>
-                <p className="text-slate-500 dark:text-slate-400">Introduce your business to potential gig workers.</p>
-
-                <div className="mt-8 flex items-center justify-center gap-2">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                        <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${s === 3 ? 'w-12 bg-primary' : s < 3 ? 'w-4 bg-primary/40' : 'w-4 bg-slate-200 dark:bg-slate-800'}`} />
-                    ))}
+        <main className="flex-grow container mx-auto px-4 py-10 max-w-5xl">
+            <div className="mb-10 max-w-3xl mx-auto">
+                <div className="flex justify-between items-end mb-3">
+                    <h1 className="text-2xl font-bold text-gray-900">Company Bio</h1>
+                    <div className="text-right">
+                        <span className="text-sm font-medium text-gray-500 block">Step 3 of 5</span>
+                        <span className="text-xs font-semibold text-blue-600">60%</span>
+                    </div>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-500 shadow-lg shadow-blue-500/30" style={{ width: '60%' }} />
                 </div>
             </div>
 
-            <GlassCard className="max-w-3xl mx-auto overflow-hidden">
-                <div className="p-8 md:p-12 space-y-8">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                <div className="p-8 md:p-10 space-y-8">
                     <div className="space-y-2">
-                        <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]" htmlFor="company_website">
-                            Company Website <span className="text-slate-400 font-normal">(Optional)</span>
+                        <label className="block text-sm font-semibold text-gray-700" htmlFor="company_website">
+                            Company Website <span className="text-gray-400 font-normal">(Optional)</span>
                         </label>
                         <div className="relative group">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 material-symbols-outlined text-lg group-focus-within:text-primary transition-colors">link</span>
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <span className="material-icons text-gray-400 group-focus-within:text-blue-600 transition-colors">link</span>
+                            </div>
                             <input
                                 id="company_website"
                                 type="url"
                                 value={data.company_website}
                                 onChange={e => setData('company_website', e.target.value)}
                                 placeholder="https://example.com"
-                                className="block w-full rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-primary focus:ring-primary/20 text-sm p-4 pl-12 transition-all shadow-sm"
+                                className="block w-full pl-12 pr-4 py-3.5 rounded-lg border border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-sm shadow-sm"
                             />
                         </div>
-                        {errors.company_website && <p className="text-xs text-rose-500 font-bold">{errors.company_website}</p>}
+                        {errors.company_website && <p className="text-xs text-red-500">{errors.company_website}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]" htmlFor="company_description">
-                                Company Description <span className="text-rose-500">*</span>
+                        <div className="flex justify-between items-center">
+                            <label className="block text-sm font-semibold text-gray-700" htmlFor="company_description">
+                                Company Description <span className="text-red-500">*</span>
                             </label>
-                            <span className={`text-[10px] font-bold ${charCount < 50 ? 'text-slate-400' : 'text-green-500'}`}>
+                            <span className={`text-xs font-medium ${charCount < 50 ? 'text-gray-500' : 'text-green-600'}`}>
                                 {charCount}/1000 characters
                             </span>
                         </div>
-                        <div className="relative">
-                            <textarea
-                                id="company_description"
-                                rows={10}
-                                value={data.company_description}
-                                onChange={e => { setData('company_description', e.target.value); setCharCount(e.target.value.length); }}
-                                placeholder="Tell us about your company, what you do, and your typical project needs... (minimum 50 characters)"
-                                className="block w-full rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-primary focus:ring-primary/20 text-sm p-5 transition-all shadow-sm min-h-[250px] leading-relaxed"
-                            />
-                        </div>
+                        <textarea
+                            id="company_description"
+                            rows={10}
+                            value={data.company_description}
+                            onChange={e => { setData('company_description', e.target.value); setCharCount(e.target.value.length); }}
+                            placeholder="Tell us about your company, what you do, and your typical project needs... (minimum 50 characters)"
+                            className="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-4 shadow-sm min-h-[220px] leading-relaxed"
+                        />
                         <div className="flex items-center gap-2 mt-2">
                             {charCount < 50 ? (
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-sm">error_outline</span>
+                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    <span className="material-icons text-sm">error_outline</span>
                                     Minimum 50 characters required
                                 </p>
                             ) : (
-                                <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-sm">check_circle</span>
-                                    Perfect! This gives workers enough detail.
+                                <p className="text-xs text-green-600 flex items-center gap-1">
+                                    <span className="material-icons text-sm">check_circle</span>
+                                    This gives workers enough detail.
                                 </p>
                             )}
                         </div>
-                        {errors.company_description && <p className="text-xs text-rose-500 font-bold">{errors.company_description}</p>}
+                        {errors.company_description && <p className="text-xs text-red-500">{errors.company_description}</p>}
                     </div>
                 </div>
 
-                <div className="border-t border-slate-100 dark:border-slate-800 p-6 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center">
-                    <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold text-sm transition-all">
-                        <span className="material-symbols-outlined text-lg">arrow_back</span>
+                <div className="border-t border-gray-200 p-6 flex justify-between items-center">
+                    <button onClick={onBack} className="inline-flex items-center px-6 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm">
+                        <span className="material-icons text-sm mr-2">arrow_back</span>
                         Back
                     </button>
                     <button
                         onClick={onNext}
                         disabled={charCount < 50}
-                        className={`px-10 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${charCount >= 50 ? 'bg-primary hover:bg-blue-700 text-white hover:shadow-lg active:scale-95' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}
+                        className="inline-flex items-center px-8 py-2.5 text-sm font-medium rounded-lg shadow-md text-white bg-blue-600 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Next Step
-                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                        <span className="material-icons text-sm ml-2">arrow_forward</span>
                     </button>
                 </div>
-            </GlassCard>
+            </div>
         </main>
     );
 }
@@ -144,29 +137,28 @@ function EmployerStep4Preferences({ data, setData, errors, serviceCategories, on
     ];
 
     return (
-        <main className="flex-grow container mx-auto px-4 py-10 max-w-6xl relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary/5 rounded-full blur-[100px] -z-10" />
-
-            <div className="mb-10 max-w-3xl mx-auto text-center">
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Hiring Preferences</h1>
-                <p className="text-slate-500 dark:text-slate-400">Match with the right talent by defining your typical needs.</p>
-
-                <div className="mt-8 flex items-center justify-center gap-2">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                        <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${s === 4 ? 'w-12 bg-primary' : s < 4 ? 'w-4 bg-primary/40' : 'w-4 bg-slate-200 dark:bg-slate-800'}`} />
-                    ))}
+        <main className="flex-grow container mx-auto px-4 py-10 max-w-6xl">
+            <div className="mb-10 max-w-3xl mx-auto">
+                <div className="flex justify-between items-end mb-3">
+                    <h1 className="text-2xl font-bold text-gray-900">Hiring Preferences</h1>
+                    <div className="text-right">
+                        <span className="text-sm font-medium text-gray-500 block">Step 4 of 5</span>
+                        <span className="text-xs font-semibold text-blue-600">80%</span>
+                    </div>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-500 shadow-lg shadow-blue-500/30" style={{ width: '80%' }} />
                 </div>
             </div>
 
             <div className="grid lg:grid-cols-12 gap-8 items-start">
-                {/* Left: Services Selection (Larger) */}
                 <div className="lg:col-span-8">
-                    <GlassCard className="p-8">
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
                         <div className="mb-6 flex justify-between items-center">
-                            <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">
-                                What services do you need? <span className="text-rose-500">*</span>
+                            <label className="block text-sm font-semibold text-gray-700">
+                                What services do you need? <span className="text-red-500">*</span>
                             </label>
-                            <span className="text-[10px] font-bold text-slate-400">SELECT AT LEAST ONE</span>
+                            <span className="text-xs text-gray-500">SELECT AT LEAST ONE</span>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -175,34 +167,33 @@ function EmployerStep4Preferences({ data, setData, errors, serviceCategories, on
                                     key={category}
                                     type="button"
                                     onClick={() => toggleHiringNeed(category)}
-                                    className={`px-4 py-3 rounded-2xl border-2 text-xs font-bold transition-all duration-300 flex items-center justify-between gap-2 overflow-hidden ${(data.primary_hiring_needs || []).includes(category)
-                                            ? 'border-primary bg-primary/5 text-primary shadow-sm scale-105'
-                                            : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:border-primary/20 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                        }`}
+                                    className={`px-4 py-3 rounded-xl border-2 text-xs font-medium transition-all flex items-center justify-between gap-2 overflow-hidden ${(data.primary_hiring_needs || []).includes(category)
+                                        ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm'
+                                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                    }`}
                                 >
                                     <span className="truncate">{category}</span>
                                     {(data.primary_hiring_needs || []).includes(category) && (
-                                        <span className="material-symbols-outlined text-[16px] shrink-0">check_circle</span>
+                                        <span className="material-icons text-base shrink-0">check_circle</span>
                                     )}
                                 </button>
                             ))}
                         </div>
-                        {errors.primary_hiring_needs && <p className="text-xs text-rose-500 font-bold mt-4">{errors.primary_hiring_needs}</p>}
-                    </GlassCard>
+                        {errors.primary_hiring_needs && <p className="text-xs text-red-500 mt-4">{errors.primary_hiring_needs}</p>}
+                    </div>
                 </div>
 
-                {/* Right: Specifics (Sidebar) */}
                 <div className="lg:col-span-4 space-y-6">
-                    <GlassCard className="p-8 space-y-6">
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 space-y-6">
                         <div className="space-y-2">
-                            <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]" htmlFor="typical_project_budget">
-                                Typical Budget <span className="text-rose-500">*</span>
+                            <label className="block text-sm font-semibold text-gray-700" htmlFor="typical_project_budget">
+                                Typical Budget <span className="text-red-500">*</span>
                             </label>
                             <select
                                 id="typical_project_budget"
                                 value={data.typical_project_budget}
                                 onChange={e => setData('typical_project_budget', e.target.value)}
-                                className="block w-full rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-primary focus:ring-primary/20 text-xs p-4 shadow-sm"
+                                className="block w-full rounded-lg border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 text-sm p-3 shadow-sm border"
                             >
                                 <option value="">Select Range</option>
                                 {budgetOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -210,14 +201,14 @@ function EmployerStep4Preferences({ data, setData, errors, serviceCategories, on
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]" htmlFor="typical_project_duration">
-                                Typical Duration <span className="text-rose-500">*</span>
+                            <label className="block text-sm font-semibold text-gray-700" htmlFor="typical_project_duration">
+                                Typical Duration <span className="text-red-500">*</span>
                             </label>
                             <select
                                 id="typical_project_duration"
                                 value={data.typical_project_duration}
                                 onChange={e => setData('typical_project_duration', e.target.value)}
-                                className="block w-full rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-primary focus:ring-primary/20 text-xs p-4 shadow-sm"
+                                className="block w-full rounded-lg border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 text-sm p-3 shadow-sm border"
                             >
                                 <option value="">Select Duration</option>
                                 {durationOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -225,14 +216,14 @@ function EmployerStep4Preferences({ data, setData, errors, serviceCategories, on
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]" htmlFor="preferred_experience_level">
-                                Talent level <span className="text-rose-500">*</span>
+                            <label className="block text-sm font-semibold text-gray-700" htmlFor="preferred_experience_level">
+                                Talent level <span className="text-red-500">*</span>
                             </label>
                             <select
                                 id="preferred_experience_level"
                                 value={data.preferred_experience_level}
                                 onChange={e => setData('preferred_experience_level', e.target.value)}
-                                className="block w-full rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-primary focus:ring-primary/20 text-xs p-4 shadow-sm"
+                                className="block w-full rounded-lg border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 text-sm p-3 shadow-sm border"
                             >
                                 <option value="">Select Experience</option>
                                 {experienceOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -240,42 +231,215 @@ function EmployerStep4Preferences({ data, setData, errors, serviceCategories, on
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]" htmlFor="hiring_frequency">
-                                frequency <span className="text-rose-500">*</span>
+                            <label className="block text-sm font-semibold text-gray-700" htmlFor="hiring_frequency">
+                                Hiring frequency <span className="text-red-500">*</span>
                             </label>
                             <select
                                 id="hiring_frequency"
                                 value={data.hiring_frequency}
                                 onChange={e => setData('hiring_frequency', e.target.value)}
-                                className="block w-full rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-primary focus:ring-primary/20 text-xs p-4 shadow-sm"
+                                className="block w-full rounded-lg border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 text-sm p-3 shadow-sm border"
                             >
                                 <option value="">Select Frequency</option>
                                 {frequencyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                             </select>
                         </div>
-                    </GlassCard>
+                    </div>
                 </div>
             </div>
 
-            {/* Footer Nav */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-6 px-6 z-40 shadow-[0_-10px_30px_-5px_rgba(0,0,0,0.1)]">
+            <EmployerSkillsBlock data={data} setData={setData} errors={errors} />
+
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 px-6 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 <div className="container mx-auto max-w-6xl flex items-center justify-between">
-                    <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold text-sm transition-all px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
-                        <span className="material-symbols-outlined text-lg">arrow_back</span>
+                    <button onClick={onBack} className="inline-flex items-center px-6 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm">
+                        <span className="material-icons text-sm mr-2">arrow_back</span>
                         Back
                     </button>
                     <button
                         onClick={onNext}
                         disabled={(data.primary_hiring_needs || []).length === 0}
-                        className={`px-10 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-primary/20 ${(data.primary_hiring_needs || []).length > 0 ? 'bg-primary hover:bg-blue-700 text-white hover:-translate-y-0.5 active:scale-95' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}
+                        className="inline-flex items-center px-8 py-2.5 text-sm font-medium rounded-lg shadow-md text-white bg-blue-600 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Review Profile
-                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                        <span className="material-icons text-sm ml-2">arrow_forward</span>
                     </button>
                 </div>
             </div>
-            <div className="h-32" />
+            <div className="h-20" />
         </main>
+    );
+}
+
+// ─── Employer Skills Block (used inside Step 4) ──────────────────────────────
+function EmployerSkillsBlock({ data, setData, errors }) {
+    const [search, setSearch] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [categorySkills, setCategorySkills] = useState([]);
+    const debounceRef = useRef(null);
+    const hiringSkills = data.primary_hiring_skills || [];
+
+    const {
+        suggestions, categories, loadSuggestions, loadCategorySkills,
+        validateAndAdd, isValidating, validationError, setValidationError,
+        fuzzyPrompt, acceptFuzzy, rejectFuzzy, dismissFuzzy,
+    } = useSkillPipeline();
+
+    useEffect(() => {
+        clearTimeout(debounceRef.current);
+        if (search.trim().length >= 1) {
+            debounceRef.current = setTimeout(() => loadSuggestions(search.trim()), 250);
+        }
+        return () => clearTimeout(debounceRef.current);
+    }, [search, loadSuggestions]);
+
+    useEffect(() => {
+        if (selectedCategory) {
+            loadCategorySkills(selectedCategory).then(setCategorySkills);
+        } else {
+            setCategorySkills([]);
+        }
+    }, [selectedCategory, loadCategorySkills]);
+
+    const filtered = search.trim()
+        ? suggestions.filter(s => s.toLowerCase().includes(search.toLowerCase()) && !hiringSkills.includes(s))
+        : [];
+
+    const addSkill = useCallback(async (name) => {
+        const trimmed = (name || '').trim();
+        if (!trimmed || hiringSkills.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+            setSearch('');
+            return;
+        }
+        const isVerified = suggestions.some(s => s.toLowerCase() === trimmed.toLowerCase());
+        if (isVerified) {
+            const canonical = suggestions.find(s => s.toLowerCase() === trimmed.toLowerCase()) || trimmed;
+            setData('primary_hiring_skills', [...hiringSkills, canonical]);
+            setSearch('');
+            return;
+        }
+        const result = await validateAndAdd(trimmed);
+        if (result) {
+            setData('primary_hiring_skills', [...(data.primary_hiring_skills || []), result.skill]);
+            setSearch('');
+        }
+    }, [hiringSkills, suggestions, validateAndAdd, setData, data.primary_hiring_skills]);
+
+    const removeSkill = (i) => setData('primary_hiring_skills', hiringSkills.filter((_, idx) => idx !== i));
+
+    return (
+        <div className="mt-8">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+                <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Skills You Often Hire For <span className="text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <p className="text-xs text-gray-500">Select skills to help us pre-fill your job posts and find better talent matches.</p>
+                </div>
+
+                {fuzzyPrompt && (
+                    <div className="mb-4">
+                        <FuzzySkillPrompt prompt={fuzzyPrompt} onAccept={acceptFuzzy} onReject={rejectFuzzy} onDismiss={dismissFuzzy} />
+                    </div>
+                )}
+                {validationError && (
+                    <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                        <span className="material-icons text-red-500 text-lg">error_outline</span>
+                        <p className="text-sm text-red-700 flex-1">{validationError}</p>
+                        <button onClick={() => setValidationError(null)} className="text-red-400 hover:text-red-600">
+                            <span className="material-icons text-sm">close</span>
+                        </button>
+                    </div>
+                )}
+
+                {categories.length > 0 && (
+                    <div className="mb-4">
+                        <p className="text-xs font-medium text-gray-500 mb-2">Browse by category</p>
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => setSelectedCategory('')}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${!selectedCategory ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+                                All
+                            </button>
+                            {categories.slice(0, 15).map(cat => (
+                                <button type="button" key={cat} onClick={() => setSelectedCategory(cat === selectedCategory ? '' : cat)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${selectedCategory === cat ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {selectedCategory && categorySkills.length > 0 && (
+                    <div className="mb-4">
+                        <p className="text-xs text-gray-500 mb-2">Top skills in <strong>{selectedCategory}</strong>:</p>
+                        <div className="flex flex-wrap gap-2">
+                            {categorySkills.map(s => {
+                                const added = hiringSkills.some(h => h.toLowerCase() === s.toLowerCase());
+                                return (
+                                    <button key={s} type="button" onClick={() => !added && addSkill(s)} disabled={added}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${added ? 'bg-green-50 text-green-700 border-green-200 cursor-default' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'}`}>
+                                        {added ? '✓ ' : '+ '}{s}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                <div className="relative mb-4">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span className="material-icons text-gray-400 text-lg">search</span>
+                    </div>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && search && addSkill(search)}
+                        placeholder="Search or add a skill..."
+                        className="block w-full pl-11 pr-16 py-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                        disabled={isValidating}
+                    />
+                    <button onClick={() => addSkill(search)} disabled={isValidating || !search.trim()}
+                        className="absolute right-2 top-2 bottom-2 bg-gray-900 text-white px-4 rounded-lg text-xs font-medium hover:bg-gray-800 transition disabled:opacity-40">
+                        {isValidating ? '...' : 'Add'}
+                    </button>
+                </div>
+
+                {filtered.length > 0 && (
+                    <div className="mb-4 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-40 overflow-y-auto">
+                        {filtered.slice(0, 6).map(s => (
+                            <button key={s} type="button" onClick={() => addSkill(s)}
+                                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700 flex items-center justify-between">
+                                <span>{s}</span>
+                                <span className="material-icons text-gray-300 text-sm">add</span>
+                            </button>
+                        ))}
+                        {search.trim() && !filtered.some(s => s.toLowerCase() === search.trim().toLowerCase()) && (
+                            <button type="button" onClick={() => addSkill(search)}
+                                className="w-full text-left px-4 py-2.5 hover:bg-green-50 text-sm text-green-700 font-medium border-t border-gray-100 flex items-center gap-2">
+                                <span className="material-icons text-sm">add_circle</span>
+                                Add "{search.trim()}" as new skill
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {hiringSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {hiringSkills.map((s, i) => (
+                            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+                                {s}
+                                <button type="button" onClick={() => removeSkill(i)} className="hover:text-red-500 transition">
+                                    <span className="material-icons text-sm">close</span>
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+                {errors.primary_hiring_skills && <p className="text-xs text-red-500 mt-2">{errors.primary_hiring_skills}</p>}
+            </div>
+        </div>
     );
 }
 

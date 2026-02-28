@@ -1,0 +1,9 @@
+{"sessionId":"c1f347","hypothesisId":"H1","location":"GigWorkerOnboardingController.php:show","message":"show rendered","data":{"query_step":null,"onboarding_step":0,"currentStep":1},"timestamp":1772226995975}
+{"sessionId":"c1f347","hypothesisId":"H2","location":"GigWorkerOnboardingController.php:store-entry","message":"store called","data":{"step":"2","isDraft":false,"user_id":17,"onboarding_step":0},"timestamp":1772227028702}
+{"sessionId":"c1f347","hypothesisId":"H5","location":"GigWorkerOnboardingController.php:store-success-back","message":"step 2 success, returning back()","data":{"step":"2"},"timestamp":1772227031762}
+{"sessionId":"c1f347","hypothesisId":"H1","location":"GigWorkerOnboardingController.php:show","message":"show rendered","data":{"query_step":null,"onboarding_step":2,"currentStep":2},"timestamp":1772227032369}
+{"sessionId":"c1f347","hypothesisId":"H2","location":"GigWorkerOnboardingController.php:store-entry","message":"store called","data":{"step":"3","isDraft":false,"user_id":17,"onboarding_step":2},"timestamp":1772227048757}
+{"sessionId":"c1f347","hypothesisId":"H1","location":"GigWorkerOnboardingController.php:show","message":"show rendered","data":{"query_step":null,"onboarding_step":3,"currentStep":3},"timestamp":1772227049378}
+{"sessionId":"c1f347","hypothesisId":"H2","location":"GigWorkerOnboardingController.php:store-entry","message":"store called","data":{"step":"4","isDraft":false,"user_id":17,"onboarding_step":3},"timestamp":1772227077357}
+{"sessionId":"c1f347","hypothesisId":"H1","location":"GigWorkerOnboardingController.php:show","message":"show rendered","data":{"query_step":null,"onboarding_step":4,"currentStep":4},"timestamp":1772227079276}
+{"sessionId":"c1f347","hypothesisId":"H2","location":"GigWorkerOnboardingController.php:store-entry","message":"store called","data":{"step":"5","isDraft":false,"user_id":17,"onboarding_step":4},"timestamp":1772227083131}

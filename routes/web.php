@@ -35,6 +35,7 @@ use App\Http\Controllers\DebugController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\SimpleTestController;
 use App\Http\Controllers\AISkillController;
+use App\Http\Controllers\Admin\SkillModerationController;
 use App\Http\Controllers\UserHeartbeatController;
 
 use Illuminate\Foundation\Application;
@@ -436,6 +437,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/ai/recommendations', [AIRecommendationController::class, 'index'])->name('ai.recommendations');
     Route::get('/aimatch/employer', [AIRecommendationController::class, 'employerMatches'])->name('ai.recommendations.employer');
     Route::get('/aimatch/gig-worker', [AIRecommendationController::class, 'gigWorkerMatches'])->name('ai.recommendations.gigworker');
+    Route::get('/ai-recommendations/employer', [AIRecommendationController::class, 'employerRecommendations'])->name('ai.recommendations.employer.quality');
+    Route::get('/ai-recommendations/gig-worker', [AIRecommendationController::class, 'gigWorkerRecommendations'])->name('ai.recommendations.gigworker.quality');
 
     // Message attachment download
     Route::get('/messages/{message}/download', [MessageController::class, 'downloadAttachment'])->name('messages.download');
@@ -492,6 +495,12 @@ Route::middleware(['auth'])->group(function () {
     
     // AI Skill correction for onboarding
     Route::post('/api/ai-skills/correct', [AISkillController::class, 'correct'])->name('api.ai-skills.correct');
+
+    // Dynamic Skills API
+    Route::get('/api/skills/suggestions', [AISkillController::class, 'suggestions'])->name('api.skills.suggestions');
+    Route::post('/api/skills/validate', [AISkillController::class, 'validate'])->name('api.skills.validate');
+    Route::post('/api/skills/suggest-match', [AISkillController::class, 'suggestMatch'])->name('api.skills.suggest-match');
+    Route::post('/api/skills/ensure', [AISkillController::class, 'ensure'])->name('api.skills.ensure');
 });
 
 // Admin routes
@@ -499,6 +508,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Admin dashboard
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard.alt');
+
+    // Skill moderation
+    Route::get('/skills', [SkillModerationController::class, 'index'])->name('skills.index');
+    Route::post('/skills/merge', [SkillModerationController::class, 'merge'])->name('skills.merge');
     
     // Real-time Dashboard API endpoints
     Route::get('/api/realtime-stats', [\App\Http\Controllers\AdminDashboardController::class, 'realtimeStats']);

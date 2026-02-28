@@ -103,6 +103,9 @@ class ProfileController extends Controller
                 'portfolio_link'         => $user->portfolio_link,
                 'resume_file'            => $this->supabaseUrl($user->resume_file),
                 'profile_completed'      => $user->profile_completed,
+                'location'               => trim(($user->city ?? '') . ($user->country ? ', ' . $user->country : '')),
+                'country'                => $user->country,
+                'city'                   => $user->city,
             ],
             'pastProjects' => $user->freelancerProjects()
                 ->with([
@@ -210,6 +213,9 @@ class ProfileController extends Controller
                 'portfolio_link'         => $user->portfolio_link,
                 'resume_file'            => $this->supabaseUrl($user->resume_file),
                 'profile_completed'      => $user->profile_completed,
+                'location'               => trim(($user->city ?? '') . ($user->country ? ', ' . $user->country : '')),
+                'country'                => $user->country,
+                'city'                   => $user->city,
             ],
             'pastProjects' => $user->freelancerProjects()
                 ->with([
@@ -348,6 +354,8 @@ class ProfileController extends Controller
                 'portfolio_link'         => $user->portfolio_link,
                 'resume_file'            => $this->supabaseUrl($user->resume_file),
                 'resume_file_name'       => $user->resume_file ? basename($user->resume_file) : null,
+                'country'                => $user->country,
+                'city'                   => $user->city,
             ],
             'status' => session('status'),
         ]);
@@ -372,6 +380,8 @@ class ProfileController extends Controller
             'hourly_rate'            => 'nullable|numeric|min:0|max:99999',
             'portfolio_link'         => 'nullable|string|max:500',
             'skills_with_experience' => 'nullable|string', // sent as JSON string
+            'country'                => 'nullable|string|max:255',
+            'city'                   => 'nullable|string|max:255',
             'profile_picture'        => 'nullable|image|mimes:jpeg,png,gif,webp|max:5120',
             'resume_file'            => 'nullable|file|mimes:pdf,doc,docx|max:10240',
         ], [
@@ -438,6 +448,8 @@ class ProfileController extends Controller
         $user->bio                = $validated['bio'] ?? null;
         $user->hourly_rate        = $validated['hourly_rate'] ?? null;
         $user->portfolio_link     = $validated['portfolio_link'] ?? null;
+        $user->country            = $validated['country'] ?? null;
+        $user->city               = $validated['city'] ?? null;
         $user->save();
 
         $user->syncSkillsFromExperience();

@@ -20,8 +20,7 @@ class MatchService
 
     public function __construct()
     {
-        // Use QWEN_API_KEY for Groq API
-        $this->apiKey = env('QWEN_API_KEY');
+        $this->apiKey = env('GROQ_API_KEY');
         $this->baseUrl = 'https://api.groq.com/openai/v1';
         $this->certPath = base_path('cacert.pem');
         $this->isConfigured = !empty($this->apiKey);
@@ -64,7 +63,7 @@ class MatchService
         $this->model = $this->models[0]['name'];
 
         if (!$this->isConfigured) {
-            Log::warning('QWEN_API_KEY is not configured. AI matching will use fallback mode.');
+            Log::warning('GROQ_API_KEY is not configured. AI matching will use fallback mode.');
         } else {
             Log::info('AI matching configured with Groq API and multi-model failover.');
         }
@@ -78,22 +77,35 @@ class MatchService
      */
     private function getJobSkillsForMatching(GigJob $job): array
     {
+        // Normalize skills_requirements (may be string if not cast or from raw query)
+        $skillsReqs = $job->skills_requirements;
+        if (is_string($skillsReqs)) {
+            $skillsReqs = json_decode($skillsReqs, true);
+        }
+        if (!is_array($skillsReqs)) {
+            $skillsReqs = [];
+        }
+
         // Prioritize skills_requirements (structured data)
-        if (!empty($job->skills_requirements)) {
-            $required = array_filter($job->skills_requirements, fn($s) => 
-                ($s['importance'] ?? 'required') === 'required'
+        if (!empty($skillsReqs)) {
+            $required = array_filter($skillsReqs, fn($s) =>
+                is_array($s) && (($s['importance'] ?? 'required') === 'required')
             );
-            
-            $preferred = array_filter($job->skills_requirements, fn($s) => 
-                ($s['importance'] ?? 'required') === 'preferred'
+            $preferred = array_filter($skillsReqs, fn($s) =>
+                is_array($s) && (($s['importance'] ?? 'required') === 'preferred')
             );
-            
-            $allSkillNames = array_map(fn($s) => $s['skill'], $job->skills_requirements);
-            
+            $allSkillNames = array_values(array_map(function ($s) {
+                if (is_array($s)) {
+                    return trim((string) ($s['skill'] ?? $s[0] ?? ''));
+                }
+                return trim((string) $s);
+            }, $skillsReqs));
+            $allSkillNames = array_filter($allSkillNames);
+
             return [
                 'required' => array_values($required),
                 'preferred' => array_values($preferred),
-                'all_skill_names' => $allSkillNames
+                'all_skill_names' => array_values($allSkillNames)
             ];
         }
         
@@ -656,9 +668,13 @@ class MatchService
     public function getRecommendedJobs(User $gigWorker, int $limit = 5, bool $randomize = false): array
     {
         // Limit the number of jobs to process to prevent timeouts
+        // Include jobs that have skills in either required_skills or skills_requirements
         $query = GigJob::with(['employer'])
             ->where('status', 'open')
-            ->whereNotNull('required_skills');
+            ->where(function ($q) {
+                $q->whereNotNull('required_skills')
+                    ->orWhereNotNull('skills_requirements');
+            });
 
         if ($randomize) {
             $query->inRandomOrder();

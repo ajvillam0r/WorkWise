@@ -32,9 +32,11 @@ class GigWorkerOnboardingController extends Controller
                 ->with('message', 'Your profile is already complete!');
         }
 
+        $currentStep = (int) $request->query('step', $user->onboarding_step ?: 1);
+
         return Inertia::render('Onboarding/GigWorkerOnboarding', [
             'user' => $user,
-            'currentStep' => $user->onboarding_step ?: 1,
+            'currentStep' => $currentStep,
         ]);
     }
 
@@ -47,12 +49,6 @@ class GigWorkerOnboardingController extends Controller
         $step = $request->input('step', 1);
         $isDraft = $request->boolean('is_draft', false);
 
-        // #region agent log
-        $__dbg = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'B','location'=>'GigWorkerOnboardingController.php:store-entry','message'=>'store called','data'=>['step'=>$step,'isDraft'=>$isDraft,'user_id'=>$user->id,'profile_completed'=>$user->profile_completed,'onboarding_step'=>$user->onboarding_step],'timestamp'=>round(microtime(true)*1000)])."\n";
-        file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg, FILE_APPEND);
-        Log::info('[DEBUG-b0ba4d] store-entry', ['step'=>$step,'isDraft'=>$isDraft,'user_id'=>$user->id,'profile_completed'=>$user->profile_completed]);
-        // #endregion
-
         try {
             match ((int) $step) {
                 2 => $this->saveStep2($request, $user),
@@ -61,12 +57,6 @@ class GigWorkerOnboardingController extends Controller
                 5 => $this->saveStep5($request, $user),
                 default => null,
             };
-
-            // #region agent log
-            $__dbg2 = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'B','location'=>'GigWorkerOnboardingController.php:after-save','message'=>'step save succeeded','data'=>['step'=>$step,'professional_title'=>$user->professional_title,'bio_len'=>strlen($user->bio??''),'skills_count'=>count($user->skills_with_experience??[])],'timestamp'=>round(microtime(true)*1000)])."\n";
-            file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg2, FILE_APPEND);
-            Log::info('[DEBUG-b0ba4d] after-save', ['step'=>$step,'title'=>$user->professional_title,'skills'=>count($user->skills_with_experience??[])]);
-            // #endregion
 
             // Update onboarding step progress
             if (!$isDraft && $user->onboarding_step < $step) {
@@ -88,12 +78,6 @@ class GigWorkerOnboardingController extends Controller
                 $user->save();
                 $user->syncSkillsFromExperience();
 
-                // #region agent log
-                $__dbg3 = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'C','location'=>'GigWorkerOnboardingController.php:step5-redirect','message'=>'redirecting to jobs.index','data'=>['user_id'=>$user->id,'profile_completed'=>$user->profile_completed],'timestamp'=>round(microtime(true)*1000)])."\n";
-                file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg3, FILE_APPEND);
-                Log::info('[DEBUG-b0ba4d] step5-redirect', ['user_id'=>$user->id,'profile_completed'=>$user->profile_completed]);
-                // #endregion
-
                 return redirect()->route('jobs.index')
                     ->with('success', 'Welcome to WorkWise! Your profile has been submitted for review.');
             }
@@ -101,15 +85,11 @@ class GigWorkerOnboardingController extends Controller
             return back()->with('success', "Step {$step} saved successfully.");
 
         } catch (\Throwable $e) {
-            // #region agent log
-            $__dbg4 = json_encode(['sessionId'=>'b0ba4d','hypothesisId'=>'B','location'=>'GigWorkerOnboardingController.php:catch','message'=>'exception caught','data'=>['step'=>$step,'class'=>get_class($e),'msg'=>$e->getMessage(),'is_validation'=>($e instanceof ValidationException)],'timestamp'=>round(microtime(true)*1000)])."\n";
-            file_put_contents(storage_path('logs/debug-b0ba4d.log'), $__dbg4, FILE_APPEND);
-            Log::error('[DEBUG-b0ba4d] catch', ['step'=>$step,'class'=>get_class($e),'msg'=>$e->getMessage()]);
-            // #endregion
-
             if ($e instanceof ValidationException) {
-                throw $e;
+                return redirect()->route('gig-worker.onboarding', ['step' => $step])
+                    ->withErrors($e->errors());
             }
+
             Log::error('Onboarding save error', [
                 'user_id' => $user->id,
                 'step' => $step,
@@ -120,7 +100,8 @@ class GigWorkerOnboardingController extends Controller
                 return response()->json(['success' => false, 'message' => 'Failed to save draft.'], 500);
             }
 
-            return back()->withErrors(['error' => 'Failed to save. Please try again.']);
+            return redirect()->route('gig-worker.onboarding', ['step' => $step])
+                ->withErrors(['error' => 'Failed to save. Please try again.']);
         }
     }
 

@@ -43,6 +43,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'company_website',
         'company_description',
         'primary_hiring_needs',
+        'primary_hiring_skills',
         'typical_project_budget',
         'typical_project_duration',
         'preferred_experience_level',
@@ -132,6 +133,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'escrow_balance' => 'decimal:2',
             'is_admin' => 'boolean',
             'primary_hiring_needs' => 'array',
+            'primary_hiring_skills' => 'array',
             'tutorial_completed' => 'boolean',
             'address_verified_at' => 'datetime',
             // Gig worker casts
@@ -345,7 +347,8 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Sync skill_user pivot from skills_with_experience (call after saving gig worker profile)
+     * Sync skill_user pivot from skills_with_experience (call after saving gig worker profile).
+     * Uses SkillService to ensure skills are created with proper source and promotion is checked.
      */
     public function syncSkillsFromExperience(): void
     {
@@ -357,9 +360,14 @@ class User extends Authenticatable implements MustVerifyEmail
             $this->skills()->detach();
             return;
         }
-        $ids = collect($names)->map(function ($name) {
-            return Skill::firstOrCreate(['name' => trim($name)], ['name' => trim($name)])->id;
+
+        $skillService = app(\App\Services\SkillService::class);
+        $ids = collect($names)->map(function ($name) use ($skillService) {
+            $skill = $skillService->ensureSkill($name);
+            $skillService->checkPromotion($skill);
+            return $skill->id;
         })->all();
+
         $this->skills()->sync(array_unique($ids));
     }
 

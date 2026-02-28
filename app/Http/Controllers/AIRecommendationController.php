@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\MatchService;
+use App\Services\RecommendationService;
 use App\Models\GigJob;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,10 +14,12 @@ use App\Services\AIJobMatchingService;
 class AIRecommendationController extends Controller
 {
     private MatchService $matchService;
+    private RecommendationService $recommendationService;
 
-    public function __construct(MatchService $matchService)
+    public function __construct(MatchService $matchService, RecommendationService $recommendationService)
     {
         $this->matchService = $matchService;
+        $this->recommendationService = $recommendationService;
     }
 
     /**
@@ -118,6 +121,106 @@ class AIRecommendationController extends Controller
     }
 
     /**
+     * Show employer-specific AI recommendations (Competence + Trust).
+     * Separate from aimatch/employer which is competence-only.
+     */
+    public function employerRecommendations(Request $request): Response
+    {
+        $user = auth()->user();
+        if ($user->user_type !== 'employer') {
+            return redirect()->route('ai.recommendations');
+        }
+
+        $recommendations = [];
+        $singleJobId = null;
+
+        try {
+            set_time_limit(25);
+            $refresh = $request->query('refresh') === '1';
+            $requestedJobId = $request->query('job_id');
+
+            if ($requestedJobId) {
+                $job = $user->postedJobs()
+                    ->where('status', 'open')
+                    ->where('id', $requestedJobId)
+                    ->first();
+
+                if ($job) {
+                    $singleJobId = $job->id;
+                    $matches = $this->recommendationService->getJobRecommendationsForEmployer($job, 5, $refresh);
+                    $recommendations[$job->id] = [
+                        'job' => $job,
+                        'matches' => $matches,
+                    ];
+                }
+            } else {
+                $activeJobs = $user->postedJobs()
+                    ->where('status', 'open')
+                    ->limit(3)
+                    ->get();
+
+                foreach ($activeJobs as $job) {
+                    $matches = $this->recommendationService->getJobRecommendationsForEmployer($job, 3, $refresh);
+                    $recommendations[$job->id] = [
+                        'job' => $job,
+                        'matches' => $matches,
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Employer AI recommendations error: ' . $e->getMessage());
+        }
+
+        foreach ($recommendations as $jobId => $data) {
+            $job = $data['job'];
+            $budgetDisplay = ($job->budget_min !== null && $job->budget_max !== null)
+                ? "₱{$job->budget_min} - ₱{$job->budget_max}"
+                : 'Negotiable';
+            $token = encrypt([
+                'job_id' => $job->id,
+                'job_title' => $job->title ?? '',
+                'job_budget' => $budgetDisplay,
+            ]);
+            $recommendations[$jobId]['matches'] = array_map(function ($m) use ($token) {
+                $m['profile_context_token'] = $token;
+                return $m;
+            }, $data['matches']);
+        }
+
+        return Inertia::render('AI/RecommendationsEmployer', [
+            'recommendations' => $recommendations,
+            'skills' => $this->getUniqueSkills(),
+            'singleJobId' => $singleJobId,
+        ]);
+    }
+
+    /**
+     * Show gig worker-specific AI job recommendations (Relevance + Quality).
+     * Separate from aimatch/gig-worker which is competence-only.
+     */
+    public function gigWorkerRecommendations(Request $request): Response
+    {
+        $user = auth()->user();
+        if ($user->user_type !== 'gig_worker') {
+            return redirect()->route('ai.recommendations');
+        }
+
+        $recommendations = [];
+        try {
+            set_time_limit(25);
+            $refresh = $request->query('refresh') === '1';
+            $recommendations = $this->recommendationService->getJobRecommendationsForWorker($user, 5, $refresh);
+        } catch (\Exception $e) {
+            \Log::error('Gig worker AI recommendations (quality) error: ' . $e->getMessage());
+        }
+
+        return Inertia::render('AI/RecommendationsGigWorker', [
+            'recommendations' => $recommendations,
+            'skills' => $this->getUniqueSkills(),
+        ]);
+    }
+
+    /**
      * Normalize a single skill element to a trimmed string.
      * Handles both flat strings and nested arrays (e.g. ['skill' => 'PHP'] or ['PHP', 'intermediate']).
      */
@@ -183,58 +286,59 @@ class AIRecommendationController extends Controller
     }
 
     /**
-     * Test OpenRouter API connectivity
+     * Test Groq API connectivity (unified AI provider)
      */
     public function testConnection()
     {
         try {
-            // Use META_LLAMA_L4_SCOUT_FREE API key from .env file
-            $apiKey = env('META_LLAMA_L4_SCOUT_FREE') ?: config('services.openrouter.api_key');
+            $apiKey = env('GROQ_API_KEY');
+            $baseUrl = 'https://api.groq.com/openai/v1';
             $certPath = base_path('cacert.pem');
-            
+
             if (empty($apiKey)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'META_LLAMA_L4_SCOUT_FREE API key is not configured in .env file'
+                    'message' => 'GROQ_API_KEY is not configured in .env file'
                 ]);
             }
 
             $response = Http::withToken($apiKey)
                 ->withOptions([
-                    'verify' => $certPath
+                    'verify' => file_exists($certPath) ? $certPath : true,
                 ])
                 ->withHeaders([
-                    'HTTP-Referer' => config('app.url'),
-                    'X-Title' => 'WorkWise Job Matching'
+                    'Content-Type' => 'application/json',
                 ])
-                ->post(config('services.openrouter.base_url') . '/chat/completions', [
-                    'model' => 'meta-llama/llama-4-scout:free',
+                ->timeout(15)
+                ->post($baseUrl . '/chat/completions', [
+                    'model' => 'llama-3.1-8b-instant',
                     'messages' => [
                         ['role' => 'system', 'content' => 'You are a helpful assistant.'],
                         ['role' => 'user', 'content' => 'Hi, this is a test message.']
-                    ]
+                    ],
+                    'max_tokens' => 10,
                 ]);
 
             $data = $response->json();
-            
+
             if ($response->successful()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'API Connection Successful',
+                    'message' => 'Groq API connection successful',
                     'data' => $data
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'API request failed',
+                'message' => 'Groq API request failed',
                 'error' => $data
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'API Connection Failed',
+                'message' => 'Groq API connection failed',
                 'error' => $e->getMessage()
             ]);
         }

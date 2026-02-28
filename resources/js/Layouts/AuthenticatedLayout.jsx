@@ -582,8 +582,17 @@ export default function AuthenticatedLayout({ header, children }) {
                                             My Proposals
                                         </Link>
                                         <Link
-                                            href={safeRoute('ai.recommendations.gigworker', safeRoute('ai.recommendations', '/ai/recommendations'))}
-                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.gigworker')
+                                            href={safeRoute('ai.recommendations.gigworker', '/aimatch/gig-worker')}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.gigworker') && !window.location.pathname.startsWith('/ai-recommendations')
+                                                ? 'text-blue-600'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            AI Match
+                                        </Link>
+                                        <Link
+                                            href={safeRoute('ai.recommendations.gigworker.quality', '/ai-recommendations/gig-worker')}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.gigworker.quality')
                                                 ? 'text-blue-600'
                                                 : 'text-gray-600 hover:text-gray-900'
                                                 }`}
@@ -605,24 +614,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                         >
                                             Post a Job
                                         </Link>
-                                        {/* <Link
-                                            href="/freelancers"
-                                            className={`text-sm font-medium transition-colors ${
-                                                window.route.current('freelancers.*')
-                                                    ? 'text-blue-600'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                            }`}
-                                        >
-                                            Browse Freelancers
-                                        </Link> */}
                                         <Link
-                                            href={safeRoute('ai.recommendations.employer', safeRoute('ai.recommendations', '/ai/recommendations'))}
-                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.employer')
+                                            href={safeRoute('ai.recommendations.employer', '/aimatch/employer')}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.employer') && !window.location.pathname.startsWith('/ai-recommendations')
                                                     ? 'text-blue-600'
                                                     : 'text-gray-600 hover:text-gray-900'
                                                 }`}
                                         >
-                                            AI Talent Recommendations
+                                            AI Match
+                                        </Link>
+                                        <Link
+                                            href={safeRoute('ai.recommendations.employer.quality', '/ai-recommendations/employer')}
+                                            className={`text-sm font-medium transition-colors ${window.route.current('ai.recommendations.employer.quality')
+                                                    ? 'text-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            AI Recommendations
                                         </Link>
                                     </>
                                 )}

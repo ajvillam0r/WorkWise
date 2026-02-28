@@ -48,6 +48,7 @@ class EmployerOnboardingController extends Controller
 
         return Inertia::render('Onboarding/EmployerOnboarding', [
             'user' => $user,
+            'currentStep' => $user->onboarding_step ?: 1,
             'industries' => $industries,
             'serviceCategories' => $serviceCategories,
         ]);
@@ -80,7 +81,7 @@ class EmployerOnboardingController extends Controller
             if ($step === 5) {
                 $user->update([
                     'profile_completed' => true,
-                    'profile_status' => 'approved' 
+                    'profile_status' => 'approved'
                 ]);
 
                 Log::info('ONBOARDING_COMPLETED', [
@@ -91,6 +92,12 @@ class EmployerOnboardingController extends Controller
 
                 return redirect()->route('employer.dashboard')->with('success',
                     'Welcome to WorkWise! Your profile is complete and you can now start posting jobs.');
+            }
+
+            // Update onboarding step progress so user returns to the right step on refresh
+            if (!$user->profile_completed && $user->onboarding_step < $step) {
+                $user->onboarding_step = $step;
+                $user->save();
             }
 
             return back()->with('success', "Step {$step} saved.");
@@ -123,24 +130,37 @@ class EmployerOnboardingController extends Controller
         ]);
 
         if ($request->hasFile('profile_picture')) {
-            $validation = $this->fileUploadService->validateFile($request->file('profile_picture'), [
-                'type' => 'image',
-                'user_id' => $user->id,
-                'user_type' => 'employer',
-            ]);
-
-            if ($validation['success']) {
-                $uploadResult = $this->fileUploadService->uploadWithRetry($request->file('profile_picture'), 'profiles', 1, [
+            try {
+                $validation = $this->fileUploadService->validateFile($request->file('profile_picture'), [
+                    'type' => 'image',
                     'user_id' => $user->id,
                     'user_type' => 'employer',
-                    'use_proxy' => true,
                 ]);
 
-                if ($uploadResult['success']) {
-                    $storedPath = '/supabase/' . ltrim($uploadResult['path'], '/');
-                    $user->profile_picture = $storedPath;
-                    $user->profile_photo   = $storedPath;
+                if ($validation['success']) {
+                    $uploadResult = $this->fileUploadService->uploadWithRetry($request->file('profile_picture'), 'profiles', 1, [
+                        'user_id' => $user->id,
+                        'user_type' => 'employer',
+                        'use_proxy' => true,
+                    ]);
+
+                    if ($uploadResult['success']) {
+                        $storedPath = '/supabase/' . ltrim($uploadResult['path'], '/');
+                        $user->profile_picture = $storedPath;
+                        $user->profile_photo   = $storedPath;
+                    } else {
+                        Log::warning('Employer profile picture upload failed', [
+                            'user_id' => $user->id,
+                            'message' => $uploadResult['message'] ?? 'Unknown error',
+                        ]);
+                    }
                 }
+            } catch (\Throwable $e) {
+                Log::warning('Employer profile picture upload error', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Continue saving other fields; do not throw
             }
         }
 
@@ -173,6 +193,8 @@ class EmployerOnboardingController extends Controller
         $validated = $request->validate([
             'primary_hiring_needs' => 'required|array|min:1',
             'primary_hiring_needs.*' => 'string|max:255',
+            'primary_hiring_skills' => 'nullable|array|max:20',
+            'primary_hiring_skills.*' => 'string|max:100',
             'typical_project_budget' => 'required|in:under_500,500-2000,2000-5000,5000-10000,10000+',
             'typical_project_duration' => 'required|in:short_term,medium_term,long_term,ongoing',
             'preferred_experience_level' => 'required|in:any,beginner,intermediate,expert',
@@ -180,6 +202,7 @@ class EmployerOnboardingController extends Controller
         ]);
 
         $user->primary_hiring_needs = $validated['primary_hiring_needs'];
+        $user->primary_hiring_skills = $validated['primary_hiring_skills'] ?? [];
         $user->typical_project_budget = $validated['typical_project_budget'];
         $user->typical_project_duration = $validated['typical_project_duration'];
         $user->preferred_experience_level = $validated['preferred_experience_level'];

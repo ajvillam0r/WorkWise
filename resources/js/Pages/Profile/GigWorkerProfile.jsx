@@ -212,6 +212,10 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                         <span className="material-icons text-sm">mail_outline</span>
                                         {user.email}
                                     </p>
+                                    <p className="text-sm text-gray-400 flex items-center justify-center md:justify-start gap-1 mt-0.5">
+                                        <span className="material-icons text-sm">location_on</span>
+                                        {user.location || 'Location not set'}
+                                    </p>
                                 </div>
                             </div>
 
@@ -357,7 +361,7 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                 {user.bio ? (
                                     <div className="text-gray-600 text-sm leading-relaxed space-y-2">
                                         {user.bio.split('\n').map((para, i) => (
-                                            <p key={i}>{para}</p>
+                                            <p className="break-all" key={i}>{para}</p>
                                         ))}
                                     </div>
                                 ) : (

@@ -1,4 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import useSkillPipeline from '@/hooks/useSkillPipeline';
+import FuzzySkillPrompt from '@/Components/FuzzySkillPrompt';
 
 // Skill color palette based on initials
 const SKILL_COLORS = [
@@ -14,24 +16,54 @@ const SKILL_COLORS = [
 const colorFor = (i) => SKILL_COLORS[i % SKILL_COLORS.length];
 const initials = (s) => s.slice(0, 2).toUpperCase();
 
-const SUGGESTED = ['React', 'Node.js', 'TypeScript', 'Laravel', 'Figma', 'Python', 'Vue.js', 'WordPress'];
 const LEVELS = ['beginner', 'intermediate', 'expert'];
 
 // ─── Step 3: Skills ───────────────────────────────────────────────────────────
 function Step3Skills({ data, setData, errors, onNext, onBack }) {
     const [search, setSearch] = useState('');
     const skills = data.skills_with_experience || [];
+    const debounceRef = useRef(null);
+
+    const {
+        suggestions, loadSuggestions, validateAndAdd,
+        isValidating, validationError, setValidationError,
+        fuzzyPrompt, acceptFuzzy, rejectFuzzy, dismissFuzzy,
+    } = useSkillPipeline();
+
+    // Debounced search against API
+    useEffect(() => {
+        clearTimeout(debounceRef.current);
+        if (search.trim().length >= 1) {
+            debounceRef.current = setTimeout(() => loadSuggestions(search.trim()), 250);
+        }
+        return () => clearTimeout(debounceRef.current);
+    }, [search, loadSuggestions]);
 
     const filtered = search.trim()
-        ? SUGGESTED.filter(s => s.toLowerCase().includes(search.toLowerCase()) && !skills.find(sk => sk.skill.toLowerCase() === s.toLowerCase()))
+        ? suggestions.filter(s => s.toLowerCase().includes(search.toLowerCase()) && !skills.find(sk => sk.skill.toLowerCase() === s.toLowerCase()))
         : [];
 
-    const addSkill = (name) => {
-        if (!name.trim()) return;
-        if (skills.find(s => s.skill.toLowerCase() === name.toLowerCase())) { setSearch(''); return; }
-        setData('skills_with_experience', [...skills, { skill: name.trim(), category: '', proficiency: 'intermediate' }]);
-        setSearch('');
-    };
+    const addSkill = useCallback(async (name) => {
+        const trimmed = (name || '').trim();
+        if (!trimmed) return;
+        if (skills.find(s => s.skill.toLowerCase() === trimmed.toLowerCase())) { setSearch(''); return; }
+
+        // Check if the skill is already in verified suggestions → skip validation
+        const isVerified = suggestions.some(s => s.toLowerCase() === trimmed.toLowerCase());
+        if (isVerified) {
+            const canonical = suggestions.find(s => s.toLowerCase() === trimmed.toLowerCase()) || trimmed;
+            setData('skills_with_experience', [...skills, { skill: canonical, category: '', proficiency: 'intermediate' }]);
+            setSearch('');
+            return;
+        }
+
+        // Run full pipeline: validate → fuzzy → ensure
+        const result = await validateAndAdd(trimmed);
+        if (result) {
+            setData('skills_with_experience', [...(data.skills_with_experience || []), { skill: result.skill, category: '', proficiency: 'intermediate' }]);
+            setSearch('');
+        }
+    }, [skills, suggestions, validateAndAdd, setData, data.skills_with_experience]);
 
     const removeSkill = (i) => setData('skills_with_experience', skills.filter((_, idx) => idx !== i));
 
@@ -66,6 +98,26 @@ function Step3Skills({ data, setData, errors, onNext, onBack }) {
                     <p className="text-base text-gray-500 mt-1">Add your expertise areas and set your experience level for each to match with relevant gigs.</p>
                 </div>
 
+                {/* Fuzzy "Did you mean?" prompt */}
+                {fuzzyPrompt && (
+                    <div className="mb-6">
+                        <FuzzySkillPrompt prompt={fuzzyPrompt} onAccept={acceptFuzzy} onReject={rejectFuzzy} onDismiss={dismissFuzzy} />
+                    </div>
+                )}
+
+                {/* Validation error */}
+                {validationError && (
+                    <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                        <span className="material-icons text-red-500 mt-0.5">error_outline</span>
+                        <div className="flex-1">
+                            <p className="text-sm text-red-700">{validationError}</p>
+                        </div>
+                        <button onClick={() => setValidationError(null)} className="text-red-400 hover:text-red-600">
+                            <span className="material-icons text-sm">close</span>
+                        </button>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                     {/* Left: search */}
                     <div className="lg:col-span-4 space-y-6">
@@ -85,25 +137,40 @@ function Step3Skills({ data, setData, errors, onNext, onBack }) {
                                     onKeyDown={e => e.key === 'Enter' && search && addSkill(search)}
                                     placeholder="Type to search skills (e.g. React)"
                                     className="block w-full pl-11 pr-16 py-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base shadow-sm"
+                                    disabled={isValidating}
                                 />
-                                <button onClick={() => addSkill(search)} className="absolute right-2 top-2 bottom-2 bg-gray-900 text-white px-4 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
-                                    Add
+                                <button onClick={() => addSkill(search)} disabled={isValidating} className="absolute right-2 top-2 bottom-2 bg-gray-900 text-white px-4 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50">
+                                    {isValidating ? '...' : 'Add'}
                                 </button>
                             </div>
                             {filtered.length > 0 && (
                                 <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
                                     <div className="p-2">
                                         <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">Suggested</div>
-                                        {filtered.slice(0, 4).map(skill => (
+                                        {filtered.slice(0, 6).map(skill => (
                                             <button key={skill} onClick={() => addSkill(skill)} className="w-full text-left px-3 py-2.5 hover:bg-gray-50 rounded-lg flex items-center justify-between group transition-colors">
                                                 <span className="text-gray-700 group-hover:text-blue-600 font-medium">{skill}</span>
                                                 <span className="material-icons text-gray-300 group-hover:text-blue-600 text-sm">add</span>
                                             </button>
                                         ))}
+                                        {search.trim() && !filtered.some(s => s.toLowerCase() === search.trim().toLowerCase()) && (
+                                            <button onClick={() => addSkill(search)} className="w-full text-left px-3 py-2.5 hover:bg-green-50 rounded-lg flex items-center gap-2 text-green-700 font-medium border-t border-gray-100">
+                                                <span className="material-icons text-sm">add_circle</span>
+                                                Add "{search.trim()}" as new skill
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="bg-gray-50 p-2 text-center text-xs text-gray-500 border-t border-gray-200">
                                         Press <kbd className="font-sans px-1 py-0.5 bg-white border border-gray-300 rounded text-gray-500 text-[10px]">↵</kbd> to add
                                     </div>
+                                </div>
+                            )}
+                            {search.trim() && filtered.length === 0 && !isValidating && (
+                                <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                                    <button onClick={() => addSkill(search)} className="w-full text-left px-3 py-2.5 hover:bg-green-50 rounded-lg flex items-center gap-2 text-green-700 font-medium">
+                                        <span className="material-icons text-sm">add_circle</span>
+                                        Add "{search.trim()}" as new skill
+                                    </button>
                                 </div>
                             )}
                         </div>

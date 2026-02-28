@@ -426,15 +426,16 @@ class AIController extends Controller
     }
 
     /**
-     * Get AI service status and configuration
+     * Get AI service status and configuration (Groq)
      */
     public function aiServiceStatus()
     {
+        $config = $this->aiServiceDirect->getConfig();
         return response()->json([
             'available' => $this->aiServiceDirect->isAvailable(),
-            'config' => $this->aiServiceDirect->getConfig(),
-            'api_key_configured' => !empty(config('services.openrouter.api_key')) || !empty(env('META_LLAMA_L4_SCOUT_FREE')),
-            'model' => config('services.openrouter.model') ?: env('OPENROUTER_MODEL', 'meta-llama/llama-4-scout:free')
+            'config' => $config,
+            'api_key_configured' => !empty(env('GROQ_API_KEY')),
+            'model' => $config['model_explanations'] ?? 'llama-3.3-70b-versatile',
         ]);
     }
 }

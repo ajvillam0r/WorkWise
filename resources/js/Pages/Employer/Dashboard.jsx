@@ -130,11 +130,10 @@ export default function EmployerDashboard({ auth, workers, filterOptions = {}, f
                                             'skills[]': (filters?.skills?.length && filters.skills) || undefined,
                                             sort: opt.value,
                                         }, { preserveState: true })}
-                                        className={`flex items-center justify-center gap-2 min-h-[2.5rem] px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
-                                            isActive
-                                                ? 'bg-indigo-600 text-white shadow-sm'
-                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                                        }`}
+                                        className={`flex items-center justify-center gap-2 min-h-[2.5rem] px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 whitespace-nowrap ${isActive
+                                            ? 'bg-indigo-600 text-white shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                            }`}
                                     >
                                         <Icon className="h-4 w-4 flex-shrink-0" />
                                         <span>{opt.label}</span>
@@ -280,7 +279,7 @@ export default function EmployerDashboard({ auth, workers, filterOptions = {}, f
                                     {/* Bio: fixed height, clamped */}
                                     <div className="mt-3 flex-shrink-0 h-[4rem] overflow-hidden">
                                         {worker.bio ? (
-                                            <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                                            <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed break-all">
                                                 {worker.bio}
                                             </p>
                                         ) : (
@@ -293,8 +292,8 @@ export default function EmployerDashboard({ auth, workers, filterOptions = {}, f
                                             <div className="flex flex-wrap items-center gap-x-4 gap-y-0 text-sm text-gray-600 min-w-0 overflow-hidden">
                                                 {worker.hourly_rate != null && worker.hourly_rate !== '' && (
                                                     <span className="inline-flex items-center gap-1 flex-shrink-0">
-                                                        <CurrencyDollarIcon className="h-4 w-4 text-indigo-500" />
-                                                        <span>${Number(worker.hourly_rate).toLocaleString()}/hr</span>
+                                                        {/* <CurrencyDollarIcon className="h-4 w-4 text-indigo-500" /> */}
+                                                        <span>₱{Number(worker.hourly_rate).toLocaleString()}/hr</span>
                                                     </span>
                                                 )}
                                                 {worker.portfolio_link && (

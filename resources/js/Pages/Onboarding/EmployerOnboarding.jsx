@@ -1,16 +1,16 @@
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { useState } from 'react';
 import { EmployerStep1Welcome, EmployerStep2Identity } from './EmployerSteps12';
 import { EmployerStep3Bio, EmployerStep4Preferences } from './EmployerSteps34';
 import EmployerStep5Review from './EmployerStep5';
 
-const PROGRESS = { 1: 0, 2: 25, 3: 50, 4: 75, 5: 100 };
+const PROGRESS = { 1: 20, 2: 40, 3: 60, 4: 80, 5: 100 };
 
-export default function EmployerOnboarding({ user, industries, serviceCategories }) {
-    const [step, setStep] = useState(1);
+export default function EmployerOnboarding({ user, industries, serviceCategories, currentStep = 1 }) {
+    const [step, setStep] = useState(currentStep > 1 ? currentStep : 1);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
+    const [saveError, setSaveError] = useState(null);
 
     const [data, setDataState] = useState({
         company_name: user.company_name || '',
@@ -21,6 +21,7 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
         profile_picture_file: null,
         profile_picture_preview: user.profile_picture || null,
         primary_hiring_needs: user.primary_hiring_needs || [],
+        primary_hiring_skills: user.primary_hiring_skills || [],
         typical_project_budget: user.typical_project_budget || '',
         typical_project_duration: user.typical_project_duration || '',
         preferred_experience_level: user.preferred_experience_level || '',
@@ -49,6 +50,9 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
         (data.primary_hiring_needs || []).forEach((need, index) => {
             fd.append(`primary_hiring_needs[${index}]`, need);
         });
+        (data.primary_hiring_skills || []).forEach((skill, index) => {
+            fd.append(`primary_hiring_skills[${index}]`, skill);
+        });
 
         // File field - only include if selected
         if (data.profile_picture_file) {
@@ -58,7 +62,31 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
         return fd;
     };
 
+    // Validate current step before proceeding
+    const validate = (stepNum) => {
+        const errs = {};
+        if (stepNum === 2) {
+            if (!(data.company_size || '').trim()) errs.company_size = 'Team size is required.';
+            if (!(data.industry || '').trim()) errs.industry = 'Industry is required.';
+        }
+        if (stepNum === 3) {
+            const desc = (data.company_description || '').trim();
+            if (desc.length < 50) errs.company_description = 'Company description must be at least 50 characters.';
+        }
+        if (stepNum === 4) {
+            if ((data.primary_hiring_needs || []).length < 1) errs.primary_hiring_needs = 'Select at least one service.';
+            if (!(data.typical_project_budget || '').trim()) errs.typical_project_budget = 'Typical budget is required.';
+            if (!(data.typical_project_duration || '').trim()) errs.typical_project_duration = 'Typical duration is required.';
+            if (!(data.preferred_experience_level || '').trim()) errs.preferred_experience_level = 'Experience level is required.';
+            if (!(data.hiring_frequency || '').trim()) errs.hiring_frequency = 'Hiring frequency is required.';
+        }
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
     const handleNext = () => {
+        if (!validate(step)) return;
+
         // Step 1 doesn't need validation/save
         if (step === 1) {
             setStep(s => s + 1);
@@ -66,19 +94,22 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
             return;
         }
 
-        // Advance immediately for better UX
-        const currentStep = step;
-        setStep(s => s + 1);
-        window.scrollTo(0, 0);
+        const stepToSave = step;
 
-        // Save in background (non-blocking)
-        router.post(route('employer.onboarding.store'), buildFormData(currentStep), {
+        // Save first; only advance step on success so we don't end up back at step 1 on error
+        router.post(route('employer.onboarding.store'), buildFormData(stepToSave), {
             forceFormData: true,
             preserveState: true,
             preserveScroll: true,
+            onSuccess: () => {
+                setSaveError(null);
+                setStep(s => s + 1);
+                window.scrollTo(0, 0);
+            },
             onError: (e) => {
-                console.error('Background save error:', e);
+                setSaveError('Some data may not have saved. Please check your profile later.');
                 setErrors(e);
+                console.error('Background save error:', e);
             },
         });
     };
@@ -108,66 +139,66 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
         window.scrollTo(0, 0);
     };
 
-    const progress = PROGRESS[step] || 0;
+    const progress = PROGRESS[step] || 20;
     const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'E';
 
     return (
-        <div className="bg-slate-50 dark:bg-slate-950 min-h-screen flex flex-col font-sans antialiased text-slate-900 dark:text-slate-100">
-            <Head title={`WorkWise - Employer Onboarding (Step ${step} of 5)`} />
+        <>
+            <Head title={`Onboarding – Step ${step} of 5`} />
 
-            {/* ─── Premium Header ─────────────────────────────────────────── */}
-            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 h-20 flex-none z-50 sticky top-0">
-                <div className="max-w-[1440px] mx-auto px-6 h-full flex items-center justify-between">
-                    <div className="flex items-center gap-10">
-                        <span className="text-primary text-2xl font-black tracking-tighter flex items-center gap-2">
-                            <span className="material-symbols-outlined text-3xl">work</span>
-                            WORKWISE
-                        </span>
-
-                        {step > 1 && (
-                            <div className="hidden lg:flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                <span className="text-primary">Onboarding</span>
-                                <span className="material-symbols-outlined text-sm">chevron_right</span>
-                                <span>Employer Profile</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {step > 1 && (
-                        <div className="hidden md:flex flex-col w-1/3 max-w-sm">
-                            <div className="flex justify-between items-end text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.1em]">
-                                <span>Step {step} of 5</span>
-                                <span className="text-primary">{progress}% <span className="text-slate-300">Complete</span></span>
-                            </div>
-                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                    className="bg-primary h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-700 text-white flex items-center justify-center text-sm font-bold shadow-lg">
-                            {data.profile_picture_preview ? (
-                                <img src={data.profile_picture_preview} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                            ) : (
-                                initials
+            <div className="bg-gray-50 min-h-screen flex flex-col font-sans antialiased">
+                {/* ─ Header ─────────────────────────────────────────── */}
+                <header className="bg-white border-b border-gray-200 h-16 flex-none z-20 relative shadow-sm sticky top-0">
+                    <div className="max-w-[1920px] mx-auto px-6 h-full flex items-center justify-between">
+                        <div className="flex items-center gap-8">
+                            <span className="text-blue-600 text-2xl font-bold tracking-tight flex items-center gap-2">
+                                <span className="material-icons">work_outline</span>
+                                WorkWise
+                            </span>
+                            {step > 1 && (
+                                <nav className="hidden lg:flex items-center gap-2 text-sm font-medium text-gray-500 border-l border-gray-200 pl-6 h-8">
+                                    <span className="text-blue-600 font-semibold">Onboarding</span>
+                                    <span className="material-icons text-base text-gray-300">chevron_right</span>
+                                    <span>Employer Profile</span>
+                                </nav>
                             )}
                         </div>
-                    </div>
-                </div>
-            </header>
 
-            {/* ─── Step Content ─────────────────────────────────────────── */}
-            <div className="flex-1 flex flex-col relative">
-                {/* Background Blobs for specific steps */}
-                {step > 1 && (
-                    <>
-                        <div className="absolute top-20 left-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 mix-blend-multiply dark:mix-blend-overlay animate-pulse" />
-                        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl -z-10 mix-blend-multiply dark:mix-blend-overlay animate-pulse delay-700" />
-                    </>
+                        {step > 1 && (
+                            <div className="hidden md:flex flex-col w-1/3 max-w-md">
+                                <div className="flex justify-between text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                                    <span>Step {step} of 5</span>
+                                    <span>{progress}% Complete</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                    <div className="bg-blue-600 h-2 rounded-full transition-all duration-500 shadow-sm" style={{ width: `${progress}%` }} />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-4">
+                            <button className="text-gray-500 hover:text-blue-600 transition-colors text-sm font-medium hidden sm:block">Help Center</button>
+                            <div className="h-8 w-[1px] bg-gray-200 hidden sm:block" />
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 text-white flex items-center justify-center text-sm font-bold shadow-md">
+                                {data.profile_picture_preview
+                                    ? <img src={data.profile_picture_preview} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                                    : initials}
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                {/* ─ Non-blocking save error banner ─────────────── */}
+                {saveError && (
+                    <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-700 text-sm">
+                            <span className="material-icons text-base">warning</span>
+                            {saveError}
+                        </div>
+                        <button onClick={() => setSaveError(null)} className="text-amber-500 hover:text-amber-700 transition-colors">
+                            <span className="material-icons text-base">close</span>
+                        </button>
+                    </div>
                 )}
 
                 {step === 1 && (
@@ -219,15 +250,6 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                     />
                 )}
             </div>
-
-            {/* Custom Styles for Material Symbols */}
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-                .material-symbols-outlined {
-                    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-                }
-            `}} />
-        </div>
+        </>
     );
 }

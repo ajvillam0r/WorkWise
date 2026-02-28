@@ -7,16 +7,20 @@ use Illuminate\Support\Facades\Log;
 
 class AIService
 {
-    private string $apiKey;
-    private string $model;
+    private ?string $apiKey;
     private string $baseUrl;
+    /** Model for match explanations and success predictions (higher quality) */
+    private string $modelExplanations;
+    /** Model for skill recommendations (faster) */
+    private string $modelRecommendations;
 
     public function __construct()
     {
-        // Prioritize META_LLAMA_L4_SCOUT_FREE API key from .env file
-        $this->apiKey = env('META_LLAMA_L4_SCOUT_FREE') ?: config('services.openrouter.api_key');
-        $this->model = 'meta-llama/llama-4-scout:free';
-        $this->baseUrl = config('services.openrouter.base_url') ?: env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
+        $this->apiKey = env('GROQ_API_KEY');
+        $this->baseUrl = 'https://api.groq.com/openai/v1';
+        // Align with MatchService: 70b for quality, 8b-instant for speed
+        $this->modelExplanations = 'llama-3.3-70b-versatile';
+        $this->modelRecommendations = 'llama-3.1-8b-instant';
     }
 
     /**
@@ -30,10 +34,8 @@ class AIService
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
-                'HTTP-Referer' => request()->header('referer') ?: config('app.url'),
-                'X-Title' => 'WorkWise AI Matching'
             ])->timeout(30)->post("{$this->baseUrl}/chat/completions", [
-                'model' => $this->model,
+                'model' => $this->modelExplanations,
                 'messages' => [
                     [
                         'role' => 'system',
@@ -82,10 +84,8 @@ class AIService
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
-                'HTTP-Referer' => request()->header('referer') ?: config('app.url'),
-                'X-Title' => 'WorkWise AI Matching'
             ])->timeout(30)->post("{$this->baseUrl}/chat/completions", [
-                'model' => $this->model,
+                'model' => $this->modelRecommendations,
                 'messages' => [
                     [
                         'role' => 'system',
@@ -142,10 +142,8 @@ class AIService
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
-                'HTTP-Referer' => request()->header('referer') ?: config('app.url'),
-                'X-Title' => 'WorkWise AI Matching'
             ])->timeout(30)->post("{$this->baseUrl}/chat/completions", [
-                'model' => $this->model,
+                'model' => $this->modelExplanations,
                 'messages' => [
                     [
                         'role' => 'system',
@@ -350,7 +348,7 @@ class AIService
      */
     public function isAvailable(): bool
     {
-        return !empty($this->apiKey) && !empty($this->model);
+        return !empty($this->apiKey);
     }
 
     /**
@@ -359,8 +357,10 @@ class AIService
     public function getConfig(): array
     {
         return [
-            'model' => $this->model,
+            'provider' => 'groq',
             'base_url' => $this->baseUrl,
+            'model_explanations' => $this->modelExplanations,
+            'model_recommendations' => $this->modelRecommendations,
             'available' => $this->isAvailable()
         ];
     }

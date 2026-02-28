@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 // ─── Skill tag list (reused from onboarding) ─────────────────────────────────
 const SUGGESTED_SKILLS = [
@@ -157,6 +157,10 @@ export default function GigWorkerEdit({ user, status }) {
     // ── Resume state ──────────────────────────────────────────────────────
     const [resumeName, setResumeName] = useState(user.resume_file_name || (user.resume_file ? 'Current CV' : null));
 
+    // ── Location autodetect state ──────────────────────────────────────────
+    const [detectingLocation, setDetectingLocation] = useState(false);
+    const [locationError, setLocationError] = useState(null);
+
     // ── Skills state (managed separately as an array) ─────────────────────
     const [skills, setSkills] = useState(
         Array.isArray(user.skills_with_experience) ? user.skills_with_experience : []
@@ -170,6 +174,8 @@ export default function GigWorkerEdit({ user, status }) {
         bio: user.bio || '',
         hourly_rate: user.hourly_rate || '',
         portfolio_link: user.portfolio_link || '',
+        country: user.country || '',
+        city: user.city || '',
         skills_with_experience: JSON.stringify(user.skills_with_experience || []),
         profile_picture: null,
         resume_file: null,
@@ -193,6 +199,41 @@ export default function GigWorkerEdit({ user, status }) {
         setSkills(updatedSkills);
         setData('skills_with_experience', JSON.stringify(updatedSkills));
     };
+
+    const handleAutoDetectLocation = useCallback(() => {
+        if (!navigator.geolocation) {
+            setLocationError('Geolocation is not supported by your browser.');
+            return;
+        }
+        setDetectingLocation(true);
+        setLocationError(null);
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const { latitude, longitude } = position.coords;
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+                        { headers: { 'Accept-Language': 'en', 'User-Agent': 'WorkWise/1.0' } }
+                    );
+                    if (!response.ok) throw new Error('Reverse geocoding failed.');
+                    const result = await response.json();
+                    const addr = result.address || {};
+                    const detectedCity = addr.city || addr.town || addr.village || addr.county || '';
+                    const detectedCountry = addr.country || '';
+                    setData((prev) => ({ ...prev, city: detectedCity, country: detectedCountry }));
+                } catch {
+                    setLocationError('Could not detect location. Please enter manually.');
+                } finally {
+                    setDetectingLocation(false);
+                }
+            },
+            () => {
+                setLocationError('Location access denied. Please enter manually.');
+                setDetectingLocation(false);
+            },
+            { timeout: 10000 }
+        );
+    }, [setData]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -391,6 +432,52 @@ export default function GigWorkerEdit({ user, status }) {
                                         />
                                     </div>
                                 </Field>
+                            </div>
+                        </Section>
+
+                        {/* ── Location ─────────────────────────────────────── */}
+                        <Section title="Location" icon="location_on">
+                            <div className="space-y-5">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <p className="text-xs text-gray-500">Enter your country and city, or use auto-detect.</p>
+                                    <button
+                                        type="button"
+                                        onClick={handleAutoDetectLocation}
+                                        disabled={detectingLocation}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0"
+                                    >
+                                        <span className={`material-icons text-base${detectingLocation ? ' animate-spin' : ''}`}>
+                                            {detectingLocation ? 'refresh' : 'my_location'}
+                                        </span>
+                                        {detectingLocation ? 'Detecting...' : 'Auto detect location'}
+                                    </button>
+                                </div>
+                                {locationError && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                        <span className="material-icons text-sm">error</span>
+                                        {locationError}
+                                    </p>
+                                )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <Field label="Country" error={errors.country}>
+                                        <input
+                                            type="text"
+                                            value={data.country}
+                                            onChange={(e) => setData('country', e.target.value)}
+                                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="e.g. Philippines"
+                                        />
+                                    </Field>
+                                    <Field label="City" error={errors.city}>
+                                        <input
+                                            type="text"
+                                            value={data.city}
+                                            onChange={(e) => setData('city', e.target.value)}
+                                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="e.g. Manila"
+                                        />
+                                    </Field>
+                                </div>
                             </div>
                         </Section>
 

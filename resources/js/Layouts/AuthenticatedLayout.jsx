@@ -5,6 +5,9 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import CsrfSync from '@/Components/CsrfSync';
+import useToast from '@/Hooks/useToast';
+import { ToastContainer } from '@/Components/Toast';
+import ErrorModal from '@/Components/ErrorModal';
 
 function safeRoute(name, fallback = '/') {
     try {
@@ -64,7 +67,38 @@ const NotificationIcon = ({ type }) => {
 };
 
 export default function AuthenticatedLayout({ header, children, pageTheme }) {
-    const user = usePage().props.auth.user;
+    const { auth, flash: rawFlash, errors: pageErrors = {} } = usePage().props;
+    const flash = rawFlash || {};
+    const user = auth.user;
+
+    // Fraud/security modal: show when backend sent fraud_alert error (e.g. high-risk block)
+    const fraudAlertMessage = pageErrors?.fraud_alert
+        ? (Array.isArray(pageErrors.fraud_alert) ? pageErrors.fraud_alert[0] : pageErrors.fraud_alert)
+        : null;
+    const [fraudModalDismissed, setFraudModalDismissed] = useState(false);
+    const showFraudModal = !!fraudAlertMessage && !fraudModalDismissed;
+    useEffect(() => {
+        if (!fraudAlertMessage) setFraudModalDismissed(false);
+    }, [fraudAlertMessage]);
+
+    // Flash message handling via Toasts
+    const { toasts, removeToast, success, error: toastError, warning, info } = useToast();
+
+    useEffect(() => {
+        if (flash.success) {
+            success(flash.success);
+        }
+        if (flash.error) {
+            toastError(flash.error);
+        }
+        if (flash.warning) {
+            warning(flash.warning);
+        }
+        if (flash.info) {
+            info(flash.info);
+        }
+    }, [flash, success, toastError, warning, info]);
+
     const isGigWorker = user.user_type === 'gig_worker';
     const isEmployer = user.user_type === 'employer';
     // Role-aware dashboard URL and active state
@@ -625,8 +659,8 @@ export default function AuthenticatedLayout({ header, children, pageTheme }) {
                                         <Link
                                             href={safeRoute('ai.recommendations.employer', '/aimatch/employer')}
                                             className={`text-sm font-medium transition-colors duration-200 ${window.route.current('ai.recommendations.employer') && !window.location.pathname.startsWith('/ai-recommendations')
-                                                    ? 'text-blue-400'
-                                                    : 'text-white/70 hover:text-white'
+                                                ? 'text-blue-400'
+                                                : 'text-white/70 hover:text-white'
                                                 }`}
                                         >
                                             AI Match
@@ -634,8 +668,8 @@ export default function AuthenticatedLayout({ header, children, pageTheme }) {
                                         <Link
                                             href={safeRoute('ai.recommendations.employer.quality', '/ai-recommendations/employer')}
                                             className={`text-sm font-medium transition-colors duration-200 ${window.route.current('ai.recommendations.employer.quality')
-                                                    ? 'text-blue-400'
-                                                    : 'text-white/70 hover:text-white'
+                                                ? 'text-blue-400'
+                                                : 'text-white/70 hover:text-white'
                                                 }`}
                                         >
                                             AI Recommendations
@@ -733,7 +767,7 @@ export default function AuthenticatedLayout({ header, children, pageTheme }) {
                                                                 className={`p-3 cursor-pointer ${pageTheme === 'dark'
                                                                     ? (isUnread ? 'bg-blue-500/10 hover:bg-white/5' : 'hover:bg-white/5')
                                                                     : `hover:bg-gray-50 ${isUnread ? 'bg-blue-50' : ''}`
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 <div className="flex items-start gap-3">
                                                                     {/* Icon */}
@@ -748,7 +782,7 @@ export default function AuthenticatedLayout({ header, children, pageTheme }) {
                                                                         <p className={`text-sm ${pageTheme === 'dark'
                                                                             ? (isUnread ? 'font-semibold text-white' : 'text-white/80')
                                                                             : (isUnread ? 'font-semibold text-gray-900' : 'text-gray-700')
-                                                                        }`}>
+                                                                            }`}>
                                                                             {notification.title}
                                                                         </p>
                                                                         <p className={`text-xs mt-0.5 line-clamp-2 ${pageTheme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
@@ -1225,6 +1259,26 @@ export default function AuthenticatedLayout({ header, children, pageTheme }) {
                     }}
                 />
             )}
+
+            {/* Security / fraud block modal (premium-looking, red shield theme) */}
+            <ErrorModal
+                isOpen={showFraudModal}
+                onClose={() => setFraudModalDismissed(true)}
+                title="Security verification required"
+                message={fraudAlertMessage || ''}
+                duration={0}
+                showCloseButton={true}
+                actionButton={{
+                    text: 'Verify Identity',
+                    onClick: () => {
+                        setFraudModalDismissed(true);
+                        router.visit('/id-verification');
+                    },
+                }}
+            />
+
+            {/* Global Toast Notifications */}
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
         </div>
     );
 }

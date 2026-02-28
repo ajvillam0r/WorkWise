@@ -49,6 +49,15 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+        if ($user && $user->profile_status === 'rejected') {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account has been suspended. Please contact support.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

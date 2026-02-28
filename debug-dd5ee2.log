@@ -1,0 +1,6 @@
+{"sessionId":"dd5ee2","hypothesisId":"A","location":"IdVerificationController.php:approve","message":"approve() entered","data":{"param_type":"string","param_is_model":false,"param_value":"18"},"timestamp":1772294627315}
+{"sessionId":"dd5ee2","hypothesisId":"B","location":"IdVerificationController.php:approve","message":"after findOrFail","data":{"user_id":18,"id_verification_status_before":"pending"},"timestamp":1772294627321}
+{"sessionId":"dd5ee2","hypothesisId":"C","location":"IdVerificationController.php:approve","message":"after update, before redirect","data":{"user_id":18,"id_verification_status_after":"verified"},"timestamp":1772294627343}
+{"sessionId":"dd5ee2","hypothesisId":"A","location":"IdVerificationController.php:approve","message":"approve() entered","data":{"param_type":"string","param_is_model":false,"param_value":"17"},"timestamp":1772294706752}
+{"sessionId":"dd5ee2","hypothesisId":"B","location":"IdVerificationController.php:approve","message":"after findOrFail","data":{"user_id":17,"id_verification_status_before":"pending"},"timestamp":1772294706755}
+{"sessionId":"dd5ee2","hypothesisId":"C","location":"IdVerificationController.php:approve","message":"after update, before redirect","data":{"user_id":17,"id_verification_status_after":"verified"},"timestamp":1772294706773}

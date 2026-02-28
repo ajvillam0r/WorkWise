@@ -29,6 +29,7 @@ class GigJob extends Model
         'deadline',
         'location',
         'is_remote',
+        'hidden_by_admin',
     ];
 
     protected function casts(): array
@@ -41,6 +42,7 @@ class GigJob extends Model
             'budget_max' => 'decimal:2',
             'deadline' => 'datetime',
             'is_remote' => 'boolean',
+            'hidden_by_admin' => 'boolean',
         ];
     }
 
@@ -66,6 +68,14 @@ class GigJob extends Model
     public function acceptedBid()
     {
         return $this->bids()->where('status', 'accepted')->first();
+    }
+
+    /**
+     * Scope to exclude jobs hidden by admin (for public listing)
+     */
+    public function scopeVisible($query)
+    {
+        return $query->where('hidden_by_admin', false);
     }
 
     /**

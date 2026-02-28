@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'gig_worker' => \App\Http\Middleware\GigWorkerMiddleware::class,
             'google.oauth.security' => \App\Http\Middleware\GoogleOAuthSecurityMiddleware::class,
             'fraud.detection' => \App\Http\Middleware\FraudDetectionMiddleware::class,
+            'require.id.verification' => \App\Http\Middleware\RequireIdVerificationMiddleware::class,
         ]);
 
         // Add essential web middleware for CSRF, sessions, etc.

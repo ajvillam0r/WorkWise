@@ -3,11 +3,27 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
 
-export default function FraudCaseShow({ auth, fraudCase, relatedCases }) {
+export default function FraudCaseShow({ auth, fraudCase, relatedCases, watchlistEntry, userJobs }) {
     const [status, setStatus] = useState(fraudCase.status);
     const [severity, setSeverity] = useState(fraudCase.severity);
     const [investigationNotes, setInvestigationNotes] = useState('');
     const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [showWatchlistReasonModal, setShowWatchlistReasonModal] = useState(false);
+    const [watchlistReason, setWatchlistReason] = useState('');
+
+    const handleAddToWatchlist = (e) => {
+        e.preventDefault();
+        router.post('/admin/fraud/watchlist', {
+            user_id: fraudCase.user.id,
+            reason: watchlistReason,
+        }, {
+            preserveState: false,
+            onSuccess: () => {
+                setShowWatchlistReasonModal(false);
+                setWatchlistReason('');
+            },
+        });
+    };
 
     const handleStatusUpdate = (e) => {
         e.preventDefault();
@@ -95,7 +111,7 @@ export default function FraudCaseShow({ auth, fraudCase, relatedCases }) {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Financial Impact</label>
-                                            <p className="mt-1 text-sm text-gray-900">${fraudCase.financial_impact}</p>
+                                            <p className="mt-1 text-sm text-gray-900">₱{fraudCase.financial_impact}</p>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Severity</label>
@@ -150,17 +166,142 @@ export default function FraudCaseShow({ auth, fraudCase, relatedCases }) {
                                                 {new Date(fraudCase.user.created_at).toLocaleDateString()}
                                             </p>
                                         </div>
+                                        <div className="col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700">Account status</label>
+                                            <p className="mt-1 text-sm text-gray-900">
+                                                {fraudCase.user.profile_status === 'rejected' ? (
+                                                    <span className="text-red-600 font-medium">Suspended</span>
+                                                ) : (
+                                                    <span className="text-green-600 font-medium">Active</span>
+                                                )}
+                                            </p>
+                                            <div className="mt-2 flex gap-2">
+                                                {fraudCase.user.profile_status === 'rejected' ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm('Activate this user? They will be able to use the platform again.')) {
+                                                                router.patch(`/admin/users/${fraudCase.user.id}/activate`, {}, { preserveState: false });
+                                                            }
+                                                        }}
+                                                        className="bg-green-500 hover:bg-green-700 text-white text-sm font-bold py-2 px-4 rounded"
+                                                    >
+                                                        Activate user
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm('Suspend this user? They will not be able to use the platform until activated.')) {
+                                                                router.patch(`/admin/users/${fraudCase.user.id}/suspend`, {}, { preserveState: false });
+                                                            }
+                                                        }}
+                                                        className="bg-red-500 hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded"
+                                                    >
+                                                        Suspend user
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700">ID verification (KYC)</label>
+                                            <p className="mt-1 text-sm text-gray-900">
+                                                Status: {fraudCase.user.id_verification_status || 'not submitted'}
+                                                {fraudCase.user.id_verification_required_by_admin && (
+                                                    <span className="ml-2 text-amber-600 font-medium">(KYC required by admin)</span>
+                                                )}
+                                            </p>
+                                            <div className="mt-2 flex gap-2">
+                                                {fraudCase.user.id_verification_required_by_admin ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm('Clear KYC requirement? User will be able to use the platform without verifying ID.')) {
+                                                                router.post(`/admin/fraud/users/${fraudCase.user.id}/clear-kyc-requirement`, {}, { preserveState: false });
+                                                            }
+                                                        }}
+                                                        className="bg-gray-500 hover:bg-gray-700 text-white text-sm font-bold py-2 px-4 rounded"
+                                                    >
+                                                        Clear KYC requirement
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm('Require ID verification? User will be blocked from all actions until they upload a valid government ID.')) {
+                                                                router.post(`/admin/fraud/users/${fraudCase.user.id}/require-kyc`, {}, { preserveState: false });
+                                                            }
+                                                        }}
+                                                        className="bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold py-2 px-4 rounded"
+                                                    >
+                                                        Require KYC (block until verified)
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="mt-4">
+                                    <div className="mt-4 flex flex-wrap gap-4">
                                         <Link
                                             href={`/admin/users/${fraudCase.user.id}`}
                                             className="text-blue-600 hover:text-blue-900"
                                         >
                                             View Full User Profile →
                                         </Link>
+                                        <Link
+                                            href={`/admin/fraud/audit-logs?user_id=${fraudCase.user.id}`}
+                                            className="text-blue-600 hover:text-blue-900"
+                                        >
+                                            View audit timeline for this user →
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Case File / Technical context – IP, device, browser (bot vs real person) */}
+                            {(fraudCase.ip_address || fraudCase.user_agent || fraudCase.device_fingerprint || fraudCase.location_data) && (
+                                <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                                    <div className="p-6">
+                                        <h3 className="text-lg font-medium text-gray-900 mb-4">Case File / Technical Context</h3>
+                                        <p className="text-sm text-gray-600 mb-4">IP, device fingerprint, and browser info to help assess bot vs real person.</p>
+                                        <div className="space-y-4">
+                                            {fraudCase.ip_address && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">IP Address</label>
+                                                    <p className="mt-1 text-sm text-gray-900 font-mono">{fraudCase.ip_address}</p>
+                                                </div>
+                                            )}
+                                            {fraudCase.user_agent && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">User Agent / Browser</label>
+                                                    {typeof fraudCase.user_agent === 'string' ? (
+                                                        <p className="mt-1 text-xs text-gray-900 bg-gray-100 p-3 rounded overflow-x-auto break-all">{fraudCase.user_agent}</p>
+                                                    ) : (
+                                                        <pre className="mt-1 text-xs text-gray-900 bg-gray-100 p-3 rounded overflow-x-auto">
+                                                            {JSON.stringify(fraudCase.user_agent, null, 2)}
+                                                        </pre>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {fraudCase.device_fingerprint && Object.keys(fraudCase.device_fingerprint).length > 0 && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Device Fingerprint</label>
+                                                    <pre className="mt-1 text-xs text-gray-900 bg-gray-100 p-3 rounded overflow-x-auto">
+                                                        {JSON.stringify(fraudCase.device_fingerprint, null, 2)}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                            {fraudCase.location_data && Object.keys(fraudCase.location_data).length > 0 && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">Location Data</label>
+                                                    <pre className="mt-1 text-xs text-gray-900 bg-gray-100 p-3 rounded overflow-x-auto">
+                                                        {JSON.stringify(fraudCase.location_data, null, 2)}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Evidence Data */}
                             <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -219,7 +360,104 @@ export default function FraudCaseShow({ auth, fraudCase, relatedCases }) {
                                 </div>
                             </div>
 
-                            {/* Related Cases */}
+                            {/* Watchlist */}
+                            <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                                <div className="p-6">
+                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Watchlist</h3>
+                                    {watchlistEntry ? (
+                                        <div>
+                                            <p className="text-sm text-amber-700 font-medium">On watchlist</p>
+                                            {watchlistEntry.reason && (
+                                                <p className="text-sm text-gray-600 mt-1">{watchlistEntry.reason}</p>
+                                            )}
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Added {watchlistEntry.created_at ? new Date(watchlistEntry.created_at).toLocaleString() : ''}
+                                            </p>
+                                            <div className="mt-3">
+                                                <Link
+                                                    href="/admin/fraud/watchlist"
+                                                    className="text-sm text-blue-600 hover:text-blue-900"
+                                                >
+                                                    View all watchlist →
+                                                </Link>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (confirm('Remove this user from the watchlist?')) {
+                                                            router.delete(`/admin/fraud/watchlist/${fraudCase.user.id}`, { preserveState: false });
+                                                        }
+                                                    }}
+                                                    className="ml-4 text-sm text-red-600 hover:text-red-900"
+                                                >
+                                                    Remove from watchlist
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-2">Keep this user under monitoring.</p>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowWatchlistReasonModal(true)}
+                                                className="bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold py-2 px-4 rounded"
+                                            >
+                                                Add to watchlist
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* User's jobs (employer) – Hide / Delete */}
+                            {userJobs && userJobs.length > 0 && (
+                                <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                                    <div className="p-6">
+                                        <h3 className="text-lg font-medium text-gray-900 mb-4">User&apos;s jobs</h3>
+                                        <p className="text-sm text-gray-600 mb-3">Hide from public listing or delete (admin).</p>
+                                        <div className="space-y-3">
+                                            {userJobs.map((job) => (
+                                                <div key={job.id} className="border rounded p-3 flex items-center justify-between">
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">{job.title}</div>
+                                                        <div className="text-xs text-gray-500">Status: {job.status} {job.hidden_by_admin && '(Hidden)'}</div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        {job.hidden_by_admin ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => router.patch(`/admin/fraud/jobs/${job.id}/unhide`, {}, { preserveState: false })}
+                                                                className="text-sm text-green-600 hover:text-green-900"
+                                                            >
+                                                                Unhide
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => router.patch(`/admin/fraud/jobs/${job.id}/hide`, {}, { preserveState: false })}
+                                                                className="text-sm text-amber-600 hover:text-amber-900"
+                                                            >
+                                                                Hide
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (confirm('Permanently delete this job? This cannot be undone.')) {
+                                                                    router.delete(`/admin/fraud/jobs/${job.id}`, { preserveState: false });
+                                                                }
+                                                            }}
+                                                            className="text-sm text-red-600 hover:text-red-900"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                 <div className="p-6">
                                     <h3 className="text-lg font-medium text-gray-900 mb-4">Related Cases</h3>
@@ -335,6 +573,44 @@ export default function FraudCaseShow({ auth, fraudCase, relatedCases }) {
                                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                                     >
                                         Update
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add to Watchlist Modal */}
+            {showWatchlistReasonModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Add to Watchlist</h3>
+                            <form onSubmit={handleAddToWatchlist}>
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700">Reason (optional)</label>
+                                    <textarea
+                                        value={watchlistReason}
+                                        onChange={(e) => setWatchlistReason(e.target.value)}
+                                        rows={3}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g. Multiple fraud cases, under investigation..."
+                                    />
+                                </div>
+                                <div className="flex justify-end space-x-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowWatchlistReasonModal(false); setWatchlistReason(''); }}
+                                        className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded"
+                                    >
+                                        Add to watchlist
                                     </button>
                                 </div>
                             </form>

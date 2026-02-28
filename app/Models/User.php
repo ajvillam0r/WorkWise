@@ -72,6 +72,14 @@ class User extends Authenticatable implements MustVerifyEmail
         'street_address',
         'postal_code',
         'address_verified_at',
+        // ID verification fields (admin approval)
+        'id_verification_status',
+        'id_verified_at',
+        'id_verification_notes',
+        'id_verification_required_by_admin',
+        'id_front_image',
+        'id_back_image',
+        'id_type',
     ];
 
     /**
@@ -136,6 +144,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'primary_hiring_skills' => 'array',
             'tutorial_completed' => 'boolean',
             'address_verified_at' => 'datetime',
+            'id_verified_at' => 'datetime',
             // Gig worker casts
             'skills_with_experience' => 'array',
             'hourly_rate' => 'decimal:2',
@@ -259,6 +268,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sentMessages(): HasMany
     {
         return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    /**
+     * Bids submitted by this gig worker
+     */
+    public function bids(): HasMany
+    {
+        return $this->hasMany(Bid::class, 'gig_worker_id');
     }
 
     public function receivedMessages(): HasMany

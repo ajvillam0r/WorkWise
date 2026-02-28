@@ -116,7 +116,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                             <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                 <div className="p-6">
                                     <h3 className="text-lg font-semibold mb-6">🎯 Recommended Jobs for You</h3>
-                                    
+
                                     {recommendations.recommended_jobs.length === 0 ? (
                                         <div className="text-center py-12">
                                             <div className="text-6xl mb-4">🔍</div>
@@ -141,7 +141,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                                         <div className="flex-1">
                                                             <div className="flex items-center space-x-3 mb-2">
                                                                 <h4 className="text-lg font-semibold text-gray-900">
-                                                                    <Link 
+                                                                    <Link
                                                                         href={`/jobs/${recommendation.job.id}`}
                                                                         className="hover:text-blue-600 transition-colors"
                                                                     >
@@ -155,9 +155,9 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                                             <div className="text-sm text-gray-600 mb-2">
                                                                 Posted by: <span className="font-medium">
                                                                     {recommendation.job.employer?.name ||
-                                                                     recommendation.job.employer?.full_name ||
-                                                                     `${recommendation.job.employer?.first_name || ''} ${recommendation.job.employer?.last_name || ''}`.trim() ||
-                                                                     'Employer'}
+                                                                        recommendation.job.employer?.full_name ||
+                                                                        `${recommendation.job.employer?.first_name || ''} ${recommendation.job.employer?.last_name || ''}`.trim() ||
+                                                                        'Employer'}
                                                                 </span>
                                                             </div>
                                                             <p className="text-gray-600 mb-3 line-clamp-2">
@@ -297,7 +297,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                     </div>
                                     <div>
                                         <div className="font-medium">Average Rates</div>
-                                        <div className="text-blue-700">$15-45/hr for web development</div>
+                                        <div className="text-blue-700">₱15-45/hr for web development</div>
                                     </div>
                                 </div>
                             </div>
@@ -329,7 +329,7 @@ export default function FreelancerRecommendations({ recommendations, user }) {
                                             href="/payment/history"
                                             className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
                                         >
-                                             Earnings History
+                                            Earnings History
                                         </Link>
                                     </div>
                                 </div>

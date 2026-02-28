@@ -477,6 +477,16 @@ php artisan tinker
 | High | Require Verification | Yes | Instant email |
 | Critical | Block Request | Required | Instant SMS + Email |
 
+### Manual testing – Critical risk (Score 90+)
+
+To trigger **Critical Risk** (block with 403):
+
+1. **Cross-request escalation (recommended):** Change your email address (triggers a high-risk alert), then within the same hour attempt 3 rapid payments. The payment request is boosted by the recent email-change alert and reaches 90+, so the request is blocked with: *"Your account is under review. Please contact support."*
+
+2. **Single-request:** Have an account that already has 3+ payments in the last 5 minutes and a round-number payment pattern (>80% round numbers in 24h). The next payment request can trigger both velocity (75) and suspicious pattern (80); with cross-request escalation from any recent high-risk alert, the score can reach 90+.
+
+Admin Dashboard: `/admin/fraud/dashboard` or `/admin/fraud`.
+
 ---
 
 ## 🔐 Security Best Practices

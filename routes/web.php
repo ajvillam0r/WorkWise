@@ -21,6 +21,7 @@ use App\Http\Controllers\ContractController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\AdminTransactionReportsController;
 use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\AdminVerificationController;
 use App\Http\Controllers\AdminIdVerificationController;
@@ -231,7 +232,7 @@ Route::get('/debug-user', function () {
 // Protected job listings - requires authentication
 Route::get('/jobs', [GigJobController::class, 'index'])->middleware(['auth.redirect'])->name('jobs.index');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'require.id.verification'])->group(function () {
     // Test route for Stripe configuration (remove after verification)
     Route::get('/test-stripe-config', function() {
         return response()->json([
@@ -277,7 +278,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/link-preview', [ProfileController::class, 'linkPreview'])->name('api.link-preview');
     // Gig Worker profile edit page
     Route::get('/profile/gig-worker/edit', [ProfileController::class, 'editGigWorker'])->name('gig-worker.profile.edit');
-    Route::post('/profile/gig-worker/edit', [ProfileController::class, 'updateGigWorker'])->name('gig-worker.profile.update');
+    Route::post('/profile/gig-worker/edit', [ProfileController::class, 'updateGigWorker'])->middleware('fraud.detection')->name('gig-worker.profile.update');
 
     // View another gig worker's profile (RESTful: /gig-worker/{id}, e.g. from AI Match "View Profile")
     Route::get('/gig-worker/{user}/view', [ProfileController::class, 'storeGigWorkerProfileContext'])->name('gig-worker.profile.view-with-context');
@@ -288,7 +289,7 @@ Route::middleware('auth')->group(function () {
     // Employer-own profile and edit routes
     Route::get('/profile/employer', [ProfileController::class, 'employerProfile'])->name('employer.profile');
     Route::get('/profile/employer/edit', [ProfileController::class, 'editEmployer'])->name('employer.profile.edit');
-    Route::post('/profile/employer/edit', [ProfileController::class, 'updateEmployer'])->name('employer.profile.update');
+    Route::post('/profile/employer/edit', [ProfileController::class, 'updateEmployer'])->middleware('fraud.detection')->name('employer.profile.update');
 
     // R2 Proxy route (fallback while DNS propagates)
     Route::get('/r2/{path}', [ProfileController::class, 'proxyR2File'])
@@ -345,7 +346,7 @@ Route::middleware('auth')->group(function () {
 
     // Bid routes (mixed permissions)
     Route::get('/bids', [BidController::class, 'index'])->name('bids.index');
-    Route::post('/bids', [BidController::class, 'store'])->name('bids.store');
+    Route::post('/bids', [BidController::class, 'store'])->middleware('fraud.detection')->name('bids.store');
 
     // Additional feature routes
 
@@ -353,7 +354,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
     Route::get('/messages/users', [MessageController::class, 'getUsers'])->name('messages.users');
     Route::get('/messages/{user}', [MessageController::class, 'conversation'])->name('messages.conversation');
-    Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
+    Route::post('/messages', [MessageController::class, 'store'])->middleware('fraud.detection')->name('messages.store');
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
     Route::get('/messages/unread/count', [MessageController::class, 'unreadCount'])->name('messages.unread.count');
     Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead'])->name('messages.read');
@@ -547,6 +548,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/payments/export', [AdminController::class, 'exportPayments'])->name('payments.export');
 
     // Report management
+    Route::get('/reports/transactions', [AdminTransactionReportsController::class, 'index'])->name('reports.transactions');
+    Route::get('/reports/transactions/revenue-export', [AdminTransactionReportsController::class, 'exportRevenueTakeRate'])->name('reports.transactions.revenue-export');
+    Route::get('/reports/transactions/escrow-liability-export', [AdminTransactionReportsController::class, 'exportEscrowLiability'])->name('reports.transactions.escrow-liability-export');
     Route::get('/reports', [AdminReportController::class, 'index'])->name('reports');
     Route::get('/reports/{report}', [AdminReportController::class, 'show'])->name('reports.show');
     Route::patch('/reports/{report}/status', [AdminReportController::class, 'updateStatus'])->name('reports.updateStatus');
@@ -642,6 +646,20 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/audit-logs', [AdminFraudController::class, 'auditLogs'])->name('auditLogs');
         Route::get('/audit-logs/{log}', [AdminFraudController::class, 'showAuditLog'])->name('auditLogs.show');
         Route::post('/audit-logs/{log}/verify', [AdminFraudController::class, 'verifyAuditLog'])->name('auditLogs.verify');
+
+        // Watchlist
+        Route::get('/watchlist', [AdminFraudController::class, 'watchlist'])->name('watchlist');
+        Route::post('/watchlist', [AdminFraudController::class, 'addToWatchlist'])->name('watchlist.add');
+        Route::delete('/watchlist/{user}', [AdminFraudController::class, 'removeFromWatchlist'])->name('watchlist.remove');
+
+        // Admin job actions (hide/delete from fraud case context)
+        Route::patch('/jobs/{job}/hide', [AdminFraudController::class, 'hideJob'])->name('jobs.hide');
+        Route::patch('/jobs/{job}/unhide', [AdminFraudController::class, 'unhideJob'])->name('jobs.unhide');
+        Route::delete('/jobs/{job}', [AdminFraudController::class, 'deleteJob'])->name('jobs.adminDelete');
+
+        // Mandatory KYC (admin-triggered block until user verifies ID)
+        Route::post('/users/{user}/require-kyc', [AdminFraudController::class, 'requireKyc'])->name('users.requireKyc');
+        Route::post('/users/{user}/clear-kyc-requirement', [AdminFraudController::class, 'clearKycRequirement'])->name('users.clearKycRequirement');
 
         // Fraud analytics and reporting
         Route::get('/analytics', [AdminFraudController::class, 'analytics'])->name('analytics');

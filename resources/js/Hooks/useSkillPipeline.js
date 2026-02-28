@@ -19,15 +19,19 @@ export default function useSkillPipeline() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     const fetchJson = useCallback(async (url, opts = {}) => {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || csrfToken;
         const res = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
+                'X-CSRF-TOKEN': token,
                 'X-Requested-With': 'XMLHttpRequest',
             },
             ...opts,
         });
+        // #region agent log
+        if (!res.ok) fetch('http://127.0.0.1:7560/ingest/bdc59389-da51-4b88-b2c4-11c7655b3c93',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9c1f58'},body:JSON.stringify({sessionId:'9c1f58',location:'useSkillPipeline.js:fetchJson',message:'Skill API response not ok',data:{status:res.status,url,tokenPrefix:token?.slice(0,8)||''},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+        // #endregion
         let data = null;
         try {
             data = await res.json();

@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\FraudDetectionCase;
 use App\Models\FraudDetectionAlert;
 use App\Models\FraudDetectionRule;
+use App\Models\FraudWatchlist;
+use App\Models\GigJob;
 use App\Models\ImmutableAuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -122,9 +124,15 @@ class AdminFraudController extends Controller
             ->limit(5)
             ->get();
 
+        $watchlistEntry = FraudWatchlist::where('user_id', $case->user_id)->with('addedBy')->first();
+
+        $userJobs = GigJob::where('employer_id', $case->user_id)->latest()->get();
+
         return Inertia::render('Admin/Fraud/Cases/Show', [
             'fraudCase' => $case,
             'relatedCases' => $relatedCases,
+            'watchlistEntry' => $watchlistEntry,
+            'userJobs' => $userJobs,
         ]);
     }
 
@@ -381,6 +389,11 @@ class AdminFraudController extends Controller
         $query = ImmutableAuditLog::with(['user'])
             ->orderBy('logged_at', 'desc');
 
+        // Filter by user ID (e.g. from Case Show "View audit timeline for this user")
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
         // Filter by table
         if ($request->filled('table_name')) {
             $query->where('table_name', $request->table_name);
@@ -409,11 +422,11 @@ class AdminFraudController extends Controller
             });
         }
 
-        $logs = $query->paginate(25);
+        $logs = $query->paginate(25)->withQueryString();
 
         return Inertia::render('Admin/Fraud/AuditLogs/Index', [
             'logs' => $logs,
-            'filters' => $request->only(['table_name', 'action', 'user_type', 'search']),
+            'filters' => $request->only(['table_name', 'action', 'user_type', 'search', 'user_id']),
         ]);
     }
 
@@ -446,6 +459,180 @@ class AdminFraudController extends Controller
         }
 
         return back()->with('success', 'Audit log integrity verified successfully.');
+    }
+
+    /**
+     * List watchlist entries
+     */
+    public function watchlist(): Response
+    {
+        $entries = FraudWatchlist::with(['user', 'addedBy'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(25);
+
+        return Inertia::render('Admin/Fraud/Watchlist/Index', [
+            'entries' => $entries,
+        ]);
+    }
+
+    /**
+     * Add user to watchlist
+     */
+    public function addToWatchlist(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        $userId = (int) $request->user_id;
+        if (FraudWatchlist::where('user_id', $userId)->exists()) {
+            return back()->with('error', 'User is already on the watchlist.');
+        }
+
+        FraudWatchlist::create([
+            'user_id' => $userId,
+            'added_by' => auth()->id(),
+            'reason' => $request->reason,
+        ]);
+
+        ImmutableAuditLog::createLog(
+            'fraud_watchlist',
+            'CREATE',
+            0,
+            auth()->id(),
+            'admin',
+            null,
+            ['user_id' => $userId, 'reason' => $request->reason],
+            ['action' => 'add_to_watchlist']
+        );
+
+        return back()->with('success', 'User added to watchlist.');
+    }
+
+    /**
+     * Remove user from watchlist
+     */
+    public function removeFromWatchlist(User $user)
+    {
+        $entry = FraudWatchlist::where('user_id', $user->id)->first();
+        if (!$entry) {
+            return back()->with('error', 'User is not on the watchlist.');
+        }
+        $entry->delete();
+
+        ImmutableAuditLog::createLog(
+            'fraud_watchlist',
+            'DELETE',
+            $entry->id,
+            auth()->id(),
+            'admin',
+            ['user_id' => $user->id],
+            null,
+            ['action' => 'remove_from_watchlist']
+        );
+
+        return back()->with('success', 'User removed from watchlist.');
+    }
+
+    /**
+     * Hide a job (admin – fraud case context)
+     */
+    public function hideJob(GigJob $job)
+    {
+        $job->update(['hidden_by_admin' => true]);
+        ImmutableAuditLog::createLog(
+            'gig_jobs',
+            'UPDATE',
+            $job->id,
+            auth()->id(),
+            'admin',
+            ['hidden_by_admin' => false],
+            ['hidden_by_admin' => true],
+            ['action' => 'admin_hide_job']
+        );
+        return back()->with('success', 'Job hidden from public listing.');
+    }
+
+    /**
+     * Unhide a job (admin)
+     */
+    public function unhideJob(GigJob $job)
+    {
+        $job->update(['hidden_by_admin' => false]);
+        ImmutableAuditLog::createLog(
+            'gig_jobs',
+            'UPDATE',
+            $job->id,
+            auth()->id(),
+            'admin',
+            ['hidden_by_admin' => true],
+            ['hidden_by_admin' => false],
+            ['action' => 'admin_unhide_job']
+        );
+        return back()->with('success', 'Job is visible again.');
+    }
+
+    /**
+     * Delete a job (admin – fraud context, bypasses employer check)
+     */
+    public function deleteJob(GigJob $job)
+    {
+        $jobId = $job->id;
+        $title = $job->title;
+        $job->delete();
+        ImmutableAuditLog::createLog(
+            'gig_jobs',
+            'DELETE',
+            $jobId,
+            auth()->id(),
+            'admin',
+            ['id' => $jobId, 'title' => $title],
+            null,
+            ['action' => 'admin_delete_job']
+        );
+        return back()->with('success', 'Job deleted.');
+    }
+
+    /**
+     * Require ID verification (KYC) for a user – blocks them until verified
+     */
+    public function requireKyc(User $user)
+    {
+        if ($user->isAdmin()) {
+            return back()->with('error', 'Cannot require KYC for admin users.');
+        }
+        $user->update(['id_verification_required_by_admin' => true]);
+        ImmutableAuditLog::createLog(
+            'users',
+            'UPDATE',
+            $user->id,
+            auth()->id(),
+            'admin',
+            ['id_verification_required_by_admin' => false],
+            ['id_verification_required_by_admin' => true],
+            ['action' => 'require_kyc_fraud']
+        );
+        return back()->with('success', 'User must complete ID verification before continuing. They have been blocked from other actions.');
+    }
+
+    /**
+     * Clear mandatory KYC requirement for a user
+     */
+    public function clearKycRequirement(User $user)
+    {
+        $user->update(['id_verification_required_by_admin' => false]);
+        ImmutableAuditLog::createLog(
+            'users',
+            'UPDATE',
+            $user->id,
+            auth()->id(),
+            'admin',
+            ['id_verification_required_by_admin' => true],
+            ['id_verification_required_by_admin' => false],
+            ['action' => 'clear_kyc_requirement']
+        );
+        return back()->with('success', 'KYC requirement cleared. User can use the platform without completing ID verification.');
     }
 
     /**

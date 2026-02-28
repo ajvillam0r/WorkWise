@@ -137,6 +137,7 @@ class EmployerDashboardController extends Controller
                     'user_type' => $user->user_type,
                     'profile_picture' => $this->supabaseUrl($user->profile_picture ?? $user->profile_photo),
                     'profile_photo' => $this->supabaseUrl($user->profile_photo ?? $user->profile_picture),
+                    'profile_completed' => $user->profile_completed,
                     'id_verification_status' => [
                         'is_verified' => $user->isIDVerified(),
                         'has_id_front' => !empty($user->id_front_image),

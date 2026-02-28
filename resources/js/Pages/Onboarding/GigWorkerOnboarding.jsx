@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import CsrfSync from '@/Components/CsrfSync';
 import { Step1Welcome, Step2ProfessionalInfo } from './Steps12';
 import { Step3Skills, Step4Portfolio, Step5Review } from './Steps345';
 
@@ -38,6 +39,11 @@ export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
         fd.append('is_draft', isDraft ? '1' : '0');
 
         if (csrfToken) fd.append('_token', csrfToken);
+
+        // #region agent log
+        const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+        fetch('http://127.0.0.1:7560/ingest/bdc59389-da51-4b88-b2c4-11c7655b3c93',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9c1f58'},body:JSON.stringify({sessionId:'9c1f58',location:'GigWorkerOnboarding.jsx:buildFormData',message:'CSRF token source',data:{stepNum,propsPrefix:(props?.csrf_token||'').slice(0,8),metaPrefix:(metaToken||'').slice(0,8),usedPrefix:(csrfToken||'').slice(0,8)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
 
         // Text fields — always send all of them so any step is a complete snapshot
         fd.append('professional_title', data.professional_title || '');
@@ -140,6 +146,7 @@ export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
 
     return (
         <>
+            <CsrfSync />
             <Head title={`Onboarding – Step ${step} of 5`} />
 
             <div className="bg-gray-50 min-h-screen flex flex-col font-sans antialiased">
@@ -147,10 +154,16 @@ export default function GigWorkerOnboarding({ user, currentStep = 1 }) {
                 <header className="bg-white border-b border-gray-200 h-16 flex-none z-20 relative shadow-sm sticky top-0">
                     <div className="max-w-[1920px] mx-auto px-6 h-full flex items-center justify-between">
                         <div className="flex items-center gap-8">
-                            <span className="text-blue-600 text-2xl font-bold tracking-tight flex items-center gap-2">
-                                <span className="material-icons">work_outline</span>
-                                WorkWise
-                            </span>
+                            <div className="flex items-center gap-3">
+                                <img
+                                    src="/image/WorkWise_logo.png"
+                                    alt="WorkWise"
+                                    className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+                                />
+                                <span className="text-2xl font-bold tracking-tight text-gray-900">
+                                    <span className="text-blue-500">W</span>orkWise
+                                </span>
+                            </div>
                             {step > 1 && (
                                 <nav className="hidden lg:flex items-center gap-2 text-sm font-medium text-gray-500 border-l border-gray-200 pl-6 h-8">
                                     <span className="text-blue-600 font-semibold">Onboarding</span>

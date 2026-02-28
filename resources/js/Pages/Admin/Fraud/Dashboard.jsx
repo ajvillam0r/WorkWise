@@ -94,6 +94,25 @@ export default function FraudDashboard({ auth, stats, recentCases, recentAlerts,
                         </div>
                     </div>
 
+                    {/* Admin workflow: what to do after a system-detected alert */}
+                    <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 className="text-sm font-semibold text-blue-900 mb-2">When you see system-detected alerts</h3>
+                        <p className="text-sm text-blue-800 mb-2">
+                            Alerts appear under <a href="/admin/fraud/alerts" className="underline font-medium">Fraud Alerts</a>. For each alert you can:
+                        </p>
+                        <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
+                            <li><strong>Acknowledge</strong> — Assign the alert to yourself and mark it as under review.</li>
+                            <li><strong>Resolve</strong> — Add resolution notes after you have contacted the user or taken action (e.g. cleared after verification).</li>
+                            <li><strong>Mark as false positive</strong> — Use when the activity was legitimate (e.g. employer posting multiple jobs in one session).</li>
+                        </ul>
+                        <p className="text-sm text-blue-700 mt-2">
+                            For critical or high-risk alerts, contact the user or restrict the account as needed before resolving.
+                        </p>
+                        <p className="text-sm text-blue-700 mt-1">
+                            <a href="/admin/fraud/watchlist" className="underline font-medium">Fraud Watchlist</a> — Monitor users under review. <a href="/admin/fraud/audit-logs" className="underline font-medium">Audit logs</a> — View immutable action timeline.
+                        </p>
+                    </div>
+
                     {/* Recent Activity */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Recent Fraud Cases */}

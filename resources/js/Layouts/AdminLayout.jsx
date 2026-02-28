@@ -27,7 +27,9 @@ export default function AdminLayout({ children, header }) {
         { id: 'id-verifications', name: 'ID Verifications', href: '/admin/id-verifications', icon: 'badge', current: isCurrentPage('/admin/id-verifications') },
         { id: 'employer-verifications', name: 'Business Verifications', href: '/admin/employers/verifications', icon: 'domain_verification', current: isCurrentPage('/admin/employers/verifications') },
         { id: 'users', name: 'User Directory', href: '/admin/users', icon: 'group', current: isCurrentPage('/admin/users') },
-        { id: 'reports', name: 'Escrow / Reports', href: '/admin/reports', icon: 'flag', current: isCurrentPage('/admin/reports') },
+        { id: 'payments', name: 'Payments', href: '/admin/payments', icon: 'payments', current: isCurrentPage('/admin/payments') },
+        { id: 'reports-transactions', name: 'Transaction Reports', href: '/admin/reports/transactions', icon: 'receipt_long', current: isCurrentPage('/admin/reports/transactions') },
+        { id: 'reports', name: 'Escrow / Reports', href: '/admin/reports', icon: 'flag', current: isCurrentPage('/admin/reports') && !url?.startsWith('/admin/reports/transactions') },
     ];
 
     // Fallback navigation when url is not available
@@ -36,6 +38,8 @@ export default function AdminLayout({ children, header }) {
         { id: 'id-verifications-fallback', name: 'ID Verifications', href: '/admin/id-verifications', icon: 'badge', current: false },
         { id: 'employer-verifications-fallback', name: 'Business Verifications', href: '/admin/employers/verifications', icon: 'domain_verification', current: false },
         { id: 'users-fallback', name: 'User Directory', href: '/admin/users', icon: 'group', current: false },
+        { id: 'payments-fallback', name: 'Payments', href: '/admin/payments', icon: 'payments', current: false },
+        { id: 'reports-transactions-fallback', name: 'Transaction Reports', href: '/admin/reports/transactions', icon: 'receipt_long', current: false },
         { id: 'reports-fallback', name: 'Escrow / Reports', href: '/admin/reports', icon: 'flag', current: false },
     ];
 

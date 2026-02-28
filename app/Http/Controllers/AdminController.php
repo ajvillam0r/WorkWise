@@ -8,8 +8,10 @@ use App\Models\Project;
 use App\Models\Transaction;
 use App\Models\Bid;
 use App\Models\Contract;
+use App\Models\ImmutableAuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -243,18 +245,56 @@ class AdminController extends Controller
     {
         $user->load([
             'employerProjects' => function ($query) {
-                $query->latest()->limit(5);
+                $query->with('job:id,title')->latest()->limit(20);
             },
             'gigWorkerProjects' => function ($query) {
-                $query->latest()->limit(5);
+                $query->with('job:id,title')->latest()->limit(20);
             },
             'reportsSubmitted' => function ($query) {
-                $query->latest()->limit(5);
+                $query->latest()->limit(20);
             },
             'reportsReceived' => function ($query) {
-                $query->latest()->limit(5);
+                $query->latest()->limit(20);
             },
         ]);
+
+        // For employers, load posted jobs (GigJob) for Projects tab
+        $postedJobs = collect();
+        if ($user->user_type === 'employer') {
+            $postedJobs = $user->postedJobs()->latest()->limit(20)->get();
+        }
+
+        // For gig workers, load recent bids with job for Projects tab (bot-check: copy-paste vs tailored proposals)
+        $userBids = collect();
+        if ($user->user_type === 'gig_worker') {
+            $userBids = $user->bids()->with('job:id,title')->latest('submitted_at')->limit(30)->get();
+        }
+
+        // Audit logs: actions by this user or on this user's record
+        $auditLogs = ImmutableAuditLog::query()
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                    ->orWhere(function ($q2) use ($user) {
+                        $q2->where('table_name', 'users')->where('record_id', $user->id);
+                    });
+            })
+            ->latest('logged_at')
+            ->limit(50)
+            ->get();
+
+        // Resolve URLs for profile image, ID images, and resume (for Inertia payload)
+        $profileSrc = $user->profile_picture ?? $user->profile_photo ?? $user->avatar;
+        $user->profile_picture_url = $profileSrc ? $this->resolveStorageUrl($profileSrc) : null;
+        $user->id_front_image_url = $user->id_front_image ? $this->resolveStorageUrl($user->id_front_image) : null;
+        $user->id_back_image_url = $user->id_back_image ? $this->resolveStorageUrl($user->id_back_image) : null;
+        if (! empty($user->resume_file)) {
+            $user->resume_file_url = $this->resolveStorageUrl($user->resume_file);
+        }
+
+        // Expose skill names for gig workers (accessor not in $appends)
+        if ($user->user_type === 'gig_worker') {
+            $user->display_skill_names = $user->getDisplaySkillNamesAttribute();
+        }
 
         $stats = [
             'total_projects' => $user->employerProjects()->count() + $user->gigWorkerProjects()->count(),
@@ -269,6 +309,9 @@ class AdminController extends Controller
         return Inertia::render('Admin/Users/Show', [
             'user' => $user,
             'stats' => $stats,
+            'postedJobs' => $postedJobs,
+            'userBids' => $userBids,
+            'auditLogs' => $auditLogs,
         ]);
     }
 
@@ -300,6 +343,12 @@ class AdminController extends Controller
         $user->update([
             'profile_status' => 'rejected',
         ]);
+
+        // Hide all jobs posted by this user so they no longer appear on the site
+        $user->postedJobs()->update(['hidden_by_admin' => true]);
+
+        // Cancel all pending bids so employers no longer see them (e.g. gig worker spam)
+        $user->bids()->where('status', 'pending')->update(['status' => 'withdrawn']);
 
         return back()->with('success', 'User has been suspended.');
     }
@@ -826,5 +875,25 @@ class AdminController extends Controller
         return response()->json($transactions, 200, [
             'Content-Disposition' => 'attachment; filename="payments_export_' . now()->format('Y-m-d') . '.json"',
         ]);
+    }
+
+    /**
+     * Resolve a stored path or URL to a full URL for frontend display.
+     * Handles absolute URLs, /supabase/ proxy paths, and default disk Storage::url().
+     */
+    private function resolveStorageUrl(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $value = trim($value);
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return $value;
+        }
+        if (str_contains($value, '/supabase/')) {
+            $path = ltrim(str_replace('/supabase/', '', $value), '/');
+            return $path !== '' ? url('/storage/supabase/' . $path) : null;
+        }
+        return Storage::url($value);
     }
 }

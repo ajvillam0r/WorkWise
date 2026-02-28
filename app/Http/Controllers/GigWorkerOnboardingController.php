@@ -148,17 +148,10 @@ class GigWorkerOnboardingController extends Controller
                     Log::info('Onboarding: profile picture uploaded', ['user_id' => $user->id, 'path' => $path]);
                 } else {
                     Log::error('Onboarding: Supabase upload returned null path', ['user_id' => $user->id]);
-                    throw ValidationException::withMessages([
-                        'profile_picture' => 'Profile picture upload failed. Please try again or continue without.',
-                    ]);
                 }
-            } catch (ValidationException $e) {
-                throw $e;
             } catch (\Exception $e) {
                 Log::error('Onboarding: profile picture upload failed: ' . $e->getMessage(), ['user_id' => $user->id]);
-                throw ValidationException::withMessages([
-                    'profile_picture' => 'Profile picture upload failed. Please try again or continue without.',
-                ]);
+                // Continue without throwing — user can proceed and add photo later
             }
         }
 

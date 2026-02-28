@@ -58,7 +58,7 @@ export default function AdminProjects({ projects, stats }) {
                         <p className="text-base font-medium text-slate-500 dark:text-slate-400">Avg. Value</p>
                         <span className="material-symbols-outlined text-purple-500">attach_money</span>
                     </div>
-                    <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">${stats.average_value ? Math.round(stats.average_value) : '0'}</p>
+                    <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">₱{stats.average_value ? Math.round(stats.average_value) : '0'}</p>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Per project</p>
                 </div>
             </div>
@@ -90,12 +90,11 @@ export default function AdminProjects({ projects, stats }) {
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-4">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                            project.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400' :
-                                            project.status === 'active' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400' :
-                                            project.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400' :
-                                            'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-400'
-                                        }`}>
+                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${project.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400' :
+                                                project.status === 'active' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400' :
+                                                    project.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400' :
+                                                        'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-400'
+                                            }`}>
                                             {project.status}
                                         </span>
                                         <span className="text-sm font-medium text-slate-900 dark:text-slate-100">

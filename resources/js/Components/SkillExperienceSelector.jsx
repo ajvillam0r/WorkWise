@@ -54,16 +54,18 @@ export default function SkillExperienceSelector({
     }, [selectedCategory, loadCategorySkills]);
 
     const filteredSuggestions = input.trim()
-        ? suggestions.filter(s =>
-            s.toLowerCase().includes(input.toLowerCase()) &&
-            !skills.some(sk => sk.skill.trim().toLowerCase() === s.trim().toLowerCase())
-          ).slice(0, 8)
+        ? (() => {
+            return suggestions.filter(s =>
+                (typeof s === 'string' ? s : String(s)).toLowerCase().includes(input.toLowerCase()) &&
+                !skills.some(sk => sk && typeof sk.skill === 'string' && sk.skill.trim().toLowerCase() === (typeof s === 'string' ? s : String(s)).trim().toLowerCase())
+            ).map(s => typeof s === 'string' ? s : String(s)).slice(0, 8);
+        })()
         : [];
 
     const addVerifiedSkill = useCallback((name) => {
         const trimmed = (name || '').trim();
         if (!trimmed || skills.length >= maxSkills) return;
-        if (skills.some(s => s.skill.trim().toLowerCase() === trimmed.toLowerCase())) return;
+        if (skills.some(s => s && typeof s.skill === 'string' && s.skill.trim().toLowerCase() === trimmed.toLowerCase())) return;
 
         onChange([...skills, {
             skill: trimmed,
@@ -79,12 +81,12 @@ export default function SkillExperienceSelector({
     const addSkillWithPipeline = useCallback(async () => {
         const name = (selectedSkill || input).trim();
         if (!name || skills.length >= maxSkills) return;
-        if (skills.some(s => s.skill.trim().toLowerCase() === name.toLowerCase())) return;
+        if (skills.some(s => s && typeof s.skill === 'string' && s.skill.trim().toLowerCase() === name.toLowerCase())) return;
 
         // If it's a known verified suggestion, skip the full pipeline
-        const isVerified = suggestions.some(s => s.toLowerCase() === name.toLowerCase());
+        const isVerified = suggestions.some(s => (typeof s === 'string' ? s : String(s)).toLowerCase() === name.toLowerCase());
         if (isVerified) {
-            const canonical = suggestions.find(s => s.toLowerCase() === name.toLowerCase()) || name;
+            const canonical = suggestions.find(s => (typeof s === 'string' ? s : String(s)).toLowerCase() === name.toLowerCase()) || name;
             addVerifiedSkill(canonical);
             return;
         }
@@ -177,19 +179,20 @@ export default function SkillExperienceSelector({
                             <p className={`text-xs mb-2 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>Top skills in <strong>{selectedCategory}</strong>:</p>
                             <div className="flex flex-wrap gap-2">
                                 {categorySkills.map(s => {
-                                    const isAdded = skills.some(sk => sk.skill.toLowerCase() === s.toLowerCase());
+                                    const skillStr = typeof s === 'string' ? s : String(s);
+                                    const isAdded = skills.some(sk => sk && typeof sk.skill === 'string' && sk.skill.toLowerCase() === skillStr.toLowerCase());
                                     return (
                                         <button
                                             key={s}
                                             type="button"
-                                            onClick={() => !isAdded && addVerifiedSkill(s)}
+                                            onClick={() => !isAdded && addVerifiedSkill(skillStr)}
                                             disabled={isAdded}
                                             className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${isAdded
                                                 ? isDark ? 'bg-green-500/20 text-green-300 border-green-500/30 cursor-default' : 'bg-green-50 text-green-700 border-green-200 cursor-default'
                                                 : isDark ? 'bg-blue-500/10 text-blue-300 border-blue-500/20 hover:bg-blue-500/20' : 'bg-indigo-50 text-blue-700 border-blue-200 hover:bg-blue-100'
                                             }`}
                                         >
-                                            {isAdded ? '✓ ' : '+ '}{s}
+                                            {isAdded ? '✓ ' : '+ '}{skillStr}
                                         </button>
                                     );
                                 })}
@@ -230,7 +233,7 @@ export default function SkillExperienceSelector({
                                             {skill}
                                         </button>
                                     ))}
-                                    {input.trim() && !filteredSuggestions.some(s => s.toLowerCase() === input.trim().toLowerCase()) && (
+                                    {input.trim() && !filteredSuggestions.some(s => (typeof s === 'string' ? s : String(s)).toLowerCase() === input.trim().toLowerCase()) && (
                                         <button
                                             type="button"
                                             onClick={() => { setSelectedSkill(input.trim()); addSkillWithPipeline(); }}
@@ -318,7 +321,7 @@ export default function SkillExperienceSelector({
                         {skills.map((skill, idx) => (
                             <div key={idx} className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${isDark ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200'}`}>
                                 <div className="flex-1">
-                                    <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>{skill.skill}</p>
+                                    <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>{skill && typeof skill.skill === 'string' ? skill.skill : '(invalid skill)'}</p>
                                     <p className={`text-xs ${isDark ? 'text-white/60' : 'text-gray-600'}`}>
                                         {(skill.experience_level || effectiveLevel || 'intermediate').charAt(0).toUpperCase() + (skill.experience_level || effectiveLevel || 'intermediate').slice(1)}
                                         {showImportance && ` • ${(skill.importance || 'required').charAt(0).toUpperCase() + (skill.importance || 'required').slice(1)}`}

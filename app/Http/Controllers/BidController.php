@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bid;
 use App\Models\GigJob;
+use App\Models\ImmutableAuditLog;
 use App\Services\ContractService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -88,7 +89,24 @@ class BidController extends Controller
 
         $validated['gig_worker_id'] = auth()->id();
 
-        Bid::create($validated);
+        $bid = Bid::create($validated);
+
+        ImmutableAuditLog::createLog(
+            'bids',
+            'CREATE',
+            (int) $bid->id,
+            auth()->id(),
+            'user',
+            null,
+            [
+                'job_id' => $validated['job_id'],
+                'submitted_at' => $bid->submitted_at?->toISOString() ?? now()->toISOString(),
+            ],
+            null,
+            $request->ip(),
+            ['user_agent' => $request->userAgent()],
+            $request->session()->getId()
+        );
 
         return redirect()->route('jobs.show', $job)
             ->with('success', 'Your bid has been submitted successfully!');

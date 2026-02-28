@@ -3,11 +3,13 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import taxonomy from '../../../../full_freelance_services_taxonomy.json';
 import SkillExperienceSelector from '@/Components/SkillExperienceSelector';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ErrorModal from '@/Components/ErrorModal';
 
 export default function JobCreate() {
     // AI-suggested skills state
     const [suggestedSkills, setSuggestedSkills] = useState([]);
     const [skillSuggestLoading, setSkillSuggestLoading] = useState(false);
+    const [fraudModalClosed, setFraudModalClosed] = useState(false);
     // Emerging skills and innovative roles
     const [emergingSkills, setEmergingSkills] = useState([]);
     const [innovativeRoles, setInnovativeRoles] = useState([]);
@@ -295,11 +297,28 @@ export default function JobCreate() {
         is_remote: false,
     });
 
+    // Show fraud alert in modal; reset closed state when fraud_alert is cleared
+    useEffect(() => {
+        if (!errors.fraud_alert) setFraudModalClosed(false);
+    }, [errors.fraud_alert]);
+
+    const getCsrfHeaders = () => {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+    };
+
     // Debounced suggestion update when title/description change
     useEffect(() => {
         const t = setTimeout(() => {
             const text = `${data.title ?? ''} ${data.description ?? ''}`;
-            const existingSkills = data.skills_requirements.map(s => s.skill);
+            const existingSkills = (Array.isArray(data.skills_requirements) ? data.skills_requirements : [])
+                .filter(s => s != null && typeof s.skill === 'string')
+                .map(s => s.skill);
             const suggestions = suggestSkills(text, existingSkills);
             setSuggestedSkills(suggestions);
             setSkillSuggestLoading(false);
@@ -334,7 +353,9 @@ export default function JobCreate() {
     useEffect(() => {
         const ctrl = new AbortController();
         const run = async () => {
-            const existingSkills = data.skills_requirements.map(s => s.skill);
+            const existingSkills = (Array.isArray(data.skills_requirements) ? data.skills_requirements : [])
+                .filter(s => s != null && typeof s.skill === 'string')
+                .map(s => s.skill);
             const payload = {
                 title: data.title,
                 description: data.description,
@@ -343,7 +364,7 @@ export default function JobCreate() {
             try {
                 const res = await fetch('/api/recommendations/skills', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getCsrfHeaders(),
                     body: JSON.stringify(payload),
                     signal: ctrl.signal,
                 });
@@ -369,7 +390,7 @@ export default function JobCreate() {
     const addSkillFromSuggestion = async (skill) => {
         // Case-insensitive, trimmed duplicate check
         const normalizedSkill = skill?.trim().toLowerCase();
-        if (skill && !data.skills_requirements.some(s => s.skill.trim().toLowerCase() === normalizedSkill)) {
+        if (skill && !data.skills_requirements.some(s => s && typeof s.skill === 'string' && s.skill.trim().toLowerCase() === normalizedSkill)) {
             const newSkill = {
                 skill: skill.trim(),
                 experience_level: data.experience_level,
@@ -380,7 +401,7 @@ export default function JobCreate() {
             try {
                 await fetch('/api/recommendations/skills/accept', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getCsrfHeaders(),
                     body: JSON.stringify({ type: 'skill', value: skill, context: { source: 'taxonomy' } }),
                 });
             } catch {}
@@ -390,7 +411,7 @@ export default function JobCreate() {
     const addEmergingSkill = async (skill) => {
         // Case-insensitive, trimmed duplicate check
         const normalizedSkill = skill?.trim().toLowerCase();
-        if (skill && !data.skills_requirements.some(s => s.skill.trim().toLowerCase() === normalizedSkill)) {
+        if (skill && !data.skills_requirements.some(s => s && typeof s.skill === 'string' && s.skill.trim().toLowerCase() === normalizedSkill)) {
             const newSkill = {
                 skill: skill.trim(),
                 experience_level: data.experience_level,
@@ -400,7 +421,7 @@ export default function JobCreate() {
             try {
                 await fetch('/api/recommendations/skills/accept', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getCsrfHeaders(),
                     body: JSON.stringify({ type: 'skill', value: skill, context: { source: 'emerging' } }),
                 });
             } catch {}
@@ -413,7 +434,7 @@ export default function JobCreate() {
         try {
             await fetch('/api/recommendations/skills/accept', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getCsrfHeaders(),
                 body: JSON.stringify({ type: 'role', value: role, context: { page: 'jobs.create' } }),
             });
         } catch {}
@@ -421,7 +442,9 @@ export default function JobCreate() {
 
     const addAllSuggestedSkills = () => {
         // Case-insensitive, trimmed duplicate filtering
-        const existingSkillsNormalized = data.skills_requirements.map(s => s.skill.trim().toLowerCase());
+        const existingSkillsNormalized = (Array.isArray(data.skills_requirements) ? data.skills_requirements : [])
+            .filter(s => s && typeof s.skill === 'string')
+            .map(s => s.skill.trim().toLowerCase());
         const toAdd = suggestedSkills.filter((s) => !existingSkillsNormalized.includes(s.trim().toLowerCase()));
         if (toAdd.length > 0) {
             const newSkills = toAdd.map(skill => ({
@@ -436,7 +459,9 @@ export default function JobCreate() {
     // Add all emerging skills helper
     const addAllEmergingSkills = () => {
         // Case-insensitive, trimmed duplicate filtering
-        const existingSkillsNormalized = data.skills_requirements.map(s => s.skill.trim().toLowerCase());
+        const existingSkillsNormalized = (Array.isArray(data.skills_requirements) ? data.skills_requirements : [])
+            .filter(s => s && typeof s.skill === 'string')
+            .map(s => s.skill.trim().toLowerCase());
         const toAdd = emergingSkills.filter((s) => !existingSkillsNormalized.includes(s.trim().toLowerCase()));
         if (toAdd.length > 0) {
             const newSkills = toAdd.map(skill => ({
@@ -523,6 +548,14 @@ export default function JobCreate() {
             <Head title="Post a Job" />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
+            <ErrorModal
+                isOpen={!!errors.fraud_alert && !fraudModalClosed}
+                onClose={() => setFraudModalClosed(true)}
+                title="Activity flagged for review"
+                message={errors.fraud_alert ? (Array.isArray(errors.fraud_alert) ? errors.fraud_alert[0] : errors.fraud_alert) : ''}
+                duration={0}
+            />
+
             <div className="relative min-h-screen py-12 bg-[#05070A] overflow-hidden font-sans" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                 <div className="fixed inset-0 pointer-events-none overflow-hidden">
                     <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-blue-600/5 rounded-full blur-[120px]" />
@@ -553,7 +586,9 @@ export default function JobCreate() {
                         <div className="p-8">
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 {/* Error Summary */}
-                                {Object.keys(errors).length > 0 && (
+                                {(() => {
+                                    const formErrors = Object.entries(errors).filter(([key]) => key !== 'fraud_alert');
+                                    return formErrors.length > 0 ? (
                                     <div className="bg-red-500/10 border-l-4 border-red-500/50 p-4 rounded-lg border border-red-500/20">
                                         <div className="flex">
                                             <div className="flex-shrink-0">
@@ -563,13 +598,13 @@ export default function JobCreate() {
                                             </div>
                                             <div className="ml-3">
                                                 <h3 className="text-sm font-medium text-red-200">
-                                                    There {Object.keys(errors).length === 1 ? 'is' : 'are'} {Object.keys(errors).length} error{Object.keys(errors).length === 1 ? '' : 's'} with your submission
+                                                    There {formErrors.length === 1 ? 'is' : 'are'} {formErrors.length} error{formErrors.length === 1 ? '' : 's'} with your submission
                                                 </h3>
                                                 <div className="mt-2 text-sm text-red-300/90">
                                                     <ul className="list-disc list-inside space-y-1">
-                                                        {Object.entries(errors).map(([field, message]) => (
+                                                        {formErrors.map(([field, message]) => (
                                                             <li key={field}>
-                                                                <span className="font-medium capitalize">{field.replace(/_/g, ' ')}:</span> {message}
+                                                                <span className="font-medium capitalize">{field.replace(/_/g, ' ')}:</span> {Array.isArray(message) ? message[0] : message}
                                                             </li>
                                                         ))}
                                                     </ul>
@@ -577,7 +612,8 @@ export default function JobCreate() {
                                             </div>
                                         </div>
                                     </div>
-                                )}
+                                    ) : null;
+                                })()}
                                 
                                 {/* Job Title */}
                                 <div>
@@ -818,7 +854,8 @@ export default function JobCreate() {
                                                 const value = e.target.value;
                                                 setData('experience_level', value);
                                                 if (data.skills_requirements.length > 0) {
-                                                    setData('skills_requirements', data.skills_requirements.map(s => ({ ...s, experience_level: value })));
+                                                    const valid = data.skills_requirements.filter(s => s != null && typeof s.skill === 'string');
+                                                    setData('skills_requirements', valid.map(s => ({ ...s, experience_level: value })));
                                                 }
                                             }}
                                             className="w-full bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500/50"

@@ -106,6 +106,7 @@ class ProfileController extends Controller
                 'location'               => trim(($user->city ?? '') . ($user->country ? ', ' . $user->country : '')),
                 'country'                => $user->country,
                 'city'                   => $user->city,
+                'id_verification_status' => $user->id_verification_status,
             ],
             'pastProjects' => $user->freelancerProjects()
                 ->with([
@@ -216,6 +217,7 @@ class ProfileController extends Controller
                 'location'               => trim(($user->city ?? '') . ($user->country ? ', ' . $user->country : '')),
                 'country'                => $user->country,
                 'city'                   => $user->city,
+                'id_verification_status' => $user->id_verification_status,
             ],
             'pastProjects' => $user->freelancerProjects()
                 ->with([
@@ -452,6 +454,8 @@ class ProfileController extends Controller
         $user->city               = $validated['city'] ?? null;
         $user->save();
 
+        $this->incrementFraudProfileChangeCount($user);
+
         $user->syncSkillsFromExperience();
 
         return redirect()->route('gig-worker.profile')->with('status', 'profile-updated');
@@ -498,6 +502,7 @@ class ProfileController extends Controller
                 'location' => $user->city . ($user->country ? ', ' . $user->country : ''),
                 'joined_date' => $user->created_at->format('M Y'),
                 'profile_completed' => $user->profile_completed,
+                'id_verification_status' => $user->id_verification_status,
             ],
             'stats' => [
                 'jobs_posted' => $totalJobsPosted,
@@ -619,6 +624,8 @@ class ProfileController extends Controller
         $user->postal_code = $validated['postal_code'] ?? null;
         
         $user->save();
+
+        $this->incrementFraudProfileChangeCount($user);
 
         return redirect()->route('employer.profile')->with('status', 'profile-updated');
     }
@@ -828,7 +835,8 @@ class ProfileController extends Controller
             if ($user->isDirty()) {
                 // Use select only dirty attributes to minimize database query
                 $user->save();
-                
+
+                $this->incrementFraudProfileChangeCount($user);
                 
                 Log::info('Profile updated successfully (partial update)', [
                     'user_id' => $user->id,
@@ -865,6 +873,17 @@ class ProfileController extends Controller
     private function calculateProfileCompletion($user): bool
     {
         return false;
+    }
+
+    /**
+     * Increment fraud detection profile-change counter for the user (TTL 1 hour).
+     * Used by FraudDetectionMiddleware to detect rapid profile updates.
+     */
+    private function incrementFraudProfileChangeCount(User $user): void
+    {
+        $key = 'fraud_profile_changes_' . $user->id;
+        $count = (int) Cache::get($key, 0) + 1;
+        Cache::put($key, $count, now()->addHour());
     }
 
     /**

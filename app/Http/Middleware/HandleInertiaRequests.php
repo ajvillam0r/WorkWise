@@ -104,6 +104,7 @@ class HandleInertiaRequests extends Middleware
                 // ID Verification fields
                 'id_verification_status' => $authenticatedUser->id_verification_status,
                 'id_verified_at' => $authenticatedUser->id_verified_at,
+                'id_verification_required_by_admin' => (bool) ($authenticatedUser->id_verification_required_by_admin ?? false),
                 'id_front_image' => $this->normalizeStorageUrl($authenticatedUser->id_front_image),
                 'id_back_image' => $this->normalizeStorageUrl($authenticatedUser->id_back_image),
                 
@@ -147,6 +148,8 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'info' => fn () => $request->session()->get('info'),
             ],
         ];
     }

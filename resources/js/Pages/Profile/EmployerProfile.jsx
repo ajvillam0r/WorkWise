@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import IDVerifiedBadge from '@/Components/IDVerifiedBadge';
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 function Avatar({ user, size = 'lg' }) {
@@ -69,6 +70,9 @@ export default function EmployerProfile({ user, stats, activeJobs, pastProjects,
                                 <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
                                 <p className="text-sm text-gray-500 mt-0.5">{user.company_name || 'Individual Employer'}</p>
                                 <div className="flex flex-wrap justify-center gap-2 mt-4">
+                                    {user.id_verification_status === 'verified' && (
+                                        <IDVerifiedBadge size="sm" showText={true} />
+                                    )}
                                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-100">
                                         <span className="material-symbols-outlined text-sm">verified</span>
                                         Verified

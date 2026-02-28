@@ -416,8 +416,8 @@ export default function EnhancedUsersIndex({ users, filters }) {
                                                 <button
                                                     onClick={() => handleQuickAction(user.id, user.profile_status === 'rejected' ? 'activate' : 'suspend')}
                                                     className={`p-1 rounded transition-colors ${user.profile_status === 'rejected'
-                                                            ? 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                                                            : 'text-red-600 hover:text-red-900 hover:bg-red-50'
+                                                        ? 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                                                        : 'text-red-600 hover:text-red-900 hover:bg-red-50'
                                                         }`}
                                                     title={user.profile_status === 'rejected' ? 'Activate' : 'Suspend'}
                                                 >
@@ -549,7 +549,7 @@ export default function EnhancedUsersIndex({ users, filters }) {
                                                         </div>
                                                         <div className="sm:col-span-2">
                                                             <dt className="text-sm font-medium text-gray-500">Bio</dt>
-                                                            <dd className="mt-1 text-sm text-gray-900">{selectedUserForDetails.bio || 'No bio provided'}</dd>
+                                                            <dd className="mt-1 text-sm text-gray-900 break-all">{selectedUserForDetails.bio || 'No bio provided'}</dd>
                                                         </div>
                                                     </>
                                                 ) : selectedUserForDetails.user_type === 'employer' ? (

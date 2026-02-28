@@ -151,10 +151,16 @@ export default function EmployerOnboarding({ user, industries, serviceCategories
                 <header className="bg-white border-b border-gray-200 h-16 flex-none z-20 relative shadow-sm sticky top-0">
                     <div className="max-w-[1920px] mx-auto px-6 h-full flex items-center justify-between">
                         <div className="flex items-center gap-8">
-                            <span className="text-blue-600 text-2xl font-bold tracking-tight flex items-center gap-2">
-                                <span className="material-icons">work_outline</span>
-                                WorkWise
-                            </span>
+                            <div className="flex items-center gap-3">
+                                <img
+                                    src="/image/WorkWise_logo.png"
+                                    alt="WorkWise"
+                                    className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+                                />
+                                <span className="text-2xl font-bold tracking-tight text-gray-900">
+                                    <span className="text-blue-500">W</span>orkWise
+                                </span>
+                            </div>
                             {step > 1 && (
                                 <nav className="hidden lg:flex items-center gap-2 text-sm font-medium text-gray-500 border-l border-gray-200 pl-6 h-8">
                                     <span className="text-blue-600 font-semibold">Onboarding</span>

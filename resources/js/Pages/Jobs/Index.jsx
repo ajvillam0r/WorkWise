@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import IDVerificationBanner from '@/Components/IDVerificationBanner';
 import { formatDistanceToNow } from 'date-fns';
 import Pagination from '@/Components/Pagination';
 import usePagination from '@/Hooks/usePagination';
@@ -401,6 +402,15 @@ export default function JobsIndex({ jobs, availableSkills = [] }) {
                     {/* Gig Worker View: search bar + filters (dark theme) */}
                     {!isEmployer ? (
                         <>
+                            {auth.user?.profile_completed && auth.user?.id_verification_status !== 'verified' && (
+                                <IDVerificationBanner
+                                    message="Complete Valid ID verification to build trust with employers and unlock more opportunities."
+                                    buttonText="Verify your ID"
+                                    linkUrl={safeRoute('id-verification.show', '/id-verification')}
+                                    variant="info"
+                                    dismissible={true}
+                                />
+                            )}
                             {/* Search and filters bar */}
                             <div className={isDark ? "bg-white/5 border border-white/10 rounded-xl p-4 mb-6 w-full box-border overflow-visible" : "bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6 w-full box-border overflow-visible"}>
                                 <form

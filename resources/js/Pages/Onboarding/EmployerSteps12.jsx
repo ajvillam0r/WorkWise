@@ -198,7 +198,7 @@ function EmployerStep2Identity({ data, setData, errors, industries, onNext, onBa
                         </div>
 
                         <div className="w-full lg:w-72 flex-shrink-0 flex flex-col items-center justify-start pt-2 border-t lg:border-t-0 lg:border-l border-gray-200 lg:pl-10 mt-8 lg:mt-0">
-                            <h3 className="text-sm font-semibold text-gray-700 mb-6 self-start lg:self-center">Logo / Avatar</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 mb-6 self-start lg:self-center">Logo / Avatar (Optional)</h3>
                             <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
                                 <div className="w-48 h-48 rounded-full border-4 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 group-hover:bg-gray-100 transition-all overflow-hidden relative">
                                     {preview ? (

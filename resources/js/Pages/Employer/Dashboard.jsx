@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import IDVerificationBanner from '@/Components/IDVerificationBanner';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     MagnifyingGlassIcon,
@@ -128,6 +129,15 @@ export default function EmployerDashboard({ auth, workers, filterOptions = {}, f
                 </div>
 
                 <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full">
+                    {auth?.user?.profile_completed && (auth?.user?.id_verification_status?.status ?? auth?.user?.id_verification_status) !== 'verified' && (
+                        <IDVerificationBanner
+                            message="Complete Valid ID verification to build trust with gig workers and use all platform features."
+                            buttonText="Verify your ID"
+                            linkUrl={route('id-verification.show')}
+                            variant="info"
+                            dismissible={true}
+                        />
+                    )}
                     {/* Global navigation: fixed-height container, content width */}
                     <div className="mb-6 w-full">
                         <nav

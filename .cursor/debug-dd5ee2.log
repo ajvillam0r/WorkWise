@@ -1,0 +1,8 @@
+{"sessionId":"dd5ee2","location":"Show.jsx:handleApprove","message":"approve clicked","data":{"userId":18},"timestamp":1772294547632,"hypothesisId":"D"}
+{"sessionId":"dd5ee2","location":"Show.jsx:onSuccess","message":"approve onSuccess","data":{"userId":18},"timestamp":1772294548331,"hypothesisId":"E"}
+{"sessionId":"dd5ee2","location":"Show.jsx:handleApprove","message":"approve clicked","data":{"userId":18},"timestamp":1772294563045,"hypothesisId":"D"}
+{"sessionId":"dd5ee2","location":"Show.jsx:onSuccess","message":"approve onSuccess","data":{"userId":18},"timestamp":1772294563739,"hypothesisId":"E"}
+{"sessionId":"dd5ee2","location":"Show.jsx:handleApprove","message":"approve clicked","data":{"userId":18},"timestamp":1772294627068,"hypothesisId":"D"}
+{"sessionId":"dd5ee2","location":"Show.jsx:onSuccess","message":"approve onSuccess","data":{"userId":18},"timestamp":1772294627758,"hypothesisId":"E"}
+{"sessionId":"dd5ee2","location":"Show.jsx:handleApprove","message":"approve clicked","data":{"userId":17},"timestamp":1772294706476,"hypothesisId":"D"}
+{"sessionId":"dd5ee2","location":"Show.jsx:onSuccess","message":"approve onSuccess","data":{"userId":17},"timestamp":1772294707248,"hypothesisId":"E"}

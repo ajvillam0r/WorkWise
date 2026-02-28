@@ -23,9 +23,10 @@ class GigJobController extends Controller
                 ->where('employer_id', $user->id)
                 ->latest();
         } else {
-            // For gig workers and guests, show all open jobs
+            // For gig workers and guests, show all open jobs (exclude hidden by admin)
             $query = GigJob::with(['employer'])->withCount('bids')
                 ->where('status', 'open')
+                ->visible()
                 ->latest();
         }
 

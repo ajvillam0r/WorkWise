@@ -92,6 +92,13 @@ export default function AdminPayments({ transactions, stats, filters }) {
                         <span className="material-symbols-outlined">download</span>
                         Export
                     </Link>
+                    <Link
+                        href="/admin/reports/transactions"
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-100 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900/70"
+                    >
+                        <span className="material-symbols-outlined">receipt_long</span>
+                        Transaction Reports
+                    </Link>
                 </div>
             </div>
 

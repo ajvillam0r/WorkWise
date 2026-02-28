@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import IDVerifiedBadge from '@/Components/IDVerifiedBadge';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 // ─── Skill color palette ───────────────────────────────────────────────────────
@@ -208,10 +209,13 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                     )}
                                 </div>
                                 <div className="text-center md:text-left mb-0 md:mb-0">
-                                    <h1 className="text-2xl font-bold text-white flex items-center justify-center md:justify-start gap-2">
+                                    <h1 className="text-2xl font-bold text-white flex items-center justify-center md:justify-start gap-2 flex-wrap">
                                         {user.name}
                                         {user.profile_completed && (
                                             <span className="material-icons text-blue-400 text-xl" title="Verified">verified</span>
+                                        )}
+                                        {user.id_verification_status === 'verified' && (
+                                            <IDVerifiedBadge size="md" showText={true} />
                                         )}
                                     </h1>
                                     <p className="text-white/80 font-medium">

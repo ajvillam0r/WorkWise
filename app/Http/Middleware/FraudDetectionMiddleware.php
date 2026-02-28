@@ -12,6 +12,7 @@ use App\Models\FraudDetectionAlert;
 use App\Models\FraudDetectionCase;
 use App\Models\ImmutableAuditLog;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Cache;
 
 class FraudDetectionMiddleware
 {
@@ -43,7 +44,10 @@ class FraudDetectionMiddleware
         $fraudResult = $this->analyzeRequest($user, $request, $routeAction);
 
         if ($fraudResult['requires_action']) {
-            return $this->handleFraudAction($fraudResult, $request);
+            $response = $this->handleFraudAction($fraudResult, $request);
+            if ($response !== null) {
+                return $response;
+            }
         }
 
         // Log the request for behavioral analysis
@@ -87,6 +91,10 @@ class FraudDetectionMiddleware
                 $result = $this->analyzeMessageRequest($user, $request);
                 break;
 
+            case str_contains($routeAction, 'GigJobController'):
+                $result = $this->analyzeJobRequest($user, $request);
+                break;
+
             default:
                 $result = $this->analyzeGeneralRequest($user, $request);
         }
@@ -119,8 +127,8 @@ class FraudDetectionMiddleware
             $result['recommendations'][] = 'Require additional payment verification';
         }
 
-        // Check for high-value payments
-        $paymentAmount = $request->input('amount', 0);
+        // Check for high-value payments (absolute threshold: ₱50,000 / $1,000)
+        $paymentAmount = (float) $request->input('amount', 0);
         $userAvgPayment = $user->paymentsMade()
             ->where('status', 'completed')
             ->avg('amount') ?? 0;
@@ -132,12 +140,32 @@ class FraudDetectionMiddleware
             $result['recommendations'][] = 'Verify payment amount with user';
         }
 
+        // Absolute high-value threshold: exceed ₱50,000 (amounts stored in PHP)
+        if ($paymentAmount > 50000) {
+            $result['requires_action'] = true;
+            $result['risk_score'] = max($result['risk_score'], 60);
+            $result['alerts'][] = 'High-value transaction detected';
+            $result['recommendations'][] = 'Verify payment amount with user';
+        }
+
         // Check for suspicious payment patterns
         if ($this->isSuspiciousPaymentPattern($user)) {
             $result['requires_action'] = true;
             $result['risk_score'] = max($result['risk_score'], 80);
             $result['alerts'][] = 'Suspicious payment pattern detected';
             $result['recommendations'][] = 'Temporarily suspend payment processing';
+        }
+
+        // Cross-request escalation: if user had a recent high-severity alert (e.g. email change), boost score so critical can trigger
+        if ($result['requires_action'] && $result['risk_score'] >= 70 && $result['risk_score'] < 90) {
+            $recentHighRisk = FraudDetectionAlert::where('user_id', $user->id)
+                ->where('triggered_at', '>=', now()->subHour())
+                ->where('risk_score', '>=', 70)
+                ->exists();
+            if ($recentHighRisk) {
+                $result['risk_score'] = min(100, (int) $result['risk_score'] + 15);
+                $result['alerts'][] = 'Recent high-risk activity escalation';
+            }
         }
 
         return $result;
@@ -156,13 +184,10 @@ class FraudDetectionMiddleware
             'recommendations' => [],
         ];
 
-        // Check for rapid profile changes
-        $recentProfileChanges = ImmutableAuditLog::where('user_id', $user->id)
-            ->where('table_name', 'users')
-            ->where('created_at', '>=', now()->subHours(1))
-            ->count();
+        // Check for rapid profile changes (cache counter set by ProfileController on each update)
+        $profileChangeCount = (int) Cache::get('fraud_profile_changes_' . $user->id, 0);
 
-        if ($recentProfileChanges >= 2) {
+        if ($profileChangeCount >= 2) {
             $result['requires_action'] = true;
             $result['risk_score'] = 70;
             $result['alerts'][] = 'Multiple profile changes in short time frame';
@@ -175,6 +200,15 @@ class FraudDetectionMiddleware
             $result['risk_score'] = max($result['risk_score'], 85);
             $result['alerts'][] = 'Email address change detected';
             $result['recommendations'][] = 'Require current password and email verification';
+        }
+
+        // Already-verified users: reduce risk to prevent deadlock (block + impossible re-upload)
+        if ($user->isIDVerified()) {
+            if ($result['risk_score'] >= 85) {
+                $result['risk_score'] = 60;
+            } elseif ($result['risk_score'] >= 70) {
+                $result['risk_score'] = 50;
+            }
         }
 
         return $result;
@@ -206,10 +240,10 @@ class FraudDetectionMiddleware
         }
 
         // Check for bid amount anomalies
-        $bidAmount = $request->input('amount', 0);
+        $bidAmount = $request->input('bid_amount', 0);
         if ($bidAmount > 0) {
-            $avgBidAmount = $user->bids()->avg('amount') ?? 0;
-            if ($bidAmount > $avgBidAmount * 2 && $avgBidAmount > 0) {
+            $avgBidAmount = $user->bids()->avg('bid_amount') ?? 0;
+            if ($avgBidAmount > 0 && $bidAmount > $avgBidAmount * 2) {
                 $result['requires_action'] = true;
                 $result['risk_score'] = max($result['risk_score'], 55);
                 $result['alerts'][] = 'Unusual bid amount detected';
@@ -234,11 +268,39 @@ class FraudDetectionMiddleware
         ];
 
         // Check for rapid project creation
-        $recentProjects = $user->clientProjects()
+        $recentProjects = $user->employerProjects()
             ->where('created_at', '>=', now()->subHours(2))
             ->count();
 
         if ($recentProjects >= 3) {
+            $result['requires_action'] = true;
+            $result['risk_score'] = 60;
+            $result['alerts'][] = 'Multiple project creations in short time';
+            $result['recommendations'][] = 'Review project legitimacy';
+        }
+
+        return $result;
+    }
+
+    /**
+     * Analyze job-creation requests (employer posting jobs via GigJobController)
+     */
+    private function analyzeJobRequest(User $user, Request $request): array
+    {
+        $result = [
+            'requires_action' => false,
+            'action_type' => 'job_analysis',
+            'risk_score' => 0,
+            'alerts' => [],
+            'recommendations' => [],
+        ];
+
+        // Check for rapid job creation (project spoilage)
+        $recentJobs = $user->postedJobs()
+            ->where('created_at', '>=', now()->subHours(2))
+            ->count();
+
+        if ($recentJobs >= 3) {
             $result['requires_action'] = true;
             $result['risk_score'] = 60;
             $result['alerts'][] = 'Multiple project creations in short time';
@@ -341,7 +403,7 @@ class FraudDetectionMiddleware
     /**
      * Handle fraud detection actions
      */
-    private function handleFraudAction(array $fraudResult, Request $request): Response
+    private function handleFraudAction(array $fraudResult, Request $request): ?Response
     {
         $user = Auth::user();
 
@@ -373,9 +435,31 @@ class FraudDetectionMiddleware
             'ip_address' => $request->ip(),
         ]);
 
+        // Automate case creation for high risk actions (Score >= 70)
+        if ($fraudResult['risk_score'] >= 70) {
+            $analysis = [
+                'overall_risk_score' => $fraudResult['risk_score'],
+                'fraud_indicators' => $fraudResult['alerts'],
+                'analyzed_at' => now(),
+            ];
+            
+            $case = $this->fraudDetectionService->createFraudCase(
+                $user, 
+                $analysis, 
+                $fraudResult['action_type'] === 'payment_analysis' ? 'payment_fraud' : 'suspicious_behavior'
+            );
+            
+            // Link the alert to the newly created case
+            $alert->update(['fraud_case_id' => $case->id]);
+        }
+
         // Determine response based on risk level
+        // Critical (>= 90): block with redirect. High (>= 70): block with redirect. Medium (< 70): allow request and flash warning only.
         if ($fraudResult['risk_score'] >= 90) {
-            // Critical - block the request
+            // Critical - block the request (Inertia gets redirect so ErrorModal can be shown)
+            if ($request->inertia()) {
+                return back()->withErrors(['fraud_alert' => 'Your account is under review. Please contact support.'])->with('security_verification', true);
+            }
             if ($request->expectsJson() && !$request->inertia()) {
                 return response()->json([
                     'error' => 'Request blocked due to security concerns',
@@ -383,27 +467,26 @@ class FraudDetectionMiddleware
                 ], 403);
             }
             return back()->withErrors(['fraud_alert' => 'Your account is under review. Please contact support.']);
-        } elseif ($fraudResult['risk_score'] >= 70) {
-            // High risk - require additional verification
+        }
+        if ($fraudResult['risk_score'] >= 70) {
+            // High risk - block with redirect so Inertia shows security modal (case already created above)
+            if ($request->inertia()) {
+                return back()->withErrors(['fraud_alert' => 'Additional verification required. Please verify your identity to continue.'])->with('security_verification', true);
+            }
             if ($request->expectsJson() && !$request->inertia()) {
                 return response()->json([
                     'error' => 'Additional verification required',
                     'message' => 'Please verify your identity to continue.',
                     'verification_required' => true,
-                ], 422);
+                ], 403);
             }
             return back()->withErrors(['fraud_alert' => 'Additional verification required. Please verify your identity to continue.']);
         }
 
-        // Medium risk - log and continue with warning
-        if ($request->expectsJson() && !$request->inertia()) {
-            return response()->json([
-                'warning' => 'Suspicious activity detected',
-                'message' => 'Your activity has been flagged for review.',
-            ], 200);
-        }
+        // Medium risk: allow the request to proceed and flash a warning (do not block)
+        session()->flash('warning', 'Your activity has been flagged for review. Repeated flagged activity may result in account suspension.');
         
-        return session()->flash('warning', 'Your activity has been flagged for review.');
+        return null;
     }
 
     /**

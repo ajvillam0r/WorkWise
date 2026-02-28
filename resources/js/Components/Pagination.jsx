@@ -14,7 +14,8 @@ export default function Pagination({
     totalPages, 
     onPageChange,
     itemsPerPage = 5,
-    totalItems = 0
+    totalItems = 0,
+    variant = 'light'
 }) {
     // Don't render if only one page or no items
     if (totalPages <= 1 || totalItems === 0) {
@@ -67,17 +68,18 @@ export default function Pagination({
 
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+    const isDark = variant === 'dark';
 
     return (
-        <div className="bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl shadow-lg p-6 mt-6">
+        <div className={isDark ? "bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl shadow-lg p-6 mt-6" : "bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl shadow-lg p-6 mt-6"}>
             {/* Items count info */}
             <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-700">
-                    Showing <span className="font-semibold text-blue-600">{startItem}</span> to{' '}
-                    <span className="font-semibold text-blue-600">{endItem}</span> of{' '}
-                    <span className="font-semibold text-gray-900">{totalItems}</span> items
+                <p className={isDark ? "text-sm text-white/80" : "text-sm text-gray-700"}>
+                    Showing <span className={isDark ? "font-semibold text-blue-400" : "font-semibold text-blue-600"}>{startItem}</span> to{' '}
+                    <span className={isDark ? "font-semibold text-blue-400" : "font-semibold text-blue-600"}>{endItem}</span> of{' '}
+                    <span className={isDark ? "font-semibold text-white" : "font-semibold text-gray-900"}>{totalItems}</span> items
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className={isDark ? "text-xs text-white/50" : "text-xs text-gray-500"}>
                     Page {currentPage} of {totalPages}
                 </p>
             </div>
@@ -92,8 +94,8 @@ export default function Pagination({
                         flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
                         transition-all duration-200 transform
                         ${currentPage === 1
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:shadow-md hover:scale-105'
+                            ? isDark ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : isDark ? 'bg-blue-600 hover:bg-blue-500 text-white hover:shadow-md' : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:shadow-md hover:scale-105'
                         }
                     `}
                     aria-label="Previous page"
@@ -111,7 +113,7 @@ export default function Pagination({
                             return (
                                 <span
                                     key={`ellipsis-${index}`}
-                                    className="px-3 py-2 text-gray-400 select-none"
+                                    className={isDark ? "px-3 py-2 text-white/40 select-none" : "px-3 py-2 text-gray-400 select-none"}
                                 >
                                     ...
                                 </span>
@@ -128,8 +130,8 @@ export default function Pagination({
                                     min-w-[40px] h-10 px-3 rounded-lg font-medium text-sm
                                     transition-all duration-200 transform
                                     ${isActive
-                                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md scale-105 ring-2 ring-blue-300'
-                                        : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm hover:scale-105 border border-gray-200'
+                                        ? isDark ? 'bg-blue-600 text-white shadow-md scale-105 ring-2 ring-blue-500/50' : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md scale-105 ring-2 ring-blue-300'
+                                        : isDark ? 'bg-white/5 text-white/80 hover:bg-blue-500/20 hover:text-blue-400 border border-white/10' : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm hover:scale-105 border border-gray-200'
                                     }
                                 `}
                                 aria-label={`Go to page ${page}`}
@@ -149,8 +151,8 @@ export default function Pagination({
                         flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
                         transition-all duration-200 transform
                         ${currentPage === totalPages
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:shadow-md hover:scale-105'
+                            ? isDark ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : isDark ? 'bg-blue-600 hover:bg-blue-500 text-white hover:shadow-md' : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:shadow-md hover:scale-105'
                         }
                     `}
                     aria-label="Next page"
@@ -164,8 +166,8 @@ export default function Pagination({
 
             {/* Quick jump (optional - only show for many pages) */}
             {totalPages > 10 && (
-                <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-gray-200">
-                    <label htmlFor="page-jump" className="text-sm text-gray-600">
+                <div className={isDark ? "flex items-center justify-center gap-2 mt-4 pt-4 border-t border-white/10" : "flex items-center justify-center gap-2 mt-4 pt-4 border-t border-gray-200"}>
+                    <label htmlFor="page-jump" className={isDark ? "text-sm text-white/60" : "text-sm text-gray-600"}>
                         Jump to page:
                     </label>
                     <input
@@ -180,7 +182,7 @@ export default function Pagination({
                                 onPageChange(page);
                             }
                         }}
-                        className="w-20 px-3 py-1 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                        className={isDark ? "w-20 px-3 py-1 text-sm border border-white/20 rounded-lg bg-white/5 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all" : "w-20 px-3 py-1 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"}
                     />
                 </div>
             )}

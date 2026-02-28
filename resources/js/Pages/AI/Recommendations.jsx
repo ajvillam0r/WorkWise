@@ -16,6 +16,7 @@ export default function Recommendations({
     bannerDescription,
 }) {
     const isGigWorker = userType === "gig_worker";
+    const isDark = pageTitle === "AI Match" || pageTitle === "AI Recommendations";
 
     const effectiveBannerTitle = bannerTitle ?? (isGigWorker ? "AI-Powered Job Recommendations" : "AI-Matched Gig Workers");
     const effectiveBannerDescription = bannerDescription ?? (isGigWorker
@@ -431,20 +432,27 @@ export default function Recommendations({
         return "text-orange-600";
     };
 
+    const getMatchScoreColorDark = (score) => {
+        if (score >= 80) return "text-green-400";
+        if (score >= 60) return "text-blue-400";
+        if (score >= 30) return "text-amber-400";
+        return "text-orange-400";
+    };
+
     const renderFreelancerRecommendations = (items, filtersApplied) => {
         if (!items || items.length === 0) {
             return (
-                <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                <div className={isDark ? "bg-white/5 backdrop-blur-sm overflow-hidden rounded-xl border border-white/10" : "bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200"}>
                     <div className="p-8 text-center">
                         <div className="text-6xl mb-4">🔍</div>
 
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        <h3 className={`text-lg font-medium mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                             {filtersApplied
                                 ? "No Results Found"
                                 : "No Job Matches Found"}
                         </h3>
 
-                        <p className="text-gray-600">
+                        <p className={isDark ? "text-white/60" : "text-gray-600"}>
                             {filtersApplied
                                 ? "Try adjusting your filters to see more AI recommendations."
                                 : "We couldn't find any jobs matching your current skills and experience. Try updating your profile with more skills or check back later for new opportunities."}
@@ -460,7 +468,10 @@ export default function Recommendations({
                     {items.map((match, index) => (
                         <div
                             key={index}
-                            className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border-l-4 border-blue-500 border border-gray-200"
+                            className={isDark
+                                ? "bg-white/5 backdrop-blur-sm overflow-hidden rounded-xl border-l-4 border-blue-500 border border-white/10 hover:border-blue-500/30 transition-all duration-200"
+                                : "bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border-l-4 border-blue-500 border border-gray-200"
+                            }
                         >
                             <div className="p-8">
                                 <div className="flex justify-between items-start mb-4">
@@ -468,20 +479,20 @@ export default function Recommendations({
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-2xl">💼</span>
 
-                                            <h3 className="text-lg font-semibold text-gray-900">
+                                            <h3 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
                                                 <Link
                                                     href={route(
                                                         "jobs.show",
                                                         match.job.id,
                                                     )}
-                                                    className="hover:text-blue-600 transition-colors"
+                                                    className={isDark ? "hover:text-blue-400 transition-colors" : "hover:text-blue-600 transition-colors"}
                                                 >
                                                     {match.job.title}
                                                 </Link>
                                             </h3>
                                         </div>
 
-                                        <div className="text-sm text-gray-600 flex items-center gap-4">
+                                        <div className={`text-sm flex items-center gap-4 ${isDark ? "text-white/60" : "text-gray-600"}`}>
                                             <span>
                                                 Posted by:{" "}
                                                 <span className="font-medium">
@@ -491,7 +502,7 @@ export default function Recommendations({
                                             </span>
 
                                             {match.job.experience_level && (
-                                                <span className="px-3 py-1 bg-gray-100 rounded-xl text-sm font-medium shadow-md">
+                                                <span className={isDark ? "px-3 py-1 bg-white/10 text-white/80 rounded-xl text-sm font-medium border border-white/10" : "px-3 py-1 bg-gray-100 rounded-xl text-sm font-medium shadow-md"}>
                                                     {match.job.experience_level
                                                         .charAt(0)
                                                         .toUpperCase() +
@@ -505,12 +516,12 @@ export default function Recommendations({
 
                                     <div className="text-right">
                                         <div
-                                            className={`text-3xl font-bold ${getMatchScoreColor(match.score)}`}
+                                            className={`text-3xl font-bold ${isDark ? getMatchScoreColorDark(match.score) : getMatchScoreColor(match.score)}`}
                                         >
                                             {match.score}%
                                         </div>
 
-                                        <div className="text-xs text-gray-500 font-medium">
+                                        <div className={isDark ? "text-xs text-white/50 font-medium" : "text-xs text-gray-500 font-medium"}>
                                             {match.score >= 80
                                                 ? "🎯 Excellent"
                                                 : match.score >= 60
@@ -523,13 +534,13 @@ export default function Recommendations({
                                     </div>
                                 </div>
 
-                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-4 border border-blue-200 shadow-md">
-                                    <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                                <div className={isDark ? "bg-blue-500/10 rounded-xl p-6 mb-4 border border-blue-500/20" : "bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-4 border border-blue-200 shadow-md"}>
+                                    <h4 className={`text-sm font-semibold mb-2 flex items-center gap-2 ${isDark ? "text-blue-300" : "text-blue-900"}`}>
                                         <span>🤖</span> AI Analysis - Why this
                                         matches your profile:
                                     </h4>
 
-                                    <p className="text-gray-700 leading-relaxed">
+                                    <p className={isDark ? "text-white/70 leading-relaxed" : "text-gray-700 leading-relaxed"}>
                                         {match.reason}
                                     </p>
                                 </div>
@@ -537,7 +548,7 @@ export default function Recommendations({
                                 {match.job.required_skills &&
                                     match.job.required_skills.length > 0 && (
                                         <div className="mb-4">
-                                            <h4 className="text-xs font-medium text-gray-700 mb-2">
+                                            <h4 className={`text-xs font-medium mb-2 ${isDark ? "text-white/70" : "text-gray-700"}`}>
                                                 Required Skills:
                                             </h4>
 
@@ -551,7 +562,7 @@ export default function Recommendations({
                                                         return (
                                                             <span
                                                                 key={idx}
-                                                                className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-xl shadow-md"
+                                                                className={isDark ? "px-3 py-1 bg-blue-500/10 text-blue-300 text-sm font-medium rounded-xl border border-blue-500/20" : "px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-xl shadow-md"}
                                                             >
                                                                 {label}
                                                             </span>
@@ -562,13 +573,13 @@ export default function Recommendations({
                                         </div>
                                     )}
 
-                                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                                    <div className="text-sm text-gray-600">
+                                <div className={`flex justify-between items-center pt-4 ${isDark ? "border-t border-white/10" : "border-t border-gray-200"}`}>
+                                    <div className={isDark ? "text-sm text-white/60" : "text-sm text-gray-600"}>
                                         <span className="font-medium">Budget:</span>{" "}
                                         {match.job.budget_display ||
                                             `₱${match.job.budget_min || 0} - ₱${match.job.budget_max || 0}`}
                                         {match.job.budget_type && (
-                                            <span className="text-xs text-gray-500 ml-1">
+                                            <span className={isDark ? "text-xs text-white/50 ml-1" : "text-xs text-gray-500 ml-1"}>
                                                 ({match.job.budget_type})
                                             </span>
                                         )}
@@ -576,7 +587,10 @@ export default function Recommendations({
 
                                     <Link
                                         href={route("jobs.show", match.job.id)}
-                                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                        className={isDark
+                                            ? "inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-500 border border-transparent rounded-xl font-semibold text-sm text-white shadow-lg shadow-blue-600/20 transition-all duration-300"
+                                            : "inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                        }
                                     >
                                         View Job Details →
                                     </Link>
@@ -594,6 +608,7 @@ export default function Recommendations({
                         onPageChange={goToGigWorkerPage}
                         itemsPerPage={gigWorkerItemsPerPage}
                         totalItems={gigWorkerTotalItems}
+                        variant={isDark ? "dark" : "light"}
                     />
                 )}
             </>
@@ -613,17 +628,17 @@ export default function Recommendations({
 
         if (!entries.length || totalMatches === 0) {
             return (
-                <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                <div className={isDark ? "bg-white/5 backdrop-blur-sm overflow-hidden rounded-xl border border-white/10" : "bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200"}>
                     <div className="p-8 text-center">
                         <div className="text-6xl mb-4">👥</div>
 
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        <h3 className={`text-lg font-medium mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                             {filtersApplied
                                 ? "No Candidates Found"
                                 : "No AI Matches Available"}
                         </h3>
 
-                        <p className="text-gray-600">
+                        <p className={isDark ? "text-white/60" : "text-gray-600"}>
                             {filtersApplied
                                 ? "Try expanding your filters to discover more potential gig workers."
                                 : "We could not find gig workers that match your current job postings. Check back soon or adjust your requirements."}
@@ -670,17 +685,17 @@ export default function Recommendations({
                         return (
                             <div
                                 key={jobId}
-                                className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200"
+                                className={isDark ? "bg-white/5 backdrop-blur-sm overflow-hidden rounded-xl border border-white/10 hover:border-blue-500/30 transition-all duration-200" : "bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200"}
                             >
                                 <div className="p-8">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                    <h3 className={`text-lg font-semibold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
                                         Matches for:{" "}
                                         {jobData.job?.title || "Untitled Job"}
                                     </h3>
 
                                     <div className="space-y-4">
                                         {showEmptyState ? (
-                                            <div className="text-center py-8 text-gray-500">
+                                            <div className={`text-center py-8 ${isDark ? "text-white/50" : "text-gray-500"}`}>
                                                 <p>
                                                     No matching gig workers found
                                                     for this job.
@@ -698,7 +713,7 @@ export default function Recommendations({
                                                 {excellentMatches.length > 0 && (
                                                     <>
                                                         <div className="mb-4">
-                                                            <h4 className="text-sm font-medium text-green-700 mb-2">
+                                                            <h4 className={isDark ? "text-sm font-medium text-green-400 mb-2" : "text-sm font-medium text-green-700 mb-2"}>
                                                                 🎯 Excellent
                                                                 Matches (
                                                                 {
@@ -717,7 +732,7 @@ export default function Recommendations({
                                                                 return (
                                                                     <div
                                                                         key={`excellent-${jobId}-${index}`}
-                                                                        className="border border-green-200 bg-gradient-to-br from-green-50 to-white rounded-xl p-6 shadow-md"
+                                                                        className={isDark ? "border border-green-500/30 bg-green-500/10 rounded-xl p-6" : "border border-green-200 bg-gradient-to-br from-green-50 to-white rounded-xl p-6 shadow-md"}
                                                                     >
                                                                         <div className="flex justify-between items-start">
                                                                             <div className="flex-1 flex gap-4">
@@ -727,15 +742,15 @@ export default function Recommendations({
                                                                                     className="w-16 h-16 rounded-full object-cover shadow-sm bg-white"
                                                                                 />
                                                                                 <div>
-                                                                                    <h4 className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                                                                                    <h4 className={isDark ? "text-lg font-bold text-white hover:text-blue-400 transition-colors" : "text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"}>
                                                                                         <Link href={getProfileUrl(match, worker.id)} className="uppercase">
                                                                                             {worker.first_name} {worker.last_name}
                                                                                         </Link>
                                                                                     </h4>
-                                                                                    <div className="text-sm font-medium text-blue-600 mt-0.5">
+                                                                                    <div className={isDark ? "text-sm font-medium text-blue-400 mt-0.5" : "text-sm font-medium text-blue-600 mt-0.5"}>
                                                                                         {worker.professional_title || "Gig Worker"}
                                                                                     </div>
-                                                                                    <div className="text-xs text-gray-600 mt-1 flex flex-col gap-1">
+                                                                                    <div className={isDark ? "text-xs text-white/60 mt-1 flex flex-col gap-1" : "text-xs text-gray-600 mt-1 flex flex-col gap-1"}>
                                                                                         <div className="flex items-center gap-2 flex-wrap">
                                                                                             <span className="flex items-center gap-1">
                                                                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -765,22 +780,22 @@ export default function Recommendations({
                                                                             </div>
 
                                                                             <div className="text-right">
-                                                                                <div className="text-2xl font-bold text-green-600">
+                                                                                <div className={isDark ? "text-2xl font-bold text-green-400" : "text-2xl font-bold text-green-600"}>
                                                                                     {
                                                                                         match.score
                                                                                     }
                                                                                     %
                                                                                 </div>
 
-                                                                                <div className="text-sm text-gray-500">
+                                                                                <div className={isDark ? "text-sm text-white/50" : "text-sm text-gray-500"}>
                                                                                     Match
                                                                                     Score
                                                                                 </div>
                                                                             </div>
                                                                         </div>
 
-                                                                        <div className="bg-green-100 rounded-xl p-4 mt-3 shadow-sm">
-                                                                            <p className="text-sm text-gray-700">
+                                                                        <div className={isDark ? "bg-green-500/20 rounded-xl p-4 mt-3 border border-green-500/30" : "bg-green-100 rounded-xl p-4 mt-3 shadow-sm"}>
+                                                                            <p className={isDark ? "text-sm text-white/80" : "text-sm text-gray-700"}>
                                                                                 {
                                                                                     match.reason
                                                                                 }
@@ -790,7 +805,7 @@ export default function Recommendations({
                                                                         <div className="mt-4 flex justify-end">
                                                                             <Link
                                                                                 href={getProfileUrl(match, worker.id)}
-                                                                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                                                                className={isDark ? "inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-500 border border-transparent rounded-xl font-semibold text-sm text-white shadow-lg shadow-green-600/20 transition-all duration-300" : "inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"}
                                                                             >
                                                                                 View Profile →
                                                                             </Link>
@@ -805,13 +820,13 @@ export default function Recommendations({
                                                 {goodMatches.length > 0 && (
                                                     <>
                                                         <div className="mb-4">
-                                                            <h4 className="text-sm font-medium text-blue-700 mb-2">
+                                                            <h4 className={isDark ? "text-sm font-medium text-blue-400 mb-2" : "text-sm font-medium text-blue-700 mb-2"}>
                                                                 👍 Good Matches (
                                                                 {goodMatches.length}
                                                                 )
                                                             </h4>
 
-                                                            <p className="text-xs text-gray-600">
+                                                            <p className={isDark ? "text-xs text-white/60" : "text-xs text-gray-600"}>
                                                                 These gig workers
                                                                 have relevant skills
                                                                 and could be a good
@@ -829,7 +844,7 @@ export default function Recommendations({
                                                                 return (
                                                                     <div
                                                                         key={`good-${jobId}-${index}`}
-                                                                        className="border border-blue-200 bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 shadow-md"
+                                                                        className={isDark ? "border border-blue-500/30 bg-blue-500/10 rounded-xl p-6" : "border border-blue-200 bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 shadow-md"}
                                                                     >
                                                                         <div className="flex justify-between items-start">
                                                                             <div className="flex-1 flex gap-4">
@@ -839,15 +854,15 @@ export default function Recommendations({
                                                                                     className="w-16 h-16 rounded-full object-cover shadow-sm bg-white"
                                                                                 />
                                                                                 <div>
-                                                                                    <h4 className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                                                                                    <h4 className={isDark ? "text-lg font-bold text-white hover:text-blue-400 transition-colors" : "text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"}>
                                                                                         <Link href={getProfileUrl(match, worker.id)} className="uppercase">
                                                                                             {worker.first_name} {worker.last_name}
                                                                                         </Link>
                                                                                     </h4>
-                                                                                    <div className="text-sm font-medium text-blue-600 mt-0.5">
+                                                                                    <div className={isDark ? "text-sm font-medium text-blue-400 mt-0.5" : "text-sm font-medium text-blue-600 mt-0.5"}>
                                                                                         {worker.professional_title || "Gig Worker"}
                                                                                     </div>
-                                                                                    <div className="text-xs text-gray-600 mt-1 flex flex-col gap-1">
+                                                                                    <div className={isDark ? "text-xs text-white/60 mt-1 flex flex-col gap-1" : "text-xs text-gray-600 mt-1 flex flex-col gap-1"}>
                                                                                         <div className="flex items-center gap-2 flex-wrap">
                                                                                             <span className="flex items-center gap-1">
                                                                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -877,22 +892,22 @@ export default function Recommendations({
                                                                             </div>
 
                                                                             <div className="text-right">
-                                                                                <div className="text-2xl font-bold text-blue-600">
+                                                                                <div className={isDark ? "text-2xl font-bold text-blue-400" : "text-2xl font-bold text-blue-600"}>
                                                                                     {
                                                                                         match.score
                                                                                     }
                                                                                     %
                                                                                 </div>
 
-                                                                                <div className="text-sm text-gray-500">
+                                                                                <div className={isDark ? "text-sm text-white/50" : "text-sm text-gray-500"}>
                                                                                     Match
                                                                                     Score
                                                                                 </div>
                                                                             </div>
                                                                         </div>
 
-                                                                        <div className="bg-blue-100 rounded-xl p-4 mt-3 shadow-sm">
-                                                                            <p className="text-sm text-gray-700">
+                                                                        <div className={isDark ? "bg-blue-500/20 rounded-xl p-4 mt-3 border border-blue-500/30" : "bg-blue-100 rounded-xl p-4 mt-3 shadow-sm"}>
+                                                                            <p className={isDark ? "text-sm text-white/80" : "text-sm text-gray-700"}>
                                                                                 {
                                                                                     match.reason
                                                                                 }
@@ -902,7 +917,7 @@ export default function Recommendations({
                                                                         <div className="mt-4 flex justify-end">
                                                                             <Link
                                                                                 href={getProfileUrl(match, worker.id)}
-                                                                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                                                                className={isDark ? "inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-500 border border-transparent rounded-xl font-semibold text-sm text-white shadow-lg shadow-blue-600/20 transition-all duration-300" : "inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"}
                                                                             >
                                                                                 View Profile →
                                                                             </Link>
@@ -917,7 +932,7 @@ export default function Recommendations({
                                                 {basicMatches.length > 0 && (
                                                     <>
                                                         <div className="mb-4">
-                                                            <h4 className="text-sm font-medium text-yellow-700 mb-2">
+                                                            <h4 className={isDark ? "text-sm font-medium text-amber-400 mb-2" : "text-sm font-medium text-yellow-700 mb-2"}>
                                                                 💡 Potential
                                                                 Matches (
                                                                 {
@@ -926,7 +941,7 @@ export default function Recommendations({
                                                                 )
                                                             </h4>
 
-                                                            <p className="text-xs text-gray-600">
+                                                            <p className={isDark ? "text-xs text-white/60" : "text-xs text-gray-600"}>
                                                                 These gig workers
                                                                 show some relevant
                                                                 background and could
@@ -944,7 +959,7 @@ export default function Recommendations({
                                                                 return (
                                                                     <div
                                                                         key={`basic-${jobId}-${index}`}
-                                                                        className="border border-yellow-200 bg-gradient-to-br from-yellow-50 to-white rounded-xl p-6 shadow-md"
+                                                                        className={isDark ? "border border-amber-500/30 bg-amber-500/10 rounded-xl p-6" : "border border-yellow-200 bg-gradient-to-br from-yellow-50 to-white rounded-xl p-6 shadow-md"}
                                                                     >
                                                                         <div className="flex justify-between items-start">
                                                                             <div className="flex-1 flex gap-4">
@@ -954,15 +969,15 @@ export default function Recommendations({
                                                                                     className="w-16 h-16 rounded-full object-cover shadow-sm bg-white"
                                                                                 />
                                                                                 <div>
-                                                                                    <h4 className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                                                                                    <h4 className={isDark ? "text-lg font-bold text-white hover:text-blue-400 transition-colors" : "text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"}>
                                                                                         <Link href={getProfileUrl(match, worker.id)} className="uppercase">
                                                                                             {worker.first_name} {worker.last_name}
                                                                                         </Link>
                                                                                     </h4>
-                                                                                    <div className="text-sm font-medium text-blue-600 mt-0.5">
+                                                                                    <div className={isDark ? "text-sm font-medium text-blue-400 mt-0.5" : "text-sm font-medium text-blue-600 mt-0.5"}>
                                                                                         {worker.professional_title || "Gig Worker"}
                                                                                     </div>
-                                                                                    <div className="text-xs text-gray-600 mt-1 flex flex-col gap-1">
+                                                                                    <div className={isDark ? "text-xs text-white/60 mt-1 flex flex-col gap-1" : "text-xs text-gray-600 mt-1 flex flex-col gap-1"}>
                                                                                         <div className="flex items-center gap-2 flex-wrap">
                                                                                             <span className="flex items-center gap-1">
                                                                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -982,7 +997,7 @@ export default function Recommendations({
                                                                                             )}
                                                                                         </div>
                                                                                         {(worker.city || worker.country) && (
-                                                                                            <div className="flex items-center gap-1 mt-0.5 text-gray-500">
+                                                                                            <div className={isDark ? "flex items-center gap-1 mt-0.5 text-white/50" : "flex items-center gap-1 mt-0.5 text-gray-500"}>
                                                                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                                                                 {[worker.city, worker.country].filter(Boolean).join(", ")}
                                                                                             </div>
@@ -992,22 +1007,22 @@ export default function Recommendations({
                                                                             </div>
 
                                                                             <div className="text-right">
-                                                                                <div className="text-2xl font-bold text-yellow-600">
+                                                                                <div className={isDark ? "text-2xl font-bold text-amber-400" : "text-2xl font-bold text-yellow-600"}>
                                                                                     {
                                                                                         match.score
                                                                                     }
                                                                                     %
                                                                                 </div>
 
-                                                                                <div className="text-sm text-gray-500">
+                                                                                <div className={isDark ? "text-sm text-white/50" : "text-sm text-gray-500"}>
                                                                                     Match
                                                                                     Score
                                                                                 </div>
                                                                             </div>
                                                                         </div>
 
-                                                                        <div className="bg-yellow-100 rounded-xl p-4 mt-3 shadow-sm">
-                                                                            <p className="text-sm text-gray-700">
+                                                                        <div className={isDark ? "bg-amber-500/20 rounded-xl p-4 mt-3 border border-amber-500/30" : "bg-yellow-100 rounded-xl p-4 mt-3 shadow-sm"}>
+                                                                            <p className={isDark ? "text-sm text-white/80" : "text-sm text-gray-700"}>
                                                                                 {
                                                                                     match.reason
                                                                                 }
@@ -1017,7 +1032,7 @@ export default function Recommendations({
                                                                         <div className="mt-4 flex justify-end">
                                                                             <Link
                                                                                 href={getProfileUrl(match, worker.id)}
-                                                                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                                                                className={isDark ? "inline-flex items-center px-6 py-3 bg-amber-600 hover:bg-amber-500 border border-transparent rounded-xl font-semibold text-sm text-white shadow-lg shadow-amber-600/20 transition-all duration-300" : "inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"}
                                                                             >
                                                                                 View Profile →
                                                                             </Link>
@@ -1045,6 +1060,7 @@ export default function Recommendations({
                         onPageChange={goToEmployerPage}
                         itemsPerPage={employerItemsPerPage}
                         totalItems={employerTotalItems}
+                        variant={isDark ? "dark" : "light"}
                     />
                 )}
             </>
@@ -1053,8 +1069,9 @@ export default function Recommendations({
 
     return (
         <AuthenticatedLayout
+            pageTheme={isDark ? "dark" : undefined}
             header={
-                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                <h2 className={`font-semibold text-xl leading-tight ${isDark ? "text-white tracking-tight" : "text-gray-800"}`}>
                     🤖 {pageTitle}
                 </h2>
             }
@@ -1062,23 +1079,32 @@ export default function Recommendations({
             <Head title={pageTitle} />
 
             <link
-                href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap"
+                href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
                 rel="stylesheet"
             />
 
-            <div className="relative py-12 bg-white overflow-hidden">
-                {/* Animated Background Shapes */}
-
-                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-
-                <div
-                    className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse"
-                    style={{ animationDelay: "2s" }}
-                ></div>
+            <div className={`relative py-12 overflow-hidden ${isDark ? "min-h-screen bg-[#05070A] font-sans" : "bg-white"}`} style={isDark ? { fontFamily: "Inter, system-ui, sans-serif" } : undefined}>
+                {isDark ? (
+                    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                        <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-blue-600/5 rounded-full blur-[120px]" />
+                        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] bg-blue-500/5 rounded-full blur-[100px]" />
+                    </div>
+                ) : (
+                    <>
+                        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
+                        <div
+                            className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse"
+                            style={{ animationDelay: "2s" }}
+                        ></div>
+                    </>
+                )}
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 overflow-hidden shadow-xl sm:rounded-xl mb-8 border border-blue-500">
-                        <div className="p-8 text-white">
+                    <div className={isDark
+                        ? "bg-white/5 backdrop-blur-sm overflow-hidden rounded-xl mb-8 border border-white/10"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600 overflow-hidden shadow-xl sm:rounded-xl mb-8 border border-blue-500"
+                    }>
+                        <div className={isDark ? "p-8 text-white" : "p-8 text-white"}>
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-3xl">🤖</span>
 
@@ -1089,20 +1115,24 @@ export default function Recommendations({
                                 <button
                                     onClick={handleRefresh}
                                     disabled={isRefreshing}
-                                    className={`ml-auto flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-semibold transition-all ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={isDark
+                                        ? "ml-auto flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold transition-all border border-white/10"
+                                        : "ml-auto flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-semibold transition-all"
+                                    }
+                                    style={isRefreshing ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
                                 >
-                                    <span className={isRefreshing ? 'animate-spin' : ''}>
-                                        {isRefreshing ? '⏳' : '🔄'}
+                                    <span className={isRefreshing ? "animate-spin" : ""}>
+                                        {isRefreshing ? "⏳" : "🔄"}
                                     </span>
-                                    {isRefreshing ? 'Refreshing...' : 'Refresh Matches'}
+                                    {isRefreshing ? "Refreshing..." : "Refresh Matches"}
                                 </button>
                             </div>
 
-                            <p className="text-blue-100">
+                            <p className={isDark ? "text-white/70" : "text-blue-100"}>
                                 {effectiveBannerDescription}
                             </p>
 
-                            <div className="mt-4 flex items-center gap-4 text-sm text-blue-100">
+                            <div className={`mt-4 flex items-center gap-4 text-sm ${isDark ? "text-white/60" : "text-blue-100"}`}>
                                 <span className="flex items-center gap-1">
                                     <span className="w-2 h-2 bg-green-400 rounded-full"></span>
                                     80-100%: Excellent Match
@@ -1122,9 +1152,12 @@ export default function Recommendations({
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-                        <aside className="bg-white/90 backdrop-blur-md border-2 border-blue-200 rounded-xl shadow-2xl p-6 lg:sticky lg:top-24 h-max ring-1 ring-blue-100">
+                        <aside className={isDark
+                            ? "bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 lg:sticky lg:top-24 h-max"
+                            : "bg-white/90 backdrop-blur-md border-2 border-blue-200 rounded-xl shadow-2xl p-6 lg:sticky lg:top-24 h-max ring-1 ring-blue-100"
+                        }>
                             <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-semibold text-gray-900">
+                                <h3 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
                                     Filter Recommendations
                                 </h3>
 
@@ -1132,7 +1165,7 @@ export default function Recommendations({
                                     <button
                                         type="button"
                                         onClick={clearFilters}
-                                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                                        className={isDark ? "text-sm font-medium text-blue-400 hover:text-blue-300" : "text-sm font-medium text-blue-600 hover:text-blue-700"}
                                     >
                                         Reset
                                     </button>
@@ -1141,7 +1174,7 @@ export default function Recommendations({
 
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className={`block text-sm font-medium mb-2 ${isDark ? "text-white/80" : "text-gray-700"}`}>
                                         Experience Level
                                     </label>
 
@@ -1154,12 +1187,16 @@ export default function Recommendations({
                                                 experience: event.target.value,
                                             }))
                                         }
-                                        className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className={isDark
+                                            ? "w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            : "w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        }
                                     >
                                         {experienceOptions.map((option) => (
                                             <option
                                                 key={option.value}
                                                 value={option.value}
+                                                {...(isDark && { style: { backgroundColor: "#0d1014", color: "#e5e7eb" } })}
                                             >
                                                 {option.label}
                                             </option>
@@ -1168,7 +1205,7 @@ export default function Recommendations({
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className={`block text-sm font-medium mb-2 ${isDark ? "text-white/80" : "text-gray-700"}`}>
                                         Budget Range{" "}
                                         {isGigWorker
                                             ? "(Job)"
@@ -1184,10 +1221,13 @@ export default function Recommendations({
                                             onChange={handleBudgetChange(
                                                 "budgetMin",
                                             )}
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className={isDark
+                                                ? "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                : "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            }
                                         />
 
-                                        <span className="text-sm text-gray-500">
+                                        <span className={isDark ? "text-sm text-white/50" : "text-sm text-gray-500"}>
                                             -
                                         </span>
 
@@ -1199,11 +1239,14 @@ export default function Recommendations({
                                             onChange={handleBudgetChange(
                                                 "budgetMax",
                                             )}
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className={isDark
+                                                ? "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                : "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            }
                                         />
                                     </div>
 
-                                    <p className="mt-2 text-xs text-gray-500">
+                                    <p className={`mt-2 text-xs ${isDark ? "text-white/50" : "text-gray-500"}`}>
                                         Set either value to narrow the
                                         recommendations by{" "}
                                         {isGigWorker
@@ -1215,11 +1258,11 @@ export default function Recommendations({
 
                                 <div className="relative">
                                     <div className="flex items-center justify-between mb-2">
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label className={`block text-sm font-medium ${isDark ? "text-white/80" : "text-gray-700"}`}>
                                             Required Skills
                                         </label>
                                         {availableSkills.length > 0 && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <span className={isDark ? "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-300 border border-green-500/30" : "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"}>
                                                 {availableSkills.length} available
                                             </span>
                                         )}
@@ -1232,7 +1275,10 @@ export default function Recommendations({
                                                 (open) => !open,
                                             )
                                         }
-                                        className="flex w-full items-center justify-between rounded-lg border-2 border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-blue-400 hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                        className={isDark
+                                            ? "flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white shadow-sm hover:border-blue-500/50 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                            : "flex w-full items-center justify-between rounded-lg border-2 border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-blue-400 hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                                        }
                                     >
                                         <span>
                                             {filters.skills.length
@@ -1240,17 +1286,20 @@ export default function Recommendations({
                                                 : "Select skills"}
                                         </span>
 
-                                        <span className="text-xs text-gray-500">
+                                        <span className={isDark ? "text-xs text-white/50" : "text-xs text-gray-500"}>
                                             {isSkillDropdownOpen ? "▲" : "▼"}
                                         </span>
                                     </button>
 
                                     {isSkillDropdownOpen && (
-                                        <div className="absolute left-0 right-0 z-20 mt-2 max-h-60 overflow-y-auto rounded-xl border-2 border-blue-200 bg-white p-3 shadow-2xl ring-1 ring-blue-100">
+                                        <div className={isDark
+                                            ? "absolute left-0 right-0 z-20 mt-2 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-[#0A0D12] p-3 shadow-xl"
+                                            : "absolute left-0 right-0 z-20 mt-2 max-h-60 overflow-y-auto rounded-xl border-2 border-blue-200 bg-white p-3 shadow-2xl ring-1 ring-blue-100"
+                                        }>
                                             {availableSkills.length > 0 ? (
                                                 <>
-                                                    <div className="mb-2 pb-2 border-b border-gray-200">
-                                                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                    <div className={isDark ? "mb-2 pb-2 border-b border-white/10" : "mb-2 pb-2 border-b border-gray-200"}>
+                                                        <p className={`text-xs flex items-center gap-1 ${isDark ? "text-white/50" : "text-gray-500"}`}>
                                                             <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                                             </svg>
@@ -1268,7 +1317,10 @@ export default function Recommendations({
                                                         return (
                                                             <label
                                                                 key={skill}
-                                                                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer transition-colors duration-150"
+                                                                className={isDark
+                                                                    ? "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/90 hover:bg-white/5 cursor-pointer transition-colors duration-150"
+                                                                    : "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer transition-colors duration-150"
+                                                                }
                                                             >
                                                                 <input
                                                                     type="checkbox"
@@ -1284,7 +1336,7 @@ export default function Recommendations({
                                                                 />
                                                                 <span className="flex-1">{skill}</span>
                                                                 {isSelected && (
-                                                                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <svg className={`w-4 h-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} fill="currentColor" viewBox="0 0 20 20">
                                                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                                     </svg>
                                                                 )}
@@ -1294,13 +1346,13 @@ export default function Recommendations({
                                                 </>
                                             ) : (
                                                 <div className="text-center py-4">
-                                                    <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className={`mx-auto h-8 w-8 ${isDark ? "text-white/40" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                                                     </svg>
-                                                    <p className="mt-2 text-sm text-gray-500">
+                                                    <p className={`mt-2 text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
                                                         No skills available yet
                                                     </p>
-                                                    <p className="mt-1 text-xs text-gray-400">
+                                                    <p className={`mt-1 text-xs ${isDark ? "text-white/40" : "text-gray-400"}`}>
                                                         Skills will appear from AI recommendations
                                                     </p>
                                                 </div>
@@ -1308,7 +1360,7 @@ export default function Recommendations({
                                         </div>
                                     )}
 
-                                    <p className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                                    <p className={`mt-2 text-xs flex items-center gap-1 ${isDark ? "text-white/50" : "text-gray-500"}`}>
                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                         </svg>
@@ -1320,7 +1372,10 @@ export default function Recommendations({
                                             {filters.skills.map((skill) => (
                                                 <span
                                                     key={skill}
-                                                    className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+                                                    className={isDark
+                                                        ? "inline-flex items-center gap-2 rounded-full bg-blue-500/20 border border-blue-500/30 px-3 py-1 text-xs font-medium text-blue-300"
+                                                        : "inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+                                                    }
                                                 >
                                                     {skill}
 
@@ -1331,7 +1386,7 @@ export default function Recommendations({
                                                                 skill,
                                                             )
                                                         }
-                                                        className="text-blue-500 hover:text-blue-700"
+                                                        className={isDark ? "text-blue-400 hover:text-blue-300" : "text-blue-500 hover:text-blue-700"}
                                                     >
                                                         x
                                                     </button>
@@ -1345,16 +1400,16 @@ export default function Recommendations({
 
                         <div className="space-y-6">
                             {hasError ? (
-                                <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                                <div className={isDark ? "bg-white/5 backdrop-blur-sm overflow-hidden rounded-xl border border-white/10" : "bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200"}>
                                     <div className="p-8 text-center">
                                         <div className="text-6xl mb-4">:(</div>
 
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                        <h3 className={`text-lg font-medium mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                                             Recommendations Temporarily
                                             Unavailable
                                         </h3>
 
-                                        <p className="text-gray-600 mb-4">
+                                        <p className={isDark ? "text-white/60 mb-4" : "text-gray-600 mb-4"}>
                                             We're experiencing high demand.
                                             Please try again in a few moments.
                                         </p>
@@ -1363,7 +1418,10 @@ export default function Recommendations({
                                             onClick={() =>
                                                 window.location.reload()
                                             }
-                                            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                            className={isDark
+                                                ? "inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-500 border border-transparent rounded-xl font-semibold text-sm text-white shadow-lg shadow-blue-600/20 transition-all duration-300"
+                                                : "inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border border-transparent rounded-xl font-semibold text-sm text-white uppercase tracking-widest shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                            }
                                         >
                                             Try Again
                                         </button>
@@ -1388,17 +1446,11 @@ export default function Recommendations({
             </div>
 
             <style>{`
-
                 body {
-
-                    background: white;
-
-                    color: #333;
-
+                    background: ${isDark ? "#05070A" : "white"};
+                    color: ${isDark ? "#e5e7eb" : "#333"};
                     font-family: 'Inter', sans-serif;
-
                 }
-
             `}</style>
         </AuthenticatedLayout>
     );

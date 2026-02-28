@@ -19,26 +19,26 @@ const PROFICIENCY_OPTIONS = [
 ];
 
 // ─── Field wrapper ────────────────────────────────────────────────────────────
-function Field({ label, hint, children, error }) {
+function Field({ label, hint, children, error, dark = false }) {
     return (
         <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
-            {hint && <p className="text-xs text-gray-400 mb-1.5">{hint}</p>}
+            <label className={`block text-sm font-semibold mb-1 ${dark ? 'text-white/90' : 'text-gray-700'}`}>{label}</label>
+            {hint && <p className={`text-xs mb-1.5 ${dark ? 'text-white/50' : 'text-gray-400'}`}>{hint}</p>}
             {children}
-            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+            {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
         </div>
     );
 }
 
 // ─── Card section ─────────────────────────────────────────────────────────────
-function Section({ title, icon, children }) {
+function Section({ title, icon, children, dark = false }) {
     return (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <span className="material-icons text-blue-600 text-base">{icon}</span>
+        <div className={dark ? "bg-white/5 rounded-xl border border-white/10 overflow-hidden" : "bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"}>
+            <div className={`px-6 py-4 flex items-center gap-3 ${dark ? 'border-b border-white/10' : 'border-b border-gray-100'}`}>
+                <div className={dark ? "w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center" : "w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center"}>
+                    <span className={dark ? "material-icons text-blue-400 text-base" : "material-icons text-blue-600 text-base"}>{icon}</span>
                 </div>
-                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">{title}</h2>
+                <h2 className={`text-sm font-semibold uppercase tracking-wider ${dark ? 'text-white' : 'text-gray-900'}`}>{title}</h2>
             </div>
             <div className="p-6 space-y-5">{children}</div>
         </div>
@@ -46,7 +46,7 @@ function Section({ title, icon, children }) {
 }
 
 // ─── Skills editor ────────────────────────────────────────────────────────────
-function SkillsEditor({ skills, onChange }) {
+function SkillsEditor({ skills, onChange, dark = false }) {
     const [search, setSearch] = useState('');
 
     const filtered = search.trim()
@@ -79,27 +79,32 @@ function SkillsEditor({ skills, onChange }) {
         onChange(updated);
     };
 
+    const profColorsDark = [
+        { value: 'beginner', label: 'Beginner', color: 'bg-green-500/20 text-green-400 border border-green-500/30' },
+        { value: 'intermediate', label: 'Intermediate', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+        { value: 'expert', label: 'Expert', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' },
+    ];
+
     return (
         <div className="space-y-4">
-            {/* Search input */}
             <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-gray-400 text-base">search</span>
+                <span className={`absolute left-3 top-1/2 -translate-y-1/2 material-icons text-base ${dark ? 'text-white/40' : 'text-gray-400'}`}>search</span>
                 <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Search or type a skill, press Enter to add"
-                    className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className={dark ? "w-full pl-9 pr-4 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none" : "w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"}
                 />
                 {filtered.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    <div className={`absolute top-full left-0 right-0 z-20 mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto ${dark ? 'bg-[#0d1014] border border-white/20' : 'bg-white border border-gray-200'}`}>
                         {filtered.slice(0, 8).map((s) => (
                             <button
                                 key={s}
                                 type="button"
                                 onClick={() => addSkill(s)}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                                className={`w-full text-left px-3 py-2 text-sm ${dark ? 'text-white/80 hover:bg-blue-500/20 hover:text-blue-400' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'}`}
                             >
                                 {s}
                             </button>
@@ -108,22 +113,21 @@ function SkillsEditor({ skills, onChange }) {
                 )}
             </div>
 
-            {/* Current skills */}
             {skills.length > 0 && (
                 <div className="space-y-2">
                     {skills.map((sk, i) => (
-                        <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
-                            <span className="flex-1 text-sm font-medium text-gray-800 pl-1">{sk.skill}</span>
+                        <div key={i} className={`flex items-center gap-2 p-2 rounded-lg border ${dark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-100'}`}>
+                            <span className={`flex-1 text-sm font-medium pl-1 ${dark ? 'text-white/90' : 'text-gray-800'}`}>{sk.skill}</span>
                             <div className="flex gap-1">
-                                {PROFICIENCY_OPTIONS.map((p) => (
+                                {(dark ? profColorsDark : PROFICIENCY_OPTIONS).map((p) => (
                                     <button
                                         key={p.value}
                                         type="button"
                                         onClick={() => setProficiency(i, p.value)}
-                                        className={`px-2 py-0.5 rounded text-xs font-medium transition-all ${sk.proficiency === p.value
-                                            ? p.color + ' ring-1 ring-offset-1 ring-current'
-                                            : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
-                                            }`}
+                                        className={dark
+                                            ? `px-2 py-0.5 rounded text-xs font-medium transition-all ${sk.proficiency === p.value ? p.color + ' ring-1 ring-offset-1 ring-offset-[#05070A] ring-current' : 'bg-white/5 border border-white/20 text-white/60 hover:text-white/80'}`
+                                            : `px-2 py-0.5 rounded text-xs font-medium transition-all ${sk.proficiency === p.value ? p.color + ' ring-1 ring-offset-1 ring-current' : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'}`
+                                        }
                                     >
                                         {p.label}
                                     </button>
@@ -132,7 +136,7 @@ function SkillsEditor({ skills, onChange }) {
                             <button
                                 type="button"
                                 onClick={() => removeSkill(i)}
-                                className="text-gray-400 hover:text-red-500 transition-colors ml-1"
+                                className={dark ? "text-white/40 hover:text-red-400 transition-colors ml-1" : "text-gray-400 hover:text-red-500 transition-colors ml-1"}
                             >
                                 <span className="material-icons text-base">close</span>
                             </button>
@@ -142,7 +146,7 @@ function SkillsEditor({ skills, onChange }) {
             )}
 
             {skills.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-3">No skills added yet. Search above to add your first skill.</p>
+                <p className={`text-xs text-center py-3 ${dark ? 'text-white/50' : 'text-gray-400'}`}>No skills added yet. Search above to add your first skill.</p>
             )}
         </div>
     );
@@ -150,6 +154,8 @@ function SkillsEditor({ skills, onChange }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function GigWorkerEdit({ user, status }) {
+    const isDark = true;
+
     // ── Profile photo state ───────────────────────────────────────────────
     const [photoPreview, setPhotoPreview] = useState(user.profile_picture || null);
     const photoRef = useRef(null);
@@ -246,29 +252,29 @@ export default function GigWorkerEdit({ user, status }) {
     const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'GW';
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout pageTheme="dark">
             <Head title="Edit Profile – WorkWise" />
 
-            <div className="bg-slate-50 min-h-screen">
+            <div className="min-h-screen bg-[#05070A]">
                 {/* ─── Top bar ─────────────────────────────────────────── */}
-                <div className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-10">
+                <div className="bg-[#05070A] border-b border-white/10 sticky top-0 z-10">
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <Link
                                 href="/profile/gig-worker"
-                                className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
+                                className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/80"
                             >
                                 <span className="material-icons">arrow_back</span>
                             </Link>
                             <div>
-                                <h1 className="text-lg font-bold text-gray-900">Edit Profile</h1>
-                                <p className="text-xs text-gray-500">Update your gig worker information</p>
+                                <h1 className="text-lg font-bold text-white">Edit Profile</h1>
+                                <p className="text-xs text-white/50">Update your gig worker information</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <Link
                                 href="/profile/gig-worker"
-                                className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+                                className="px-4 py-2 rounded-lg border border-white/20 text-sm font-medium text-white/80 hover:bg-white/10 transition"
                             >
                                 Cancel
                             </Link>
@@ -276,7 +282,7 @@ export default function GigWorkerEdit({ user, status }) {
                                 type="submit"
                                 form="gig-worker-edit-form"
                                 disabled={processing}
-                                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-sm shadow-blue-500/30 flex items-center gap-2"
+                                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-600/20 flex items-center gap-2"
                             >
                                 {processing
                                     ? <><span className="material-icons text-base animate-spin">progress_activity</span> Saving…</>
@@ -290,8 +296,8 @@ export default function GigWorkerEdit({ user, status }) {
                 {/* ─── Success banner ───────────────────────────────────── */}
                 {status === 'profile-updated' && (
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-                        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-green-700">
-                            <span className="material-icons text-green-500">check_circle</span>
+                        <div className="flex items-center gap-3 bg-green-500/20 border border-green-500/30 rounded-xl px-4 py-3 text-green-400">
+                            <span className="material-icons text-green-400">check_circle</span>
                             <span className="text-sm font-medium">Profile updated successfully!</span>
                         </div>
                     </div>
@@ -302,42 +308,40 @@ export default function GigWorkerEdit({ user, status }) {
                     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
                         {/* ── Profile Photo ─────────────────────────────── */}
-                        <Section title="Profile Photo" icon="person">
+                        <Section title="Profile Photo" icon="person" dark={isDark}>
                             <div className="flex items-center gap-6">
-                                {/* Avatar preview */}
                                 <div className="relative flex-shrink-0">
                                     {photoPreview ? (
                                         <img
                                             src={photoPreview}
                                             alt="Profile preview"
-                                            className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
+                                            className="w-24 h-24 rounded-full object-cover border-4 border-white/20 shadow-md"
                                         />
                                     ) : (
-                                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-md">
+                                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-2xl font-bold border-4 border-white/20 shadow-md">
                                             {initials}
                                         </div>
                                     )}
                                     <button
                                         type="button"
                                         onClick={() => photoRef.current?.click()}
-                                        className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-1.5 shadow-md hover:bg-blue-700 transition"
+                                        className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-1.5 shadow-md hover:bg-blue-500 transition"
                                     >
                                         <span className="material-icons text-sm leading-none">camera_alt</span>
                                     </button>
                                 </div>
 
-                                {/* Upload controls */}
                                 <div className="space-y-2">
                                     <button
                                         type="button"
                                         onClick={() => photoRef.current?.click()}
-                                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                                        className="px-4 py-2 border border-white/20 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 transition flex items-center gap-2"
                                     >
                                         <span className="material-icons text-base">upload</span>
                                         Upload new photo
                                     </button>
-                                    <p className="text-xs text-gray-400">JPG, PNG or WebP · Max 5MB</p>
-                                    {errors.profile_picture && <p className="text-xs text-red-500">{errors.profile_picture}</p>}
+                                    <p className="text-xs text-white/50">JPG, PNG or WebP · Max 5MB</p>
+                                    {errors.profile_picture && <p className="text-xs text-red-400">{errors.profile_picture}</p>}
                                 </div>
                                 <input
                                     ref={photoRef}
@@ -350,84 +354,85 @@ export default function GigWorkerEdit({ user, status }) {
                         </Section>
 
                         {/* ── Basic Info ────────────────────────────────── */}
-                        <Section title="Basic Information" icon="badge">
+                        <Section title="Basic Information" icon="badge" dark={isDark}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                <Field label="First Name" error={errors.first_name}>
+                                <Field label="First Name" error={errors.first_name} dark={isDark}>
                                     <input
                                         type="text"
                                         value={data.first_name}
                                         onChange={(e) => setData('first_name', e.target.value)}
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        className="w-full px-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none"
                                         placeholder="Juan"
                                     />
                                 </Field>
-                                <Field label="Last Name" error={errors.last_name}>
+                                <Field label="Last Name" error={errors.last_name} dark={isDark}>
                                     <input
                                         type="text"
                                         value={data.last_name}
                                         onChange={(e) => setData('last_name', e.target.value)}
-                                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        className="w-full px-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none"
                                         placeholder="Dela Cruz"
                                     />
                                 </Field>
                             </div>
-                            <Field label="Professional Title" hint="E.g. Full-Stack Developer, Graphic Designer, VA" error={errors.professional_title}>
+                            <Field label="Professional Title" hint="E.g. Full-Stack Developer, Graphic Designer, VA" error={errors.professional_title} dark={isDark}>
                                 <input
                                     type="text"
                                     value={data.professional_title}
                                     onChange={(e) => setData('professional_title', e.target.value)}
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    className="w-full px-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none"
                                     placeholder="Senior UX Designer & Brand Strategist"
                                 />
                             </Field>
                         </Section>
 
                         {/* ── Bio ───────────────────────────────────────── */}
-                        <Section title="About Me" icon="description">
+                        <Section title="About Me" icon="description" dark={isDark}>
                             <Field
                                 label="Bio"
                                 hint="Tell clients what you do, your experience, and what makes you stand out."
                                 error={errors.bio}
+                                dark={isDark}
                             >
                                 <textarea
                                     value={data.bio}
                                     onChange={(e) => setData('bio', e.target.value)}
                                     rows={5}
                                     maxLength={1000}
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                                    className="w-full px-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none resize-none"
                                     placeholder="I specialize in creating user-centric digital experiences…"
                                 />
                                 <div className="flex justify-end mt-1">
-                                    <span className="text-xs text-gray-400">{data.bio.length} / 1000</span>
+                                    <span className="text-xs text-white/50">{data.bio.length} / 1000</span>
                                 </div>
                             </Field>
                         </Section>
 
                         {/* ── Rate & Portfolio ──────────────────────────── */}
-                        <Section title="Rate & Portfolio" icon="attach_money">
+                        <Section title="Rate & Portfolio" icon="attach_money" dark={isDark}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                <Field label="Hourly Rate (₱/hr)" hint="Set your base rate in Philippine Peso" error={errors.hourly_rate}>
+                                <Field label="Hourly Rate (₱/hr)" hint="Set your base rate in Philippine Peso" error={errors.hourly_rate} dark={isDark}>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">₱</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 font-medium text-sm">₱</span>
                                         <input
                                             type="number"
                                             min="0"
                                             step="0.01"
                                             value={data.hourly_rate}
                                             onChange={(e) => setData('hourly_rate', e.target.value)}
-                                            className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            className="w-full pl-7 pr-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none"
                                             placeholder="500.00"
                                         />
                                     </div>
                                 </Field>
-                                <Field label="Portfolio / Website URL" error={errors.portfolio_link}>
+                                <Field label="Portfolio / Website URL" hint="Optional link to your portfolio or website" error={errors.portfolio_link} dark={isDark}>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-gray-400 text-base">language</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-white/50 text-base">language</span>
                                         <input
                                             type="text"
                                             value={data.portfolio_link}
                                             onChange={(e) => setData('portfolio_link', e.target.value)}
-                                            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            className="w-full pl-9 pr-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none"
                                             placeholder="https://yourportfolio.com"
                                         />
                                     </div>
@@ -436,15 +441,15 @@ export default function GigWorkerEdit({ user, status }) {
                         </Section>
 
                         {/* ── Location ─────────────────────────────────────── */}
-                        <Section title="Location" icon="location_on">
+                        <Section title="Location" icon="location_on" dark={isDark}>
                             <div className="space-y-5">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                    <p className="text-xs text-gray-500">Enter your country and city, or use auto-detect.</p>
+                                    <p className="text-xs text-white/50">Enter your country and city, or use auto-detect.</p>
                                     <button
                                         type="button"
                                         onClick={handleAutoDetectLocation}
                                         disabled={detectingLocation}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0"
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0"
                                     >
                                         <span className={`material-icons text-base${detectingLocation ? ' animate-spin' : ''}`}>
                                             {detectingLocation ? 'refresh' : 'my_location'}
@@ -453,27 +458,27 @@ export default function GigWorkerEdit({ user, status }) {
                                     </button>
                                 </div>
                                 {locationError && (
-                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <p className="text-xs text-red-400 flex items-center gap-1">
                                         <span className="material-icons text-sm">error</span>
                                         {locationError}
                                     </p>
                                 )}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                    <Field label="Country" error={errors.country}>
+                                    <Field label="Country" error={errors.country} dark={isDark}>
                                         <input
                                             type="text"
                                             value={data.country}
                                             onChange={(e) => setData('country', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            className="w-full px-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none"
                                             placeholder="e.g. Philippines"
                                         />
                                     </Field>
-                                    <Field label="City" error={errors.city}>
+                                    <Field label="City" error={errors.city} dark={isDark}>
                                         <input
                                             type="text"
                                             value={data.city}
                                             onChange={(e) => setData('city', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            className="w-full px-3 py-2.5 border border-white/20 rounded-lg text-sm bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none"
                                             placeholder="e.g. Manila"
                                         />
                                     </Field>
@@ -482,23 +487,24 @@ export default function GigWorkerEdit({ user, status }) {
                         </Section>
 
                         {/* ── Skills ────────────────────────────────────── */}
-                        <Section title="Skills & Expertise" icon="star">
+                        <Section title="Skills & Expertise" icon="star" dark={isDark}>
                             <SkillsEditor
                                 skills={skills}
                                 onChange={handleSkillsChange}
+                                dark={isDark}
                             />
                         </Section>
 
                         {/* ── Resume ───────────────────────────────────── */}
-                        <Section title="Resume / CV" icon="description">
+                        <Section title="Resume / CV" icon="description" dark={isDark}>
                             <div className="space-y-3">
                                 {resumeName && (
-                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
-                                        <span className="material-icons text-blue-500">description</span>
+                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                                        <span className="material-icons text-blue-400">description</span>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">{resumeName}</p>
+                                            <p className="text-sm font-medium text-white truncate">{resumeName}</p>
                                             {user.resume_file && (
-                                                <a href={user.resume_file} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                                                <a href={user.resume_file} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">
                                                     View current file
                                                 </a>
                                             )}
@@ -506,22 +512,22 @@ export default function GigWorkerEdit({ user, status }) {
                                         <button
                                             type="button"
                                             onClick={() => { setResumeName(null); setData('resume_file', null); }}
-                                            className="text-gray-400 hover:text-red-500 transition"
+                                            className="text-white/40 hover:text-red-400 transition"
                                         >
                                             <span className="material-icons text-base">close</span>
                                         </button>
                                     </div>
                                 )}
 
-                                <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer transition-all group">
-                                    <span className="material-icons text-3xl text-gray-300 group-hover:text-blue-400 mb-1">upload_file</span>
-                                    <span className="text-sm font-medium text-gray-500 group-hover:text-blue-600">
+                                <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-white/20 rounded-xl hover:border-blue-500/50 hover:bg-blue-500/10 cursor-pointer transition-all group">
+                                    <span className="material-icons text-3xl text-white/30 group-hover:text-blue-400 mb-1">upload_file</span>
+                                    <span className="text-sm font-medium text-white/60 group-hover:text-blue-400">
                                         {resumeName ? 'Replace resume' : 'Upload resume'}
                                     </span>
-                                    <span className="text-xs text-gray-400 mt-0.5">PDF, DOC, DOCX · Max 10MB</span>
+                                    <span className="text-xs text-white/40 mt-0.5">PDF, DOC, DOCX · Max 10MB</span>
                                     <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleResumeChange} />
                                 </label>
-                                {errors.resume_file && <p className="text-xs text-red-500">{errors.resume_file}</p>}
+                                {errors.resume_file && <p className="text-xs text-red-400">{errors.resume_file}</p>}
                             </div>
                         </Section>
 
@@ -529,14 +535,14 @@ export default function GigWorkerEdit({ user, status }) {
                         <div className="flex justify-end gap-3 pt-2 pb-8">
                             <Link
                                 href="/profile/gig-worker"
-                                className="px-5 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+                                className="px-5 py-2.5 rounded-lg border border-white/20 text-sm font-medium text-white/80 hover:bg-white/10 transition"
                             >
                                 Cancel
                             </Link>
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-sm shadow-blue-500/30 flex items-center gap-2"
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-blue-600/20 flex items-center gap-2"
                             >
                                 {processing
                                     ? <><span className="material-icons text-base animate-spin">progress_activity</span> Saving…</>
@@ -548,6 +554,10 @@ export default function GigWorkerEdit({ user, status }) {
                     </div>
                 </form>
             </div>
+
+            <style>{`
+                body { background: #05070A; color: #e5e7eb; font-family: 'Inter', system-ui, sans-serif; }
+            `}</style>
         </AuthenticatedLayout>
     );
 }

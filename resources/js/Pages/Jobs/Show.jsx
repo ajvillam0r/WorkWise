@@ -348,6 +348,15 @@ export default function JobShow({ job, canBid }) {
         return badges[level] || 'bg-gray-100 text-gray-800';
     };
 
+    const getExperienceBadgeDark = (level) => {
+        const badges = {
+            beginner: 'bg-green-500/20 text-green-400 border border-green-500/30',
+            intermediate: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+            expert: 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+        };
+        return badges[level] || 'bg-white/10 text-white/80 border border-white/20';
+    };
+
     const getStatusBadge = (status) => {
         const badges = {
             open: 'bg-green-100 text-green-800',
@@ -358,11 +367,23 @@ export default function JobShow({ job, canBid }) {
         return badges[status] || 'bg-gray-100 text-gray-800';
     };
 
-    const getUserAvatar = (user) => {
+    const getStatusBadgeDark = (status) => {
+        const badges = {
+            open: 'bg-green-500/20 text-green-400 border border-green-500/30',
+            in_progress: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+            completed: 'bg-white/10 text-white/50 border border-white/10',
+            cancelled: 'bg-red-500/20 text-red-400 border border-red-500/30'
+        };
+        return badges[status] || 'bg-white/10 text-white/50 border border-white/10';
+    };
+
+    const isDark = true;
+
+    const getUserAvatar = (user, dark = false) => {
         // Check if user exists and has required properties
         if (!user || !user.first_name || !user.last_name) {
             return (
-                <div className="h-12 w-12 rounded-full bg-gray-400 flex items-center justify-center text-white text-lg font-semibold">
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center text-lg font-semibold ${dark ? 'bg-white/20 text-white' : 'bg-gray-400 text-white'}`}>
                     ?
                 </div>
             );
@@ -374,7 +395,7 @@ export default function JobShow({ job, canBid }) {
                 <img
                     src={photoUrl}
                     alt={`${user.first_name} ${user.last_name}`}
-                    className="h-12 w-12 rounded-full object-cover"
+                    className="h-12 w-12 rounded-full object-cover border border-white/20"
                 />
             );
         }
@@ -395,17 +416,18 @@ export default function JobShow({ job, canBid }) {
 
     return (
         <AuthenticatedLayout
+            pageTheme="dark"
             header={
                 <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                        <h2 className="font-semibold text-xl text-white leading-tight tracking-tight">
                             {job.title}
                         </h2>
                         <div className="flex items-center space-x-4 mt-1">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(job.status)}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeDark(job.status)}`}>
                                 {job.status === 'open' ? 'Open for Proposals' : job.status.replace('_', ' ')}
                             </span>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-white/60">
                                 Posted {formatDistanceToNow(new Date(job.created_at))} ago
                             </span>
                         </div>
@@ -413,14 +435,14 @@ export default function JobShow({ job, canBid }) {
                     <div className="flex items-center space-x-3">
                         <Link
                             href="/jobs"
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            className="inline-flex items-center px-4 py-2 border border-white/20 text-sm font-medium rounded-md text-white/80 bg-white/5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                         >
                             ← Back to Jobs
                         </Link>
                         {isJobOwner && (
                             <Link
                                 href={`/jobs/${job.id}/edit`}
-                                className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition ease-in-out duration-150"
                             >
                                 Edit Job
                             </Link>
@@ -432,21 +454,20 @@ export default function JobShow({ job, canBid }) {
             <Head title={job.title} />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet" />
 
-            <div className="relative py-12 bg-white overflow-hidden">
-                {/* Animated Background Shapes */}
-                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+            <div className="relative min-h-screen py-12 bg-[#05070A] overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Main Content */}
                         <div className="lg:col-span-2 space-y-6">
                             {/* Job Description */}
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                            <div className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl">
                                 <div className="p-8">
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Job Description</h3>
+                                    <h3 className="text-2xl font-bold text-white mb-6">Job Description</h3>
                                     <div className="prose max-w-none">
-                                        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-lg">
+                                        <p className="text-white/80 whitespace-pre-wrap leading-relaxed text-lg">
                                             {job.description}
                                         </p>
                                     </div>
@@ -455,24 +476,22 @@ export default function JobShow({ job, canBid }) {
 
                             {/* Skills Requirements */}
                             {(job?.skills_requirements?.length > 0 || parseSkills(job?.required_skills || []).length > 0) && (
-                                <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                                <div className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl">
                                     <div className="p-8">
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Skills Requirements</h3>
+                                        <h3 className="text-2xl font-bold text-white mb-6">Skills Requirements</h3>
                                         
-                                        {/* Required Skills with Experience Levels */}
                                         {job?.skills_requirements?.length > 0 ? (
                                             <>
-                                                {/* Required Skills */}
                                                 {job.skills_requirements.filter(s => s.importance === 'required').length > 0 && (
                                                     <div className="mb-6">
-                                                        <h4 className="text-lg font-semibold text-gray-800 mb-3">Required Skills</h4>
+                                                        <h4 className="text-lg font-semibold text-white/90 mb-3">Required Skills</h4>
                                                         <div className="flex flex-wrap gap-3">
                                                             {job.skills_requirements
                                                                 .filter(s => s.importance === 'required')
                                                                 .map((skill, index) => (
-                                                                    <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300">
+                                                                    <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
                                                                         <span>{skill.skill}</span>
-                                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadgeDark(skill.experience_level)}`}>
                                                                             {skill.experience_level}
                                                                         </span>
                                                                     </div>
@@ -481,17 +500,16 @@ export default function JobShow({ job, canBid }) {
                                                     </div>
                                                 )}
 
-                                                {/* Preferred Skills */}
                                                 {job.skills_requirements.filter(s => s.importance === 'preferred').length > 0 && (
                                                     <div className="mb-6">
-                                                        <h4 className="text-lg font-semibold text-gray-800 mb-3">Preferred Skills</h4>
+                                                        <h4 className="text-lg font-semibold text-white/90 mb-3">Preferred Skills</h4>
                                                         <div className="flex flex-wrap gap-3">
                                                             {job.skills_requirements
                                                                 .filter(s => s.importance === 'preferred')
                                                                 .map((skill, index) => (
-                                                                    <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-green-100 to-green-200 text-green-800 shadow-md hover:shadow-lg transition-all duration-300">
+                                                                    <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
                                                                         <span>{skill.skill}</span>
-                                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadgeDark(skill.experience_level)}`}>
                                                                             {skill.experience_level}
                                                                         </span>
                                                                     </div>
@@ -500,15 +518,14 @@ export default function JobShow({ job, canBid }) {
                                                     </div>
                                                 )}
 
-                                                {/* Nice to Have Skills */}
                                                 {job?.nice_to_have_skills?.length > 0 && (
                                                     <div>
-                                                        <h4 className="text-lg font-semibold text-gray-800 mb-3">Nice to Have</h4>
+                                                        <h4 className="text-lg font-semibold text-white/90 mb-3">Nice to Have</h4>
                                                         <div className="flex flex-wrap gap-3">
                                                             {job.nice_to_have_skills.map((skill, index) => (
-                                                                <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-md hover:shadow-lg transition-all duration-300">
+                                                                <div key={index} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-white/10 text-white/80 border border-white/20">
                                                                     <span>{skill.skill}</span>
-                                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadge(skill.experience_level)}`}>
+                                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getExperienceBadgeDark(skill.experience_level)}`}>
                                                                         {skill.experience_level}
                                                                     </span>
                                                                 </div>
@@ -518,10 +535,9 @@ export default function JobShow({ job, canBid }) {
                                                 )}
                                             </>
                                         ) : (
-                                            /* Fallback to legacy required_skills */
                                             <div className="flex flex-wrap gap-3">
                                                 {parseSkills(job?.required_skills || []).map((skill, index) => (
-                                                    <span key={index} className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300">
+                                                    <span key={index} className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
                                                         {skill}
                                                     </span>
                                                 ))}
@@ -533,23 +549,23 @@ export default function JobShow({ job, canBid }) {
 
                             {/* Proposals Section */}
                             {job.bids && Array.isArray(job.bids) && job.bids.length > 0 && (isJobOwner || !isEmployer) && (
-                                <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                                <div className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl">
                                     <div className="p-8">
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                                        <h3 className="text-2xl font-bold text-white mb-6">
                                             Proposals ({job.bids.length})
                                         </h3>
                                         <div className="space-y-6">
                                             {job.bids.map((bid) => (
-                                                <div key={bid.id} className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
+                                                <div key={bid.id} className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 hover:border-blue-500/40 transition-all duration-300">
                                                     <div className="flex items-start justify-between mb-3">
                                                         <div className="flex items-center space-x-3">
-                                                            {getUserAvatar(bid.gig_worker)}
+                                                            {getUserAvatar(bid.gig_worker, isDark)}
                                                             <div>
-                                                                <h4 className="font-medium text-gray-900">
+                                                                <h4 className="font-medium text-white">
                                                                     {bid.gig_worker ? (
                                                                         <a
                                                                             href={`/workers/${bid.gig_worker.id}`}
-                                                                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                                            className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
                                                                         >
                                                                             {`${bid.gig_worker.first_name} ${bid.gig_worker.last_name}`}
                                                                         </a>
@@ -557,31 +573,31 @@ export default function JobShow({ job, canBid }) {
                                                                         'Unknown User'
                                                                     )}
                                                                 </h4>
-                                                                <p className="text-sm text-gray-600">
+                                                                <p className="text-sm text-white/60">
                                                                     {bid.gig_worker?.professional_title || 'Gig Worker'}
                                                                 </p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div className="text-lg font-semibold text-green-600">
+                                                            <div className="text-lg font-semibold text-green-400">
                                                                 ₱{formatAmount(bid.bid_amount)}
                                                             </div>
-                                                            <div className="text-sm text-gray-600">
+                                                            <div className="text-sm text-white/60">
                                                                 {bid.estimated_days} days
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <p className="text-gray-700 mb-3 break-all">
+                                                    <p className="text-white/80 mb-3 break-all">
                                                         {bid.proposal_message}
                                                     </p>
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-sm text-gray-500">
+                                                        <span className="text-sm text-white/50">
                                                             Submitted {formatDistanceToNow(new Date(bid.created_at))} ago
                                                         </span>
                                                         {isJobOwner && bid.status === 'pending' && (
                                                             <div>
                                                                 {error && (
-                                                                    <div className="mb-2 text-sm text-red-600">
+                                                                    <div className="mb-2 text-sm text-red-400">
                                                                         {error}
                                                                     </div>
                                                                 )}
@@ -589,11 +605,11 @@ export default function JobShow({ job, canBid }) {
                                                                     <button 
                                                                         onClick={() => handleBidAction(bid.id, 'accepted')}
                                                                         disabled={processing && processingBidId === bid.id}
-                                                                        className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                                                                        className="inline-flex items-center px-3 py-1.5 border border-green-500/30 text-sm font-medium rounded-md text-green-400 bg-green-500/20 hover:bg-green-500/30 focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:opacity-50"
                                                                     >
                                                                         {processing && processingBidId === bid.id && confirmModal.status === 'accepted' ? (
                                                                             <span className="flex items-center">
-                                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                                                 </svg>
@@ -604,11 +620,11 @@ export default function JobShow({ job, canBid }) {
                                                                     <button 
                                                                         onClick={() => handleBidAction(bid.id, 'rejected')}
                                                                         disabled={processing && processingBidId === bid.id}
-                                                                        className="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                                                                        className="inline-flex items-center px-3 py-1.5 border border-red-500/30 text-sm font-medium rounded-md text-red-400 bg-red-500/20 hover:bg-red-500/30 focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:opacity-50"
                                                                     >
                                                                         {processing && processingBidId === bid.id && confirmModal.status === 'rejected' ? (
                                                                             <span className="flex items-center">
-                                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-red-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                                                 </svg>
@@ -629,78 +645,74 @@ export default function JobShow({ job, canBid }) {
 
                             {/* Submit Proposal Form */}
                             {canBid && !isEmployer && (
-                                <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200 transform transition-all duration-500 ease-in-out">
+                                <div className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl transform transition-all duration-500 ease-in-out">
                                     <div className="p-8">
                                         {!showBidForm ? (
                                             <div className="text-center transform transition-all duration-300 ease-in-out">
-                                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mb-6">
+                                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 mb-6">
                                                     <div className="text-4xl mb-4">💼</div>
-                                                    <h3 className="text-xl font-bold text-gray-900 mb-3">Interested in this job?</h3>
-                                                    <p className="text-gray-600 mb-6 text-lg">
+                                                    <h3 className="text-xl font-bold text-white mb-3">Interested in this job?</h3>
+                                                    <p className="text-white/60 mb-6 text-lg">
                                                         Submit a proposal to get started and showcase your skills
                                                     </p>
                                                 </div>
                                                 <button
                                                     onClick={() => setShowBidForm(true)}
-                                                    className="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-300 ease-in-out hover:shadow-xl"
+                                                    className="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transform hover:scale-105 transition-all duration-300 ease-in-out"
                                                 >
-                                                    <span className="mr-2"></span>
                                                     Submit a Proposal
                                                 </button>
                                             </div>
                                         ) : (
                                             <div className="transform transition-all duration-500 ease-in-out animate-in slide-in-from-right">
-                                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mb-6">
+                                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 mb-6">
                                                     <div className="flex items-center gap-3 mb-2">
                                                         <span className="text-2xl">📝</span>
-                                                        <h3 className="text-xl font-bold text-gray-900">Submit Your Proposal</h3>
+                                                        <h3 className="text-xl font-bold text-white">Submit Your Proposal</h3>
                                                     </div>
-                                                    <p className="text-gray-600">
+                                                    <p className="text-white/60">
                                                         Provide your best offer and explain why you're the perfect fit for this project
                                                     </p>
                                                 </div>
                                                 <form onSubmit={handleSubmitBid} className="space-y-6">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <div className="transform transition-all duration-300 ease-in-out hover:scale-[1.02]">
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                                <span className="text-green-500"></span>
+                                                        <div className="transform transition-all duration-300 ease-in-out">
+                                                            <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
                                                                 Your Bid Amount *
                                                             </label>
                                                             <div className="relative">
-                                                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₱</span>
+                                                                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 font-medium">₱</span>
                                                                 <input
                                                                     type="number"
                                                                     value={data.bid_amount}
                                                                     onChange={(e) => setData('bid_amount', e.target.value)}
-                                                                    className="w-full pl-10 pr-4 py-3 border-gray-300 rounded-xl shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ease-in-out hover:shadow-xl"
+                                                                    className="w-full pl-10 pr-4 py-3 border border-white/20 rounded-xl bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                                                                     placeholder="0.00"
                                                                     min="0"
                                                                     step="0.01"
                                                                     required
                                                                 />
                                                             </div>
-                                                            {errors.bid_amount && <p className="mt-2 text-sm text-red-600 animate-pulse">{errors.bid_amount}</p>}
+                                                            {errors.bid_amount && <p className="mt-2 text-sm text-red-400 animate-pulse">{errors.bid_amount}</p>}
                                                         </div>
-                                                        <div className="transform transition-all duration-300 ease-in-out hover:scale-[1.02]">
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                                <span className="text-blue-500"></span>
+                                                        <div className="transform transition-all duration-300 ease-in-out">
+                                                            <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
                                                                 Delivery Time (Days) *
                                                             </label>
                                                             <input
                                                                 type="number"
                                                                 value={data.estimated_days}
                                                                 onChange={(e) => setData('estimated_days', e.target.value)}
-                                                                className="w-full px-4 py-3 border-gray-300 rounded-xl shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ease-in-out hover:shadow-xl"
+                                                                className="w-full px-4 py-3 border border-white/20 rounded-xl bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
                                                                 placeholder="e.g., 7"
                                                                 min="1"
                                                                 required
                                                             />
-                                                            {errors.estimated_days && <p className="mt-2 text-sm text-red-600 animate-pulse">{errors.estimated_days}</p>}
+                                                            {errors.estimated_days && <p className="mt-2 text-sm text-red-400 animate-pulse">{errors.estimated_days}</p>}
                                                         </div>
                                                     </div>
-                                                    <div className="transform transition-all duration-300 ease-in-out hover:scale-[1.01]">
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                            <span className="text-purple-500"></span>
+                                                    <div className="transform transition-all duration-300 ease-in-out">
+                                                        <label className="block text-sm font-semibold text-white/90 mb-2 flex items-center gap-2">
                                                             Cover Letter *
                                                         </label>
                                                         <div className="relative">
@@ -708,26 +720,26 @@ export default function JobShow({ job, canBid }) {
                                                                 value={data.proposal_message}
                                                                 onChange={(e) => setData('proposal_message', e.target.value)}
                                                                 rows={6}
-                                                                className="w-full px-4 py-3 border-gray-300 rounded-xl shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ease-in-out hover:shadow-xl resize-none"
+                                                                className="w-full px-4 py-3 border border-white/20 rounded-xl bg-white/5 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 resize-none"
                                                                 placeholder="Explain why you're the best fit for this job. Include relevant experience, your approach, and any questions you have..."
                                                                 required
                                                             />
-                                                            <div className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white px-2 py-1 rounded-md shadow-sm">
+                                                            <div className="absolute bottom-3 right-3 text-xs text-white/40 bg-white/5 px-2 py-1 rounded-md">
                                                                 {data.proposal_message?.length || 0} characters
                                                             </div>
                                                         </div>
                                                         <div className="mt-2 flex items-center gap-2">
-                                                            <span className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+                                                            <span className="text-xs text-white/50 bg-blue-500/20 px-3 py-1 rounded-full">
                                                                 💡 Tip: Minimum 50 characters. Be specific about your experience and approach.
                                                             </span>
                                                         </div>
-                                                        {errors.proposal_message && <p className="mt-2 text-sm text-red-600 animate-pulse">{errors.proposal_message}</p>}
+                                                        {errors.proposal_message && <p className="mt-2 text-sm text-red-400 animate-pulse">{errors.proposal_message}</p>}
                                                     </div>
-                                                    <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                                                    <div className="flex items-center justify-between pt-6 border-t border-white/10">
                                                         <button
                                                             type="button"
                                                             onClick={() => setShowBidForm(false)}
-                                                            className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-lg text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-300 ease-in-out hover:shadow-xl"
+                                                            className="inline-flex items-center px-6 py-3 border border-white/20 text-sm font-semibold rounded-xl text-white/80 bg-white/5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300"
                                                         >
                                                             <span className="mr-2">❌</span>
                                                             Cancel
@@ -735,10 +747,10 @@ export default function JobShow({ job, canBid }) {
                                                         <button
                                                             type="submit"
                                                             disabled={processing}
-                                                            className={`inline-flex items-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl shadow-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-300 ease-in-out ${
+                                                            className={`inline-flex items-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl shadow-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 ${
                                                                 processing
-                                                                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed scale-95'
-                                                                    : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 hover:scale-105 hover:shadow-xl'
+                                                                    ? 'bg-white/20 cursor-not-allowed'
+                                                                    : 'bg-blue-600 hover:bg-blue-500 hover:scale-105'
                                                             }`}
                                                         >
                                                             {processing ? (
@@ -765,49 +777,49 @@ export default function JobShow({ job, canBid }) {
                         {/* Sidebar */}
                         <div className="space-y-8">
                             {/* Job Details */}
-                            <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                            <div className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl">
                                 <div className="p-8">
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Job Details</h3>
+                                    <h3 className="text-2xl font-bold text-white mb-6">Job Details</h3>
                                     <div className="space-y-6">
-                                        <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                            <dt className="text-sm font-medium text-blue-600 mb-2">Budget</dt>
-                                            <dd className="text-xl font-bold text-green-600">
+                                        <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
+                                            <dt className="text-sm font-medium text-blue-400 mb-2">Budget</dt>
+                                            <dd className="text-xl font-bold text-green-400">
                                                 {getBudgetDisplay()}
                                             </dd>
                                         </div>
-                                        <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                            <dt className="text-sm font-medium text-blue-600 mb-2">Project Duration</dt>
-                                            <dd className="text-lg font-semibold text-gray-900">
+                                        <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
+                                            <dt className="text-sm font-medium text-blue-400 mb-2">Project Duration</dt>
+                                            <dd className="text-lg font-semibold text-white">
                                                 {job.estimated_duration_days} days
                                             </dd>
                                         </div>
-                                        <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                            <dt className="text-sm font-medium text-blue-600 mb-2">Experience Level</dt>
+                                        <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
+                                            <dt className="text-sm font-medium text-blue-400 mb-2">Experience Level</dt>
                                             <dd className="mt-1">
-                                                <span className={`inline-flex items-center px-3 py-1 rounded-xl text-sm font-semibold shadow-md ${getExperienceBadge(job.experience_level)}`}>
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-xl text-sm font-semibold ${getExperienceBadgeDark(job.experience_level)}`}>
                                                     {job.experience_level}
                                                 </span>
                                             </dd>
                                         </div>
                                         {(job.is_remote || job.location) && (
-                                            <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                                <dt className="text-sm font-medium text-blue-600 mb-2">Location</dt>
-                                                <dd className="text-lg font-semibold text-gray-900">
+                                            <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
+                                                <dt className="text-sm font-medium text-blue-400 mb-2">Location</dt>
+                                                <dd className="text-lg font-semibold text-white">
                                                     {job.is_remote ? '🌐 Remote Work' : `📍 ${job.location}`}
                                                 </dd>
                                             </div>
                                         )}
                                         {job.deadline && (
                                             <div>
-                                                <dt className="text-sm font-medium text-gray-500">Deadline</dt>
-                                                <dd className="mt-1 text-sm text-gray-900">
+                                                <dt className="text-sm font-medium text-white/50">Deadline</dt>
+                                                <dd className="mt-1 text-sm text-white">
                                                     {new Date(job.deadline).toLocaleDateString()}
                                                 </dd>
                                             </div>
                                         )}
                                         <div>
-                                            <dt className="text-sm font-medium text-gray-500">Proposals</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">
+                                            <dt className="text-sm font-medium text-white/50">Proposals</dt>
+                                            <dd className="mt-1 text-sm text-white">
                                                 {job.bids ? job.bids.length : 0} received
                                             </dd>
                                         </div>
@@ -876,8 +888,8 @@ export default function JobShow({ job, canBid }) {
 
             <style>{`
                 body {
-                    background: white;
-                    color: #333;
+                    background: #05070A;
+                    color: #e5e7eb;
                     font-family: 'Inter', sans-serif;
                 }
             `}</style>

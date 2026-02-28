@@ -14,7 +14,17 @@ const SKILL_COLORS = [
     { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-100' },
     { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-100' },
 ];
-const colorFor = (i) => SKILL_COLORS[i % SKILL_COLORS.length];
+const SKILL_COLORS_DARK = [
+    { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30' },
+    { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30' },
+    { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30' },
+    { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30' },
+    { bg: 'bg-pink-500/20', text: 'text-pink-400', border: 'border-pink-500/30' },
+    { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30' },
+    { bg: 'bg-teal-500/20', text: 'text-teal-400', border: 'border-teal-500/30' },
+    { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/30' },
+];
+const colorFor = (i, dark = false) => (dark ? SKILL_COLORS_DARK : SKILL_COLORS)[i % (dark ? SKILL_COLORS_DARK : SKILL_COLORS).length];
 
 const proficiencyLabel = (p) => {
     if (!p) return null;
@@ -22,66 +32,67 @@ const proficiencyLabel = (p) => {
 };
 
 // ─── Avatar / initials helpers ────────────────────────────────────────────────
-function Avatar({ user, size = 'lg' }) {
+function Avatar({ user, size = 'lg', dark = false }) {
     const sizeClass = size === 'lg' ? 'w-32 h-32 text-4xl' : 'w-10 h-10 text-sm';
     const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'GW';
+    const borderClass = dark ? 'border-white/20' : 'border-white';
 
     if (user.profile_picture) {
         return (
             <img
                 src={user.profile_picture}
                 alt={user.name}
-                className={`${sizeClass} rounded-full border-4 border-white shadow-md object-cover bg-white`}
+                className={`${sizeClass} rounded-full border-4 ${borderClass} shadow-md object-cover bg-white`}
             />
         );
     }
 
     return (
-        <div className={`${sizeClass} rounded-full border-4 border-white shadow-md bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center font-bold`}>
+        <div className={`${sizeClass} rounded-full border-4 ${borderClass} shadow-md bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center font-bold`}>
             {initials}
         </div>
     );
 }
 
 // ─── Section Cards ─────────────────────────────────────────────────────────────
-function Card({ children, className = '' }) {
+function Card({ children, className = '', dark = false }) {
     return (
-        <div className={`bg-white rounded-xl shadow-sm border border-gray-100 ${className}`}>
+        <div className={dark ? `bg-white/5 rounded-xl border border-white/10 ${className}` : `bg-white rounded-xl shadow-sm border border-gray-100 ${className}`}>
             {children}
         </div>
     );
 }
 
 // ─── Stat Row ─────────────────────────────────────────────────────────────────
-function StatRow({ icon, label, value, iconBg, iconColor }) {
+function StatRow({ icon, label, value, iconBg, iconColor, dark = false }) {
     return (
         <div className="flex items-center gap-3">
             <div className={`p-2 ${iconBg} ${iconColor} rounded-lg`}>
                 <span className="material-icons text-xl">{icon}</span>
             </div>
             <div>
-                <p className="text-xs text-gray-500">{label}</p>
-                <p className="font-bold text-gray-900">{value}</p>
+                <p className={`text-xs ${dark ? 'text-white/50' : 'text-gray-500'}`}>{label}</p>
+                <p className={`font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
             </div>
         </div>
     );
 }
 
 // ─── Section Header ────────────────────────────────────────────────────────────
-function SectionHeader({ title, action }) {
+function SectionHeader({ title, action, dark = false }) {
     return (
         <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">{title}</h3>
+            <h3 className={`text-xs font-semibold uppercase tracking-wider ${dark ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
             {action}
         </div>
     );
 }
 
-function EditBtn({ onClick }) {
+function EditBtn({ onClick, dark = false }) {
     return (
         <button
             onClick={onClick}
-            className="text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-50 transition-colors"
+            className={dark ? "text-blue-400 hover:text-blue-300 p-1 rounded hover:bg-blue-500/20 transition-colors" : "text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-50 transition-colors"}
         >
             <span className="material-icons text-base">edit</span>
         </button>
@@ -144,17 +155,25 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
     const goToEdit = () => router.visit('/profile/gig-worker/edit');
     const goToOnboarding = () => router.visit(route('gig-worker.onboarding'));
 
+    const isDark = true;
+
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout pageTheme="dark">
             <Head title={`${user.name} – Profile`} />
 
-            <div className="bg-slate-50 min-h-screen pb-16">
+            <div className="bg-[#05070A] min-h-screen pb-16">
+                {/* Ambient glow */}
+                <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                    <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-blue-600/5 rounded-full blur-[120px]" />
+                    <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] bg-blue-500/5 rounded-full blur-[100px]" />
+                </div>
+
                 {/* Back to Browse Gig Workers (when employer is viewing) */}
                 {isEmployerViewing && (
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
                         <Link
                             href={route('employer.dashboard')}
-                            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                            className="inline-flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
                         >
                             <ArrowLeftIcon className="w-5 h-5" />
                             Back to Browse Gig Workers
@@ -163,66 +182,55 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                 )}
 
                 {/* ─── Cover + Profile Hero ──────────────────────────────── */}
-                <div className="bg-white border-b border-gray-100 shadow-sm mb-6">
+                <div className="relative z-10 bg-white/5 border-b border-white/10 mb-6">
                     {/* Cover banner */}
                     <div
                         className="h-48 relative"
                         style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #6366f1 100%)' }}
                     >
-                        {/* Decorative circles */}
                         <div className="absolute top-6 right-12 w-32 h-32 rounded-full bg-white/5 border border-white/10" />
                         <div className="absolute -top-4 right-32 w-48 h-48 rounded-full bg-white/5 border border-white/10" />
-
-                        {/* Public View toggle */}
-                        {/* <div className="absolute top-4 right-4 flex items-center bg-black/30 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10 gap-2">
-                            <span className="text-xs text-white font-medium">Public View</span>
-                            <div className="w-8 h-4 bg-blue-500 rounded-full relative cursor-pointer">
-                                <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow-sm" />
-                            </div>
-                        </div> */}
                     </div>
 
                     {/* Profile info row */}
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 relative">
-                        <div className="flex flex-col md:flex-row items-end md:items-center justify-between -mt-10 md:-mt-10 relative z-10">
-                            {/* Left: avatar + name */}
+                        <div className="flex flex-col md:flex-row items-end md:items-end justify-between -mt-6 md:-mt-6 relative z-10 gap-4">
                             <div className="flex flex-col md:flex-row items-center md:items-end gap-4">
-                                <div className="relative">
-                                    <Avatar user={user} size="lg" />
+                                <div className="relative shrink-0">
+                                    <Avatar user={user} size="lg" dark={isDark} />
                                     {!isEmployerViewing && (
                                         <button
                                             onClick={goToEdit}
-                                            className="absolute bottom-1 right-1 bg-white p-1.5 rounded-full shadow-sm border border-gray-100 text-gray-600 hover:text-blue-600 transition-colors"
+                                            className="absolute bottom-1 right-1 bg-white/10 border border-white/20 p-1.5 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
                                         >
                                             <span className="material-icons text-base leading-none">photo_camera</span>
                                         </button>
                                     )}
                                 </div>
-                                <div className="text-center md:text-left mb-2 md:mb-0">
-                                    <h1 className="text-2xl font-bold text-gray-900 flex items-center justify-center md:justify-start gap-2">
+                                <div className="text-center md:text-left mb-0 md:mb-0">
+                                    <h1 className="text-2xl font-bold text-white flex items-center justify-center md:justify-start gap-2">
                                         {user.name}
                                         {user.profile_completed && (
-                                            <span className="material-icons text-blue-500 text-xl" title="Verified">verified</span>
+                                            <span className="material-icons text-blue-400 text-xl" title="Verified">verified</span>
                                         )}
                                     </h1>
-                                    <p className="text-gray-500 font-medium">
+                                    <p className="text-white/80 font-medium">
                                         {user.professional_title || 'Gig Worker'}
                                     </p>
-                                    <p className="text-sm text-gray-400 flex items-center justify-center md:justify-start gap-1 mt-0.5">
+                                    <p className="text-sm text-white/50 flex items-center justify-center md:justify-start gap-1 mt-0.5">
                                         <span className="material-icons text-sm">mail_outline</span>
                                         {user.email}
                                     </p>
-                                    <p className="text-sm text-gray-400 flex items-center justify-center md:justify-start gap-1 mt-0.5">
+                                    <p className="text-sm text-white/50 flex items-center justify-center md:justify-start gap-1 mt-0.5">
                                         <span className="material-icons text-sm">location_on</span>
                                         {user.location || 'Location not set'}
                                     </p>
                                 </div>
                             </div>
 
-                            {/* Right: action buttons */}
-                            <div className="flex gap-3 mt-4 md:mt-0">
+                            <div className="flex gap-3 items-center shrink-0 w-full md:w-auto justify-center md:justify-end md:mt-4">
                                 {!isEmployerViewing && (
-                                    <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-2 shadow-sm">
+                                    <button className="px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-sm font-medium text-white/80 hover:bg-white/10 transition flex items-center gap-2">
                                         <span className="material-icons text-lg">share</span>
                                         Share
                                     </button>
@@ -231,7 +239,7 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                     <button
                                         onClick={handleHireMe}
                                         disabled={isHiring}
-                                        className={`px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-sm font-bold transition flex items-center gap-2 shadow-md shadow-blue-500/30 tracking-wide uppercase ${isHiring ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                        className={`px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition flex items-center gap-2 shadow-lg shadow-blue-600/20 tracking-wide uppercase ${isHiring ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     >
                                         {isHiring ? (
                                             <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
@@ -243,7 +251,7 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                 ) : isOwnProfile && (
                                     <button
                                         onClick={goToEdit}
-                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm shadow-blue-500/30"
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-lg shadow-blue-600/20"
                                     >
                                         <span className="material-icons text-lg">edit</span>
                                         Edit Profile
@@ -255,41 +263,42 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                 </div>
 
                 {/* ─── Main 3-column grid ─────────────────────────────────── */}
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                         {/* ── LEFT SIDEBAR ───────────────────────────────── */}
                         <div className="lg:col-span-3 space-y-6">
                             {/* Profile Stats */}
-                            <Card className="p-5">
-                                <SectionHeader title="Profile Stats" />
+                            <Card className="p-5" dark={isDark}>
+                                <SectionHeader title="Profile Stats" dark={isDark} />
                                 <div className="space-y-4">
-                                    <StatRow icon="payments" label="Total Earned" value="₱0" iconBg="bg-green-50" iconColor="text-green-600" />
-                                    <StatRow icon="work_history" label="Total Jobs" value="0" iconBg="bg-blue-50" iconColor="text-blue-600" />
-                                    <StatRow icon="schedule" label="Total Hours" value="0" iconBg="bg-purple-50" iconColor="text-purple-600" />
+                                    <StatRow icon="payments" label="Total Earned" value="₱0" iconBg={isDark ? "bg-green-500/20" : "bg-green-50"} iconColor={isDark ? "text-green-400" : "text-green-600"} dark={isDark} />
+                                    <StatRow icon="work_history" label="Total Jobs" value="0" iconBg={isDark ? "bg-blue-500/20" : "bg-blue-50"} iconColor={isDark ? "text-blue-400" : "text-blue-600"} dark={isDark} />
+                                    <StatRow icon="schedule" label="Total Hours" value="0" iconBg={isDark ? "bg-purple-500/20" : "bg-purple-50"} iconColor={isDark ? "text-purple-400" : "text-purple-600"} dark={isDark} />
                                 </div>
-                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                <div className={`mt-6 pt-6 ${isDark ? 'border-t border-white/10' : 'border-t border-gray-100'}`}>
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-gray-500">Job Success</span>
-                                        <span className="text-sm font-bold text-gray-900">—</span>
+                                        <span className={`text-sm font-medium ${isDark ? 'text-white/50' : 'text-gray-500'}`}>Job Success</span>
+                                        <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>—</span>
                                     </div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2">
+                                    <div className={`w-full rounded-full h-2 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                                         <div className="bg-blue-600 h-2 rounded-full" style={{ width: '0%' }} />
                                     </div>
                                 </div>
                             </Card>
 
                             {/* Hourly Rate */}
-                            <Card className="p-5">
+                            <Card className="p-5" dark={isDark}>
                                 <div className="mb-5">
                                     <SectionHeader
                                         title="Hourly Rate"
-                                        action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
+                                        action={!isEmployerViewing ? <EditBtn onClick={goToEdit} dark={isDark} /> : null}
+                                        dark={isDark}
                                     />
-                                    <p className="text-2xl font-bold text-gray-900">
+                                    <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                         {user.hourly_rate
-                                            ? <>₱{Number(user.hourly_rate).toFixed(2)} <span className="text-sm font-normal text-gray-500">/hr</span></>
-                                            : <span className="text-gray-400 text-base font-normal">Not set</span>
+                                            ? <>₱{Number(user.hourly_rate).toFixed(2)} <span className={`text-sm font-normal ${isDark ? 'text-white/50' : 'text-gray-500'}`}>/hr</span></>
+                                            : <span className={isDark ? 'text-white/40 text-base font-normal' : 'text-gray-400 text-base font-normal'}>Not set</span>
                                         }
                                     </p>
                                 </div>
@@ -297,34 +306,35 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                 <div>
                                     <SectionHeader
                                         title="Availability"
-                                        action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
+                                        action={!isEmployerViewing ? <EditBtn onClick={goToEdit} dark={isDark} /> : null}
+                                        dark={isDark}
                                     />
-                                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-100">
+                                    <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg border ${isDark ? 'text-green-400 bg-green-500/20 border-green-500/30' : 'text-green-600 bg-green-50 border-green-100'}`}>
                                         <span className="material-icons text-lg">bolt</span>
                                         <span className="font-medium">Available for work</span>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2">Response time: &lt; 24 hours</p>
+                                    <p className={`text-xs mt-2 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>Response time: &lt; 24 hours</p>
                                 </div>
                             </Card>
 
                             {/* Resume */}
                             {user.resume_file && (
-                                <Card className="p-5">
-                                    <SectionHeader title="Resume / CV" />
+                                <Card className="p-5" dark={isDark}>
+                                    <SectionHeader title="Resume / CV" dark={isDark} />
                                     <a
                                         href={user.resume_file}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 transition-colors group"
+                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors group ${isDark ? 'border-white/20 bg-white/5 hover:bg-blue-500/20 hover:border-blue-500/30' : 'border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-200'}`}
                                     >
-                                        <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-gray-100">
-                                            <span className="material-icons text-blue-500">description</span>
+                                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center shadow-sm border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                                            <span className="material-icons text-blue-400">description</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 truncate">Download CV</p>
-                                            <p className="text-xs text-gray-500">PDF / DOC</p>
+                                            <p className={`text-sm font-medium truncate group-hover:text-blue-400 ${isDark ? 'text-white' : 'text-gray-900'}`}>Download CV</p>
+                                            <p className={`text-xs ${isDark ? 'text-white/50' : 'text-gray-500'}`}>PDF / DOC</p>
                                         </div>
-                                        <span className="material-icons text-gray-400 group-hover:text-blue-600">download</span>
+                                        <span className="material-icons text-white/40 group-hover:text-blue-400">download</span>
                                     </a>
                                 </Card>
                             )}
@@ -332,14 +342,14 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                             {/* Boost Profile CTA (if not completed) */}
                             {!user.profile_completed && (
                                 <div
-                                    className="rounded-xl p-5 text-white"
+                                    className="rounded-xl p-5 text-white border border-white/10"
                                     style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%)' }}
                                 >
                                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                                         <span className="material-icons text-yellow-400">star</span>
                                         Boost Profile
                                     </h3>
-                                    <p className="text-sm text-blue-100 mb-4">Complete your portfolio to increase visibility by 25%.</p>
+                                    <p className="text-sm text-blue-200 mb-4">Complete your portfolio to increase visibility by 25%.</p>
                                     <button
                                         onClick={goToOnboarding}
                                         className="w-full py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-sm font-medium transition"
@@ -353,32 +363,32 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                         {/* ── CENTER COLUMN ──────────────────────────────── */}
                         <div className="lg:col-span-6 space-y-6">
                             {/* About Me */}
-                            <Card className="p-6">
+                            <Card className="p-6" dark={isDark}>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-bold text-gray-900">About Me</h2>
-                                    {!isEmployerViewing && <EditBtn onClick={goToEdit} />}
+                                    <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>About Me</h2>
+                                    {!isEmployerViewing && <EditBtn onClick={goToEdit} dark={isDark} />}
                                 </div>
                                 {user.bio ? (
-                                    <div className="text-gray-600 text-sm leading-relaxed space-y-2">
+                                    <div className={`text-sm leading-relaxed space-y-2 ${isDark ? 'text-white/70' : 'text-gray-600'}`}>
                                         {user.bio.split('\n').map((para, i) => (
                                             <p className="break-all" key={i}>{para}</p>
                                         ))}
                                     </div>
                                 ) : (
                                     <div className="text-center py-8">
-                                        <span className="material-icons text-4xl text-gray-200 mb-2">person_outline</span>
-                                        <p className="text-sm text-gray-400">No bio yet.</p>
+                                        <span className={`material-icons text-4xl mb-2 ${isDark ? 'text-white/20' : 'text-gray-200'}`}>person_outline</span>
+                                        <p className={`text-sm ${isDark ? 'text-white/50' : 'text-gray-400'}`}>No bio yet.</p>
                                         {!isEmployerViewing && (
-                                            <button onClick={goToEdit} className="mt-3 text-sm text-blue-600 hover:underline font-medium">Add your bio</button>
+                                            <button onClick={goToEdit} className={`mt-3 text-sm font-medium ${isDark ? 'text-blue-400 hover:underline' : 'text-blue-600 hover:underline'}`}>Add your bio</button>
                                         )}
                                     </div>
                                 )}
                             </Card>
 
                             {/* Work History */}
-                            <Card className="p-6">
+                            <Card className="p-6" dark={isDark}>
                                 <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-lg font-bold text-gray-900">Work History</h2>
+                                    <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Work History</h2>
                                 </div>
                                 {pastProjects && pastProjects.length > 0 ? (
                                     <div className="space-y-6">
@@ -393,40 +403,40 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                             const empInitials = emp ? `${emp.first_name?.[0] || ''}${emp.last_name?.[0] || ''}`.toUpperCase() : '—';
                                             const empName = emp ? `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Employer' : '—';
                                             return (
-                                                <div key={project.id} className="flex gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                                                    <div className="w-32 h-24 sm:w-40 sm:h-28 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                                                        <span className="material-symbols-outlined text-4xl text-gray-300">
+                                                <div key={project.id} className={`flex gap-4 pb-6 last:pb-0 ${isDark ? 'border-b border-white/10 last:border-0' : 'border-b border-gray-100 last:border-0'}`}>
+                                                    <div className={`w-32 h-24 sm:w-40 sm:h-28 rounded-xl flex items-center justify-center shrink-0 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                                        <span className={`material-symbols-outlined text-4xl ${isDark ? 'text-white/30' : 'text-gray-300'}`}>
                                                             {project.status === 'completed' ? 'task_alt' : 'rocket_launch'}
                                                         </span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="font-bold text-gray-900">{project.job?.title || 'Project'}</h4>
-                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                        <h4 className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{project.job?.title || 'Project'}</h4>
+                                                        <p className={`text-xs mt-0.5 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>
                                                             {project.status === 'completed' ? `Completed ${completedDate}` : 'In Progress'}
                                                         </p>
                                                         {review && (
                                                             <div className="mt-2 flex items-center gap-1">
                                                                 {[1, 2, 3, 4, 5].map((star) => (
-                                                                    <span key={star} className={star <= review.rating ? 'text-amber-400' : 'text-gray-200'}>
+                                                                    <span key={star} className={star <= review.rating ? 'text-amber-400' : (isDark ? 'text-white/20' : 'text-gray-200')}>
                                                                         ★
                                                                     </span>
                                                                 ))}
-                                                                <span className="text-sm font-medium text-gray-600 ml-1">{Number(review.rating).toFixed(1)}</span>
+                                                                <span className={`text-sm font-medium ml-1 ${isDark ? 'text-white/60' : 'text-gray-600'}`}>{Number(review.rating).toFixed(1)}</span>
                                                             </div>
                                                         )}
                                                         {review?.comment && (
-                                                            <p className="text-sm text-gray-600 mt-2 italic">&ldquo;{review.comment}&rdquo;</p>
+                                                            <p className={`text-sm mt-2 italic ${isDark ? 'text-white/60' : 'text-gray-600'}`}>&ldquo;{review.comment}&rdquo;</p>
                                                         )}
                                                         <div className="flex items-center gap-2 mt-3">
                                                             {emp?.profile_picture ? (
-                                                                <img src={emp.profile_picture} alt={empName} className="w-8 h-8 rounded-full object-cover border border-gray-100" />
+                                                                <img src={emp.profile_picture} alt={empName} className={`w-8 h-8 rounded-full object-cover border ${isDark ? 'border-white/20' : 'border-gray-100'}`} />
                                                             ) : (
-                                                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
                                                                     {empInitials}
                                                                 </div>
                                                             )}
-                                                            <span className="text-xs text-gray-500">
-                                                                Client: <span className="font-medium text-gray-700">{empName}</span>
+                                                            <span className={`text-xs ${isDark ? 'text-white/50' : 'text-gray-500'}`}>
+                                                                Client: <span className={`font-medium ${isDark ? 'text-white/80' : 'text-gray-700'}`}>{empName}</span>
                                                             </span>
                                                         </div>
                                                     </div>
@@ -436,11 +446,11 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                     </div>
                                 ) : (
                                     <div className="text-center py-10">
-                                        <span className="material-icons text-5xl text-gray-200 mb-3">work_outline</span>
-                                        <p className="text-sm font-medium text-gray-500">No completed jobs yet</p>
-                                        <p className="text-xs text-gray-400 mt-1">Your completed work history will appear here.</p>
+                                        <span className={`material-icons text-5xl mb-3 ${isDark ? 'text-white/20' : 'text-gray-200'}`}>work_outline</span>
+                                        <p className={`text-sm font-medium ${isDark ? 'text-white/50' : 'text-gray-500'}`}>No completed jobs yet</p>
+                                        <p className={`text-xs mt-1 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>Your completed work history will appear here.</p>
                                         {!isEmployerViewing && isOwnProfile && (
-                                            <Link href={route('jobs.index')} className="mt-4 inline-block text-sm text-blue-600 hover:underline font-medium">
+                                            <Link href={route('jobs.index')} className={`mt-4 inline-block text-sm font-medium ${isDark ? 'text-blue-400 hover:underline' : 'text-blue-600 hover:underline'}`}>
                                                 Browse available jobs →
                                             </Link>
                                         )}
@@ -449,15 +459,15 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                             </Card>
 
                             {/* Portfolio */}
-                            <Card className="p-6">
+                            <Card className="p-6" dark={isDark}>
                                 <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-lg font-bold text-gray-900">Portfolio</h2>
+                                    <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Portfolio</h2>
                                     {user.portfolio_link && (
                                         <a
                                             href={user.portfolio_link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                            className={`flex items-center gap-1 text-sm font-medium ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                                         >
                                             <span className="material-icons text-base">open_in_new</span>
                                             View Site
@@ -466,10 +476,10 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                 </div>
 
                                 {user.portfolio_link ? (
-                                    <div className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                                    <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-white/20 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
                                         {linkPreview.loading ? (
-                                            <div className="p-6 flex items-center justify-center gap-3 text-gray-500">
-                                                <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                                            <div className={`p-6 flex items-center justify-center gap-3 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>
+                                                <div className={`w-5 h-5 border-2 rounded-full animate-spin ${isDark ? 'border-white/30 border-t-blue-400' : 'border-gray-300 border-t-blue-600'}`} />
                                                 <span className="text-sm">Loading preview…</span>
                                             </div>
                                         ) : linkPreview.error || !linkPreview.data ? (
@@ -477,16 +487,16 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                                 href={user.portfolio_link}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-3 p-4 rounded-xl border-0 bg-gray-50 hover:bg-blue-50 transition-colors group"
+                                                className={`flex items-center gap-3 p-4 rounded-xl border-0 transition-colors group ${isDark ? 'bg-white/5 hover:bg-blue-500/10' : 'bg-gray-50 hover:bg-blue-50'}`}
                                             >
-                                                <div className="h-12 w-12 bg-white rounded-lg flex items-center justify-center shadow-sm border border-gray-100">
-                                                    <span className="material-icons text-blue-500 text-2xl">language</span>
+                                                <div className={`h-12 w-12 rounded-lg flex items-center justify-center shadow-sm border ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-100'}`}>
+                                                    <span className="material-icons text-blue-400 text-2xl">language</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-600">Portfolio Website</p>
-                                                    <p className="text-xs text-gray-500 truncate">{user.portfolio_link}</p>
+                                                    <p className={`text-sm font-semibold truncate group-hover:text-blue-400 ${isDark ? 'text-white' : 'text-gray-900'}`}>Portfolio Website</p>
+                                                    <p className={`text-xs truncate ${isDark ? 'text-white/50' : 'text-gray-500'}`}>{user.portfolio_link}</p>
                                                 </div>
-                                                <span className="material-icons text-gray-400 group-hover:text-blue-600">arrow_forward</span>
+                                                <span className={`material-icons group-hover:text-blue-400 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>arrow_forward</span>
                                             </a>
                                         ) : (
                                             <a
@@ -496,7 +506,7 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                                 className="block group"
                                             >
                                                 {linkPreview.data.image && (
-                                                    <div className="aspect-[2/1] w-full bg-gray-200 overflow-hidden">
+                                                    <div className="aspect-[2/1] w-full overflow-hidden bg-white/10">
                                                         <img
                                                             src={linkPreview.data.image}
                                                             alt=""
@@ -506,20 +516,20 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                                 )}
                                                 <div className="p-4">
                                                     {linkPreview.data.site_name && (
-                                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">
+                                                        <p className={`text-xs font-medium uppercase tracking-wider mb-0.5 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>
                                                             {linkPreview.data.site_name}
                                                         </p>
                                                     )}
-                                                    <p className="text-base font-semibold text-gray-900 group-hover:text-blue-600 line-clamp-2">
+                                                    <p className={`text-base font-semibold line-clamp-2 group-hover:text-blue-400 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                         {linkPreview.data.title || 'Portfolio Website'}
                                                     </p>
                                                     {linkPreview.data.description && (
-                                                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                                        <p className={`text-sm mt-1 line-clamp-2 ${isDark ? 'text-white/60' : 'text-gray-600'}`}>
                                                             {linkPreview.data.description}
                                                         </p>
                                                     )}
-                                                    <p className="text-xs text-gray-500 mt-2 truncate">{user.portfolio_link}</p>
-                                                    <span className="inline-flex items-center gap-1 text-sm text-blue-600 font-medium mt-2 group-hover:underline">
+                                                    <p className={`text-xs mt-2 truncate ${isDark ? 'text-white/50' : 'text-gray-500'}`}>{user.portfolio_link}</p>
+                                                    <span className="inline-flex items-center gap-1 text-sm text-blue-400 font-medium mt-2 group-hover:underline">
                                                         Open portfolio
                                                         <span className="material-icons text-base">open_in_new</span>
                                                     </span>
@@ -529,10 +539,10 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                     </div>
                                 ) : (
                                     <div className="text-center py-8">
-                                        <span className="material-icons text-5xl text-gray-200 mb-3">folder_open</span>
-                                        <p className="text-sm text-gray-400">No portfolio link added.</p>
+                                        <span className={`material-icons text-5xl mb-3 ${isDark ? 'text-white/20' : 'text-gray-200'}`}>folder_open</span>
+                                        <p className={`text-sm ${isDark ? 'text-white/50' : 'text-gray-400'}`}>No portfolio link added.</p>
                                         {!isEmployerViewing && (
-                                            <button onClick={goToEdit} className="mt-3 text-sm text-blue-600 hover:underline font-medium">Add portfolio link</button>
+                                            <button onClick={goToEdit} className={`mt-3 text-sm font-medium ${isDark ? 'text-blue-400 hover:underline' : 'text-blue-600 hover:underline'}`}>Add portfolio link</button>
                                         )}
                                     </div>
                                 )}
@@ -542,15 +552,16 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                         {/* ── RIGHT SIDEBAR ─────────────────────────────── */}
                         <div className="lg:col-span-3 space-y-6">
                             {/* Top Skills */}
-                            <Card className="p-5">
+                            <Card className="p-5" dark={isDark}>
                                 <SectionHeader
                                     title="Top Skills"
-                                    action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
+                                    action={!isEmployerViewing ? <EditBtn onClick={goToEdit} dark={isDark} /> : null}
+                                    dark={isDark}
                                 />
                                 {skills.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
                                         {skills.map((sk, i) => {
-                                            const c = colorFor(i);
+                                            const c = colorFor(i, isDark);
                                             return (
                                                 <div key={i} className="group relative">
                                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${c.bg} ${c.text} border ${c.border}`}>
@@ -567,9 +578,9 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                     </div>
                                 ) : (
                                     <div className="text-center py-4">
-                                        <p className="text-xs text-gray-400">No skills added.</p>
+                                        <p className={`text-xs ${isDark ? 'text-white/50' : 'text-gray-400'}`}>No skills added.</p>
                                         {!isEmployerViewing && (
-                                            <button onClick={goToEdit} className="mt-2 text-xs text-blue-600 hover:underline">Add skills</button>
+                                            <button onClick={goToEdit} className={`mt-2 text-xs ${isDark ? 'text-blue-400 hover:underline' : 'text-blue-600 hover:underline'}`}>Add skills</button>
                                         )}
                                     </div>
                                 )}
@@ -577,19 +588,19 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
 
                             {/* Skills with proficiency */}
                             {skills.length > 0 && (
-                                <Card className="p-5">
-                                    <SectionHeader title="Expertise Levels" />
+                                <Card className="p-5" dark={isDark}>
+                                    <SectionHeader title="Expertise Levels" dark={isDark} />
                                     <div className="space-y-3">
                                         {skills.slice(0, 6).map((sk, i) => {
                                             const pct = sk.proficiency === 'expert' ? 95 : sk.proficiency === 'intermediate' ? 65 : 35;
-                                            const barColor = sk.proficiency === 'expert' ? 'bg-blue-600' : sk.proficiency === 'intermediate' ? 'bg-blue-400' : 'bg-blue-200';
+                                            const barColor = sk.proficiency === 'expert' ? 'bg-blue-600' : sk.proficiency === 'intermediate' ? 'bg-blue-400' : 'bg-blue-500/50';
                                             return (
                                                 <div key={i}>
-                                                    <div className="flex justify-between text-xs font-medium text-gray-700 mb-1">
+                                                    <div className={`flex justify-between text-xs font-medium mb-1 ${isDark ? 'text-white/80' : 'text-gray-700'}`}>
                                                         <span>{sk.skill}</span>
-                                                        <span className="text-gray-400 capitalize">{sk.proficiency}</span>
+                                                        <span className={isDark ? 'text-white/50 capitalize' : 'text-gray-400 capitalize'}>{sk.proficiency}</span>
                                                     </div>
-                                                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                                    <div className={`w-full rounded-full h-1.5 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                                                         <div className={`${barColor} h-1.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
                                                     </div>
                                                 </div>
@@ -600,24 +611,24 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                             )}
 
                             {/* Languages placeholder */}
-                            <Card className="p-5">
+                            <Card className="p-5" dark={isDark}>
                                 <SectionHeader
                                     title="Languages"
-                                    action={!isEmployerViewing ? <EditBtn onClick={goToEdit} /> : null}
+                                    action={!isEmployerViewing ? <EditBtn onClick={goToEdit} dark={isDark} /> : null}
+                                    dark={isDark}
                                 />
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-700">English</span>
-                                        <span className="text-gray-500 text-xs bg-gray-100 px-2 py-0.5 rounded">Native</span>
+                                        <span className={isDark ? 'text-white/80' : 'text-gray-700'}>English</span>
+                                        <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'text-white/50 bg-white/10' : 'text-gray-500 bg-gray-100'}`}>Native</span>
                                     </div>
                                 </div>
                             </Card>
 
                             {/* Linked Accounts */}
-                            <Card className="p-5">
-                                <SectionHeader title="Linked Accounts" />
+                            <Card className="p-5" dark={isDark}>
+                                <SectionHeader title="Linked Accounts" dark={isDark} />
                                 <div className="space-y-4">
-                                    {/* Portfolio as linked account */}
                                     {user.portfolio_link ? (
                                         <div className="flex items-center justify-between group">
                                             <div className="flex items-center gap-3">
@@ -625,8 +636,8 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                                     <span className="material-icons text-sm">language</span>
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium text-gray-900">Portfolio</p>
-                                                    <p className="text-xs text-green-600 flex items-center gap-0.5">
+                                                    <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Portfolio</p>
+                                                    <p className="text-xs text-green-400 flex items-center gap-0.5">
                                                         <span className="material-icons text-xs">check_circle</span> Linked
                                                     </p>
                                                 </div>
@@ -637,10 +648,10 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                                     {!isEmployerViewing && (
                                         <div className="flex items-center justify-between group">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+                                                <div className={`w-8 h-8 rounded border-2 border-dashed flex items-center justify-center ${isDark ? 'border-white/20 text-white/40' : 'border-gray-300 text-gray-400'}`}>
                                                     <span className="material-icons text-lg">add</span>
                                                 </div>
-                                                <span className="text-sm text-gray-500">Link Account</span>
+                                                <span className={`text-sm ${isDark ? 'text-white/50' : 'text-gray-500'}`}>Link Account</span>
                                             </div>
                                         </div>
                                     )}
@@ -651,6 +662,10 @@ export default function GigWorkerProfile({ user, status, jobContext, pastProject
                     </div>
                 </div>
             </div>
+
+            <style>{`
+                body { background: #05070A; color: #e5e7eb; font-family: 'Inter', system-ui, sans-serif; }
+            `}</style>
         </AuthenticatedLayout>
     );
 }

@@ -128,6 +128,21 @@ export default function BidsIndex({ bids }) {
         }
     };
 
+    const getStatusColorDark = (status) => {
+        switch (status) {
+            case 'pending':
+                return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+            case 'accepted':
+                return 'bg-green-500/20 text-green-400 border border-green-500/30';
+            case 'rejected':
+                return 'bg-red-500/20 text-red-400 border border-red-500/30';
+            case 'withdrawn':
+                return 'bg-white/10 text-white/60 border border-white/20';
+            default:
+                return 'bg-white/10 text-white/60 border border-white/20';
+        }
+    };
+
     const isGigWorker = auth.user.user_type === 'gig_worker';
 
     const handleBidAction = (bidId, action) => {
@@ -262,8 +277,9 @@ export default function BidsIndex({ bids }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
+            pageTheme="dark"
             header={
-                <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                <h2 className="font-semibold text-xl text-white leading-tight tracking-tight">
                     {isGigWorker ? 'My Bids' : 'Bids on My Jobs'}
                 </h2>
             }
@@ -271,34 +287,33 @@ export default function BidsIndex({ bids }) {
             <Head title={isGigWorker ? 'My Bids' : 'Bids on My Jobs'} />
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet" />
 
-            <div className="relative py-12 bg-white overflow-hidden">
-                {/* Animated Background Shapes */}
-                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+            <div className="relative min-h-screen py-12 bg-[#05070A] overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {bids.data.length > 0 ? (
                         <div className="space-y-6">
                             {bids.data.map((bid) => (
-                                <div key={bid.id} className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                                <div key={bid.id} className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl hover:border-blue-500/30 transition-all duration-200">
                                     <div className="p-6">
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                                    <Link 
+                                                <h3 className="text-lg font-semibold text-white mb-2">
+                                                    <Link
                                                         href={route('jobs.show', bid.job.id)}
-                                                        className="hover:text-blue-600"
+                                                        className="hover:text-blue-400"
                                                     >
                                                         {bid.job.title}
                                                     </Link>
                                                 </h3>
-                                                <div className="text-sm text-gray-600 space-y-1">
+                                                <div className="text-sm text-white/60 space-y-1">
                                                     {isGigWorker ? (
                                                         <p>
                                                             Posted by:{' '}
                                                             <a
                                                                 href={route('employers.show', bid.job.employer?.id)}
-                                                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                                className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
                                                                 onClick={(e) => {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
@@ -313,7 +328,7 @@ export default function BidsIndex({ bids }) {
                                                             Bid by:{' '}
                                                             <Link
                                                                 href={route('workers.show', bid.gig_worker?.id)}
-                                                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                                className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                 }}
@@ -325,30 +340,30 @@ export default function BidsIndex({ bids }) {
                                                     <p>Submitted: {formatDate(bid.submitted_at)}</p>
                                                 </div>
                                             </div>
-                                            <span className={`px-4 py-2 text-sm font-medium rounded-full shadow-md transition-all duration-300 ${getStatusColor(bid.status)}`}>
+                                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColorDark(bid.status)}`}>
                                                 {bid.status.charAt(0).toUpperCase() + bid.status.slice(1)}
                                             </span>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                                            <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                                <span className="text-sm font-medium text-blue-600">Bid Amount:</span>
-                                                <p className="text-lg font-bold text-gray-900 mt-1">₱{formatAmount(bid.bid_amount)}</p>
+                                            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
+                                                <span className="text-sm font-medium text-blue-400">Bid Amount:</span>
+                                                <p className="text-lg font-bold text-white mt-1">₱{formatAmount(bid.bid_amount)}</p>
                                             </div>
-                                            <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                                <span className="text-sm font-medium text-blue-600">Estimated Days:</span>
-                                                <p className="text-lg font-bold text-gray-900 mt-1">{bid.estimated_days} days</p>
+                                            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
+                                                <span className="text-sm font-medium text-blue-400">Estimated Days:</span>
+                                                <p className="text-lg font-bold text-white mt-1">{bid.estimated_days} days</p>
                                             </div>
-                                            <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
-                                                <span className="text-sm font-medium text-blue-600">Job Budget:</span>
-                                                <p className="text-lg font-bold text-gray-900 mt-1">{bid.job.budget_display}</p>
+                                            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
+                                                <span className="text-sm font-medium text-blue-400">Job Budget:</span>
+                                                <p className="text-lg font-bold text-white mt-1">{bid.job.budget_display}</p>
                                             </div>
                                         </div>
 
                                         <div className="mb-6">
-                                            <span className="text-sm font-medium text-blue-600 mb-2 block">Proposal:</span>
-                                            <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200">
-                                                <p className="text-gray-700 leading-relaxed">{bid.proposal_message}</p>
+                                            <span className="text-sm font-medium text-blue-400 mb-2 block">Proposal:</span>
+                                            <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                                                <p className="text-white/80 leading-relaxed">{bid.proposal_message}</p>
                                             </div>
                                         </div>
 
@@ -358,7 +373,7 @@ export default function BidsIndex({ bids }) {
                                                     type="button"
                                                     onClick={() => handleBidAction(bid.id, 'accept')}
                                                     disabled={processing}
-                                                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                                    className="bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-green-600/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     {processing ? (
                                                         <span className="flex items-center">
@@ -374,7 +389,7 @@ export default function BidsIndex({ bids }) {
                                                     type="button"
                                                     onClick={() => handleBidAction(bid.id, 'reject')}
                                                     disabled={processing}
-                                                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                                    className="bg-red-600 hover:bg-red-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-red-600/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     {processing ? (
                                                         <span className="flex items-center">
@@ -394,7 +409,7 @@ export default function BidsIndex({ bids }) {
                                                 type="button"
                                                 onClick={() => handleBidAction(bid.id, 'withdraw')}
                                                 disabled={processing}
-                                                className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                                className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 {processing ? (
                                                     <span className="flex items-center">
@@ -412,17 +427,17 @@ export default function BidsIndex({ bids }) {
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg sm:rounded-xl border border-gray-200">
+                        <div className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl">
                             <div className="p-12 text-center">
-                                <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="w-24 h-24 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                                <h3 className="text-2xl font-bold text-white mb-4">
                                     {isGigWorker ? "No Bids Yet" : "No Bids Received"}
                                 </h3>
-                                <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto leading-relaxed">
+                                <p className="text-white/60 text-lg mb-8 max-w-md mx-auto leading-relaxed">
                                     {isGigWorker
                                         ? "You haven't submitted any bids yet. Start exploring opportunities and submit your first proposal!"
                                         : "No bids have been submitted on your jobs yet. Your posted jobs will receive proposals here."
@@ -431,7 +446,7 @@ export default function BidsIndex({ bids }) {
                                 {isGigWorker && (
                                     <Link
                                         href={route('jobs.index')}
-                                        className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 inline-flex items-center"
+                                        className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg shadow-blue-600/20 transition-all duration-300 inline-flex items-center"
                                     >
                                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -454,17 +469,17 @@ export default function BidsIndex({ bids }) {
                                         href={link.url}
                                         className={`px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 ${
                                             link.active
-                                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
-                                                : 'bg-white/70 backdrop-blur-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 border border-gray-200 hover:border-blue-300 hover:shadow-md'
-                                            }`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
+                                                ? 'bg-blue-600 text-white shadow-lg'
+                                                : 'bg-white/5 text-white/70 hover:bg-blue-500/20 hover:text-white border border-white/10 hover:border-blue-500/30'
+                                        }`}
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
                                     ) : (
                                         <span
                                             key={index}
-                                            className="px-4 py-3 text-sm font-medium rounded-xl bg-gray-100/70 backdrop-blur-sm text-gray-400 cursor-not-allowed border border-gray-200"
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
+                                            className="px-4 py-3 text-sm font-medium rounded-xl bg-white/5 text-white/40 cursor-not-allowed border border-white/10"
+                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                        />
                                     )
                                 ))}
                             </div>
@@ -475,8 +490,8 @@ export default function BidsIndex({ bids }) {
 
             <style>{`
                 body {
-                    background: white;
-                    color: #333;
+                    background: #05070A;
+                    color: #e5e7eb;
                     font-family: 'Inter', sans-serif;
                 }
             `}</style>

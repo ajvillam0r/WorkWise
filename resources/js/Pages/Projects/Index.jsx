@@ -5,7 +5,11 @@ import { formatDistanceToNow } from 'date-fns';
 
 export default function ProjectsIndex({ projects }) {
     const { auth } = usePage().props;
-    const isEmployer = auth.user.user_type === 'employer';
+    const isEmployer = auth?.user?.user_type === 'employer';
+
+    // Safely handle paginated or array response
+    const projectList = Array.isArray(projects?.data) ? projects.data : (Array.isArray(projects) ? projects : []);
+    const paginationMeta = projects && !Array.isArray(projects) ? projects : null;
 
     const getStatusBadge = (status) => {
         const badges = {
@@ -46,7 +50,7 @@ export default function ProjectsIndex({ projects }) {
                         My Projects
                     </h2>
                     <div className="text-sm text-white/60">
-                        {projects.data.length} project{projects.data.length !== 1 ? 's' : ''}
+                        {projectList.length} project{projectList.length !== 1 ? 's' : ''}
                     </div>
                 </div>
             }
@@ -60,7 +64,7 @@ export default function ProjectsIndex({ projects }) {
                 <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-700/20 rounded-full blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: '2s' }} />
 
                 <div className="relative z-20 max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    {projects.data.length === 0 ? (
+                    {projectList.length === 0 ? (
                         <div className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl">
                             <div className="p-6 text-center">
                                 <div className="text-6xl mb-4">📋</div>
@@ -83,7 +87,7 @@ export default function ProjectsIndex({ projects }) {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {projects.data.map((project) => (
+                            {projectList.map((project) => (
                                 <div key={project.id} className="bg-white/5 backdrop-blur-sm overflow-hidden border border-white/10 rounded-xl">
                                     <div className="p-6">
                                         <div className="flex items-start justify-between">
@@ -96,27 +100,37 @@ export default function ProjectsIndex({ projects }) {
                                                                 href={`/projects/${project.id}`}
                                                                 className="hover:text-blue-400 transition-colors"
                                                             >
-                                                                {project.job.title}
+                                                                {project.job?.title ?? 'Untitled Project'}
                                                             </Link>
                                                         </h3>
                                                         <div className="flex items-center space-x-4 text-sm text-white/60">
                                                             <span>
                                                                 {isEmployer ? 'Gig Worker:' : 'Employer:'}{' '}
-                                                                <Link
-                                                                    href={isEmployer
-                                                                        ? route('workers.show', project.gig_worker.id)
-                                                                        : route('employers.show', project.employer.id)
-                                                                    }
-                                                                    className="text-blue-400 hover:text-blue-300 hover:underline font-medium ml-1"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                    }}
-                                                                >
-                                                                    {isEmployer
-                                                                        ? `${project.gig_worker.first_name} ${project.gig_worker.last_name}`
-                                                                        : `${project.employer.first_name} ${project.employer.last_name}`
-                                                                    }
-                                                                </Link>
+                                                                {isEmployer ? (
+                                                                    project.gig_worker ? (
+                                                                        <Link
+                                                                            href={route('gig-worker.profile.show', project.gig_worker.id)}
+                                                                            className="text-blue-400 hover:text-blue-300 hover:underline font-medium ml-1"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            {project.gig_worker.first_name} {project.gig_worker.last_name}
+                                                                        </Link>
+                                                                    ) : (
+                                                                        <span className="text-white/50">—</span>
+                                                                    )
+                                                                ) : (
+                                                                    project.employer ? (
+                                                                        <Link
+                                                                            href={route('employers.show', project.employer.id)}
+                                                                            className="text-blue-400 hover:text-blue-300 hover:underline font-medium ml-1"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            {project.employer.first_name} {project.employer.last_name}
+                                                                        </Link>
+                                                                    ) : (
+                                                                        <span className="text-white/50">—</span>
+                                                                    )
+                                                                )}
                                                             </span>
                                                             <span>•</span>
                                                             <span>Started {formatDistanceToNow(new Date(project.started_at))} ago</span>
@@ -148,7 +162,7 @@ export default function ProjectsIndex({ projects }) {
                                                     </div>
                                                 </div>
 
-                                                {project.job.description && (
+                                                {project.job?.description && (
                                                     <p className="text-white/70 mb-4 line-clamp-2 break-all">
                                                         {project.job.description}
                                                     </p>
@@ -189,20 +203,20 @@ export default function ProjectsIndex({ projects }) {
                             ))}
 
                             {/* Pagination */}
-                            {projects.links && projects.links.length > 3 && (
+                            {paginationMeta?.links && paginationMeta.links.length > 3 && (
                                 <div className="bg-white/5 border border-white/10 px-4 py-3 flex items-center justify-between sm:px-6 rounded-xl">
                                     <div className="flex-1 flex justify-between sm:hidden">
-                                        {projects.prev_page_url && (
+                                        {paginationMeta.prev_page_url && (
                                             <Link
-                                                href={projects.prev_page_url}
+                                                href={paginationMeta.prev_page_url}
                                                 className="relative inline-flex items-center px-4 py-2 border border-white/20 text-sm font-medium rounded-md text-white bg-white/5 hover:bg-blue-500/20"
                                             >
                                                 Previous
                                             </Link>
                                         )}
-                                        {projects.next_page_url && (
+                                        {paginationMeta.next_page_url && (
                                             <Link
-                                                href={projects.next_page_url}
+                                                href={paginationMeta.next_page_url}
                                                 className="ml-3 relative inline-flex items-center px-4 py-2 border border-white/20 text-sm font-medium rounded-md text-white bg-white/5 hover:bg-blue-500/20"
                                             >
                                                 Next
@@ -212,14 +226,14 @@ export default function ProjectsIndex({ projects }) {
                                     <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                                         <div>
                                             <p className="text-sm text-white/70">
-                                                Showing <span className="font-medium text-white">{projects.from}</span> to{' '}
-                                                <span className="font-medium text-white">{projects.to}</span> of{' '}
-                                                <span className="font-medium text-white">{projects.total}</span> results
+                                                Showing <span className="font-medium text-white">{paginationMeta.from}</span> to{' '}
+                                                <span className="font-medium text-white">{paginationMeta.to}</span> of{' '}
+                                                <span className="font-medium text-white">{paginationMeta.total}</span> results
                                             </p>
                                         </div>
                                         <div>
                                             <nav className="relative z-0 inline-flex rounded-md -space-x-px">
-                                                {projects.links.map((link, index) => (
+                                                {paginationMeta.links.map((link, index) => (
                                                     <Link
                                                         key={index}
                                                         href={link.url || '#'}
@@ -228,7 +242,7 @@ export default function ProjectsIndex({ projects }) {
                                                                 ? 'z-10 bg-blue-600 border-blue-500/50 text-white'
                                                                 : 'bg-white/5 border-white/20 text-white/70 hover:bg-blue-500/20 hover:text-white'
                                                         } ${index === 0 ? 'rounded-l-md' : ''} ${
-                                                            index === projects.links.length - 1 ? 'rounded-r-md' : ''
+                                                            index === paginationMeta.links.length - 1 ? 'rounded-r-md' : ''
                                                         }`}
                                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                                     />
